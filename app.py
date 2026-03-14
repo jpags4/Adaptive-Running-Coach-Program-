@@ -33,6 +33,19 @@ ROOT = Path(__file__).parent
 STATIC_DIR = ROOT / "static"
 
 
+def previous_run_summary(runs: list) -> dict:
+    if not runs:
+        return {"day": "", "distance_miles": 0, "duration_minutes": 0, "workout_type": ""}
+
+    latest_run = max(runs, key=lambda item: item.day)
+    return {
+        "day": latest_run.day,
+        "distance_miles": latest_run.distance_miles,
+        "duration_minutes": latest_run.duration_minutes,
+        "workout_type": latest_run.workout_type.replace("_", " "),
+    }
+
+
 def html_page(title: str, body: str) -> str:
     return f"""
     <html lang="en">
@@ -490,6 +503,9 @@ class CoachHandler(BaseHTTPRequestHandler):
                     "latest_recovery": metrics[-1].recovery_score,
                     "latest_sleep_hours": metrics[-1].sleep_hours,
                     "latest_strain": metrics[-1].strain,
+                    "latest_resting_hr": metrics[-1].resting_hr,
+                    "latest_hrv": metrics[-1].hrv_ms,
+                    "previous_run": previous_run_summary(runs),
                 },
                 "recommendation": recommendation.to_dict(),
                 "connections": {
