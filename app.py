@@ -26,7 +26,7 @@ from integrations import (
     whoop_redirect_uri,
 )
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
-from storage import load_settings, load_states, load_tokens, save_settings, save_states, save_tokens, using_hosted_env
+from storage import init_storage, load_settings, load_states, load_tokens, save_settings, save_states, save_tokens, using_hosted_env
 
 
 ROOT = Path(__file__).parent
@@ -518,6 +518,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
 
 
 if __name__ == "__main__":
+    init_storage()
     default_host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
     run_server(
         host=os.environ.get("HOST", default_host),

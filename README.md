@@ -55,14 +55,18 @@ This project is now ready for that:
 
 - the app reads hosting secrets from environment variables
 - the app reads the public site URL from `APP_BASE_URL`
+- the app can persist tokens in a real database through `DATABASE_URL`
 - the app listens on the hosting platform's port automatically
 - `render.yaml` is included for Render deployment
+- `runtime.txt` pins the Python version for hosting
+- `requirements.txt` is included so hosting platforms recognize the app layout cleanly
 
 ### Hosting environment variables
 
 The hosted app expects these values:
 
 - `APP_BASE_URL`
+- `DATABASE_URL`
 - `STRAVA_CLIENT_ID`
 - `STRAVA_CLIENT_SECRET`
 - `WHOOP_CLIENT_ID`
@@ -80,24 +84,26 @@ You can see an example in `.env.example`.
 2. Create a Render account and connect your GitHub account.
 3. Create a new Web Service from this repo.
 4. Let Render use the included `render.yaml`.
-5. In Render, fill in the environment variables above.
-6. After deploy, copy your Render URL, for example `https://your-app.onrender.com`.
-7. Set `APP_BASE_URL` in Render to that exact URL.
-8. Update your Strava and WHOOP app dashboards to use:
+5. Create a Render Postgres database named `adaptive-running-coach-db`.
+6. In Render, fill in the environment variables above.
+7. Make sure `DATABASE_URL` is connected to that Postgres database.
+8. After deploy, copy your Render URL, for example `https://your-app.onrender.com`.
+9. Set `APP_BASE_URL` in Render to that exact URL.
+10. Update your Strava and WHOOP app dashboards to use:
    - `https://your-app.onrender.com/strava/callback`
    - `https://your-app.onrender.com/whoop/callback`
-9. Open the deployed app and click `Connect Strava` and `Connect WHOOP`.
+11. Open the deployed app and click `Connect Strava` and `Connect WHOOP`.
 
 ### Important note about storage
 
-This version still stores tokens in local JSON files inside the app folder. That is okay for a learning project or early MVP, but many hosting platforms use temporary disk storage.
+Without `DATABASE_URL`, the app falls back to local storage in the app folder. That is okay for early local development, but not reliable for a hosted app.
 
 That means:
 
 - tokens may disappear after redeploys or restarts
 - you may need to reconnect Strava and WHOOP occasionally
 
-For a more durable version, the next upgrade would be moving tokens into a real database.
+With a real Postgres database connected, the app can keep your OAuth tokens between reloads, restarts, and deploys.
 
 ## Callback URLs
 

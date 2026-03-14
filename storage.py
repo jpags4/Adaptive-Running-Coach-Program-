@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -9,8 +10,9 @@ from typing import Any
 ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "data"
 SETTINGS_PATH = DATA_DIR / "settings.local.json"
-TOKENS_PATH = DATA_DIR / "tokens.local.json"
-STATE_PATH = DATA_DIR / "oauth_state.local.json"
+LEGACY_TOKENS_PATH = DATA_DIR / "tokens.local.json"
+LEGACY_STATE_PATH = DATA_DIR / "oauth_state.local.json"
+SQLITE_DB_PATH = DATA_DIR / "app.local.db"
 
 
 def _ensure_data_dir() -> None:
@@ -29,6 +31,142 @@ def _save_json(path: Path, payload: Any) -> None:
     _ensure_data_dir()
     with path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
+
+
+def _database_url() -> str:
+    return os.environ.get("DATABASE_URL", "").strip()
+
+
+def _using_postgres() -> bool:
+    return _database_url().startswith(("postgres://", "postgresql://"))
+
+
+def _sqlite_connection() -> sqlite3.Connection:
+    _ensure_data_dir()
+    connection = sqlite3.connect(SQLITE_DB_PATH)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def _postgres_connection():
+    import psycopg
+
+    return psycopg.connect(_database_url(), autocommit=True)
+
+
+def _db_connection():
+    if _using_postgres():
+        return _postgres_connection()
+    return _sqlite_connection()
+
+
+def _json_dumps(payload: Any) -> str:
+    return json.dumps(payload)
+
+
+def _json_loads(payload: str) -> Any:
+    return json.loads(payload)
+
+
+def init_storage() -> None:
+    if _using_postgres():
+        connection = _postgres_connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS app_kv_store (
+                        namespace TEXT NOT NULL,
+                        key TEXT NOT NULL,
+                        value_json TEXT NOT NULL,
+                        updated_at BIGINT NOT NULL,
+                        PRIMARY KEY (namespace, key)
+                    )
+                    """
+                )
+        finally:
+            connection.close()
+        return
+
+    connection = _sqlite_connection()
+    try:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_kv_store (
+                namespace TEXT NOT NULL,
+                key TEXT NOT NULL,
+                value_json TEXT NOT NULL,
+                updated_at INTEGER NOT NULL,
+                PRIMARY KEY (namespace, key)
+            )
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def _set_namespace_values(namespace: str, values: dict[str, Any]) -> None:
+    import time
+
+    init_storage()
+    connection = _db_connection()
+    now = int(time.time())
+    try:
+        if _using_postgres():
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM app_kv_store WHERE namespace = %s", (namespace,))
+                for key, value in values.items():
+                    cursor.execute(
+                        """
+                        INSERT INTO app_kv_store (namespace, key, value_json, updated_at)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (namespace, key)
+                        DO UPDATE SET value_json = EXCLUDED.value_json, updated_at = EXCLUDED.updated_at
+                        """,
+                        (namespace, key, _json_dumps(value), now),
+                    )
+        else:
+            connection.execute("DELETE FROM app_kv_store WHERE namespace = ?", (namespace,))
+            for key, value in values.items():
+                connection.execute(
+                    """
+                    INSERT OR REPLACE INTO app_kv_store (namespace, key, value_json, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (namespace, key, _json_dumps(value), now),
+                )
+            connection.commit()
+    finally:
+        connection.close()
+
+
+def _get_namespace_values(namespace: str) -> dict[str, Any]:
+    init_storage()
+    connection = _db_connection()
+    try:
+        if _using_postgres():
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT key, value_json FROM app_kv_store WHERE namespace = %s", (namespace,))
+                rows = cursor.fetchall()
+        else:
+            rows = connection.execute(
+                "SELECT key, value_json FROM app_kv_store WHERE namespace = ?",
+                (namespace,),
+            ).fetchall()
+        return {row[0]: _json_loads(row[1]) for row in rows}
+    finally:
+        connection.close()
+
+
+def _migrate_legacy_json(namespace: str, path: Path) -> None:
+    existing = _get_namespace_values(namespace)
+    if existing or not path.exists():
+        return
+
+    payload = _load_json(path, {})
+    if isinstance(payload, dict) and payload:
+        _set_namespace_values(namespace, payload)
 
 
 def load_settings() -> dict[str, Any]:
@@ -100,16 +238,18 @@ def save_settings(settings: dict[str, Any]) -> None:
 
 
 def load_tokens() -> dict[str, Any]:
-    return _load_json(TOKENS_PATH, {})
+    _migrate_legacy_json("tokens", LEGACY_TOKENS_PATH)
+    return _get_namespace_values("tokens")
 
 
 def save_tokens(tokens: dict[str, Any]) -> None:
-    _save_json(TOKENS_PATH, tokens)
+    _set_namespace_values("tokens", tokens)
 
 
 def load_states() -> dict[str, str]:
-    return _load_json(STATE_PATH, {})
+    _migrate_legacy_json("oauth_states", LEGACY_STATE_PATH)
+    return _get_namespace_values("oauth_states")
 
 
 def save_states(states: dict[str, str]) -> None:
-    _save_json(STATE_PATH, states)
+    _set_namespace_values("oauth_states", states)
