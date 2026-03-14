@@ -354,12 +354,14 @@ class CoachHandler(BaseHTTPRequestHandler):
                     strava_redirect_uri(public_base_url),
                     code,
                     allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")),
+                    user_agent=settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
                 )
                 tokens["strava"] = token_payload
                 save_tokens(tokens)
                 snapshot = fetch_strava_snapshot(
                     token_payload["access_token"],
                     allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")),
+                    user_agent=settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
                 )
                 self._send_html_text(callback_success_page("Strava", snapshot_preview("strava", snapshot)))
             except Exception as exc:
@@ -408,12 +410,14 @@ class CoachHandler(BaseHTTPRequestHandler):
                     redirect_uri,
                     code,
                     allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")),
+                    user_agent=settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
                 )
                 tokens["whoop"] = token_payload
                 save_tokens(tokens)
                 snapshot = fetch_whoop_snapshot(
                     token_payload["access_token"],
                     allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")),
+                    user_agent=settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
                 )
                 body = callback_success_page("WHOOP", snapshot_preview("whoop", snapshot))
                 if state_warning:
@@ -445,6 +449,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                         live_strava = fetch_strava_snapshot(
                             refreshed["access_token"],
                             allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")),
+                            user_agent=settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
                         )
 
                 if tokens.get("whoop"):
@@ -455,6 +460,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                         live_whoop = fetch_whoop_snapshot(
                             refreshed["access_token"],
                             allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")),
+                            user_agent=settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
                         )
 
                 if live_strava and live_whoop:

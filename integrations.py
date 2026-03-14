@@ -77,12 +77,21 @@ def _http_error_details(exc: HTTPError) -> str:
     return f"HTTP {exc.code}: {exc.reason}"
 
 
-def _post_form(url: str, payload: dict[str, str], allow_insecure_ssl: bool = False) -> dict:
+def _post_form(
+    url: str,
+    payload: dict[str, str],
+    allow_insecure_ssl: bool = False,
+    user_agent: str = "AdaptiveRunningCoach/0.1",
+) -> dict:
     body = urlencode(payload).encode("utf-8")
     request = Request(
         url,
         data=body,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+            "User-Agent": user_agent,
+        },
         method="POST",
     )
     try:
@@ -92,10 +101,19 @@ def _post_form(url: str, payload: dict[str, str], allow_insecure_ssl: bool = Fal
         raise OAuthError(_http_error_details(exc)) from exc
 
 
-def _get_json(url: str, access_token: str, allow_insecure_ssl: bool = False) -> dict | list:
+def _get_json(
+    url: str,
+    access_token: str,
+    allow_insecure_ssl: bool = False,
+    user_agent: str = "AdaptiveRunningCoach/0.1",
+) -> dict | list:
     request = Request(
         url,
-        headers={"Authorization": f"Bearer {access_token}"},
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+            "User-Agent": user_agent,
+        },
     )
     try:
         with urlopen(request, timeout=30, context=_ssl_context(allow_insecure_ssl)) as response:
@@ -110,6 +128,7 @@ def exchange_strava_code(
     redirect_uri: str,
     code: str,
     allow_insecure_ssl: bool = False,
+    user_agent: str = "AdaptiveRunningCoach/0.1",
 ) -> dict:
     payload = {
         "client_id": client_id,
@@ -118,7 +137,12 @@ def exchange_strava_code(
         "code": code,
         "grant_type": "authorization_code",
     }
-    tokens = _post_form("https://www.strava.com/oauth/token", payload, allow_insecure_ssl=allow_insecure_ssl)
+    tokens = _post_form(
+        "https://www.strava.com/oauth/token",
+        payload,
+        allow_insecure_ssl=allow_insecure_ssl,
+        user_agent=user_agent,
+    )
     tokens["saved_at"] = int(time.time())
     return tokens
 
@@ -129,6 +153,7 @@ def exchange_whoop_code(
     redirect_uri: str,
     code: str,
     allow_insecure_ssl: bool = False,
+    user_agent: str = "AdaptiveRunningCoach/0.1",
 ) -> dict:
     payload = {
         "client_id": client_id,
@@ -141,6 +166,7 @@ def exchange_whoop_code(
         "https://api.prod.whoop.com/oauth/oauth2/token",
         payload,
         allow_insecure_ssl=allow_insecure_ssl,
+        user_agent=user_agent,
     )
     tokens["saved_at"] = int(time.time())
     return tokens
@@ -151,6 +177,7 @@ def refresh_strava_token(
     client_secret: str,
     refresh_token: str,
     allow_insecure_ssl: bool = False,
+    user_agent: str = "AdaptiveRunningCoach/0.1",
 ) -> dict:
     payload = {
         "client_id": client_id,
@@ -158,7 +185,12 @@ def refresh_strava_token(
         "grant_type": "refresh_token",
         "refresh_token": refresh_token,
     }
-    tokens = _post_form("https://www.strava.com/oauth/token", payload, allow_insecure_ssl=allow_insecure_ssl)
+    tokens = _post_form(
+        "https://www.strava.com/oauth/token",
+        payload,
+        allow_insecure_ssl=allow_insecure_ssl,
+        user_agent=user_agent,
+    )
     tokens["saved_at"] = int(time.time())
     return tokens
 
@@ -168,6 +200,7 @@ def refresh_whoop_token(
     client_secret: str,
     refresh_token: str,
     allow_insecure_ssl: bool = False,
+    user_agent: str = "AdaptiveRunningCoach/0.1",
 ) -> dict:
     payload = {
         "grant_type": "refresh_token",
@@ -180,6 +213,7 @@ def refresh_whoop_token(
         "https://api.prod.whoop.com/oauth/oauth2/token",
         payload,
         allow_insecure_ssl=allow_insecure_ssl,
+        user_agent=user_agent,
     )
     tokens["saved_at"] = int(time.time())
     return tokens
@@ -192,6 +226,7 @@ def valid_access_token(provider: str, settings: dict, tokens: dict) -> dict | No
 
     now = int(time.time())
     allow_insecure_ssl = bool(settings.get("allow_insecure_ssl"))
+    user_agent = settings.get("app_user_agent", "AdaptiveRunningCoach/0.1")
     if provider == "strava":
         expires_at = int(provider_tokens.get("expires_at", 0))
         if expires_at > now + 300:
@@ -206,6 +241,7 @@ def valid_access_token(provider: str, settings: dict, tokens: dict) -> dict | No
             settings["strava"]["client_secret"],
             refresh_token,
             allow_insecure_ssl=allow_insecure_ssl,
+            user_agent=user_agent,
         )
         refreshed["athlete"] = provider_tokens.get("athlete", {})
         return refreshed
@@ -224,26 +260,42 @@ def valid_access_token(provider: str, settings: dict, tokens: dict) -> dict | No
         settings["whoop"]["client_secret"],
         refresh_token,
         allow_insecure_ssl=allow_insecure_ssl,
+        user_agent=user_agent,
     )
 
 
-def fetch_strava_snapshot(access_token: str, allow_insecure_ssl: bool = False) -> dict:
-    athlete = _get_json("https://www.strava.com/api/v3/athlete", access_token, allow_insecure_ssl=allow_insecure_ssl)
+def fetch_strava_snapshot(
+    access_token: str,
+    allow_insecure_ssl: bool = False,
+    user_agent: str = "AdaptiveRunningCoach/0.1",
+) -> dict:
+    athlete = _get_json(
+        "https://www.strava.com/api/v3/athlete",
+        access_token,
+        allow_insecure_ssl=allow_insecure_ssl,
+        user_agent=user_agent,
+    )
     activities = _get_json(
         "https://www.strava.com/api/v3/athlete/activities?per_page=10&page=1",
         access_token,
         allow_insecure_ssl=allow_insecure_ssl,
+        user_agent=user_agent,
     )
     return {"athlete": athlete, "activities": activities}
 
 
-def fetch_whoop_snapshot(access_token: str, allow_insecure_ssl: bool = False) -> dict:
+def fetch_whoop_snapshot(
+    access_token: str,
+    allow_insecure_ssl: bool = False,
+    user_agent: str = "AdaptiveRunningCoach/0.1",
+) -> dict:
     profile = {}
     try:
         profile = _get_json(
             "https://api.prod.whoop.com/developer/v2/user/profile/basic",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
+            user_agent=user_agent,
         )
     except Exception:
         # Profile access is optional for this app; recovery and workout data are the important parts.
@@ -253,6 +305,7 @@ def fetch_whoop_snapshot(access_token: str, allow_insecure_ssl: bool = False) ->
             "https://api.prod.whoop.com/developer/v2/recovery?limit=7",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
+            user_agent=user_agent,
         )
     except HTTPError as exc:
         raise RuntimeError(f"WHOOP recovery request failed with HTTP {exc.code}. Check that read:recovery is enabled in your WHOOP app.") from exc
@@ -261,6 +314,7 @@ def fetch_whoop_snapshot(access_token: str, allow_insecure_ssl: bool = False) ->
             "https://api.prod.whoop.com/developer/v2/activity/sleep?limit=7",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
+            user_agent=user_agent,
         )
     except HTTPError as exc:
         raise RuntimeError(f"WHOOP sleep request failed with HTTP {exc.code}. Check that read:sleep is enabled in your WHOOP app.") from exc
@@ -269,6 +323,7 @@ def fetch_whoop_snapshot(access_token: str, allow_insecure_ssl: bool = False) ->
             "https://api.prod.whoop.com/developer/v2/cycle?limit=7",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
+            user_agent=user_agent,
         )
     except HTTPError as exc:
         raise RuntimeError(f"WHOOP cycle request failed with HTTP {exc.code}. Check that read:cycles is enabled in your WHOOP app.") from exc
@@ -277,6 +332,7 @@ def fetch_whoop_snapshot(access_token: str, allow_insecure_ssl: bool = False) ->
             "https://api.prod.whoop.com/developer/v2/activity/workout?limit=7",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
+            user_agent=user_agent,
         )
     except HTTPError as exc:
         raise RuntimeError(f"WHOOP workout request failed with HTTP {exc.code}. Check that read:workout is enabled in your WHOOP app.") from exc

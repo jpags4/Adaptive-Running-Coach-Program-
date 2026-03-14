@@ -37,6 +37,7 @@ def load_settings() -> dict[str, Any]:
         {
             "public_base_url": "",
             "allow_insecure_ssl": False,
+            "app_user_agent": "AdaptiveRunningCoach/0.1 (+https://adaptive-running-coach-program.onrender.com)",
             "goal_race_date": "",
             "weekly_mileage_target": "28",
             "preferred_long_run_day": "Sunday",
@@ -52,6 +53,10 @@ def load_settings() -> dict[str, Any]:
     settings["allow_insecure_ssl"] = os.environ.get("ALLOW_INSECURE_SSL", "").lower() in {"1", "true", "yes"} or bool(
         settings.get("allow_insecure_ssl")
     )
+    settings["app_user_agent"] = os.environ.get(
+        "APP_USER_AGENT",
+        settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
+    ).strip()
 
     settings["athlete_name"] = os.environ.get("ATHLETE_NAME", settings.get("athlete_name", "")).strip()
     settings["goal_race_date"] = os.environ.get("GOAL_RACE_DATE", settings.get("goal_race_date", "")).strip()
