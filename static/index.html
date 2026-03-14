@@ -39,23 +39,29 @@
       }
 
       .topline {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+        display: grid;
+        grid-template-columns: 1fr auto;
         gap: 18px;
         margin-bottom: 18px;
+        align-items: start;
       }
 
       h1 {
         margin: 0;
-        font-size: clamp(2.15rem, 4vw, 3.5rem);
+        font-size: clamp(2.15rem, 4vw, 3.4rem);
         line-height: 0.98;
       }
 
       .subtle {
-        margin: 8px 0 0;
+        margin: 0;
         color: var(--muted);
         line-height: 1.65;
+      }
+
+      .greeting {
+        margin: 0 0 6px;
+        font-size: clamp(1.3rem, 2.2vw, 1.9rem);
+        color: var(--accent-deep);
       }
 
       .meta-row,
@@ -68,8 +74,7 @@
 
       .chip,
       .button,
-      .pill,
-      .status-pill {
+      .pill {
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -117,16 +122,23 @@
 
       .metrics-grid {
         display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        gap: 12px;
+        grid-template-columns: 1.2fr 1fr 1fr 1fr;
+        gap: 0;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        overflow: hidden;
+        background: var(--panel-soft);
       }
 
       .metric-card,
       .mini-card {
         padding: 18px;
-        border-radius: 20px;
-        background: var(--panel-soft);
-        border: 1px solid var(--line);
+        background: transparent;
+        border-right: 1px solid var(--line);
+      }
+
+      .metric-card:last-child {
+        border-right: 0;
       }
 
       .metric-card strong,
@@ -146,7 +158,7 @@
 
       .recommendation-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+        grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
         gap: 18px;
       }
 
@@ -251,22 +263,6 @@
         font-size: 0.88rem;
       }
 
-      .status-stack {
-        display: grid;
-        gap: 12px;
-      }
-
-      .dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        background: var(--muted);
-      }
-
-      .dot.live { background: var(--forest); }
-      .dot.partial { background: var(--gold); }
-      .dot.off { background: var(--accent); }
-
       code {
         display: inline-block;
         margin-top: 8px;
@@ -279,19 +275,68 @@
         word-break: break-word;
       }
 
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .calendar-day {
+        min-height: 240px;
+        padding: 14px;
+        border-radius: 18px;
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
+        display: grid;
+        align-content: start;
+        gap: 10px;
+      }
+
+      .calendar-day h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .calendar-date {
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+
+      .calendar-activity {
+        padding: 10px 11px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid var(--line);
+        display: grid;
+        gap: 6px;
+      }
+
+      .calendar-activity strong {
+        font-size: 0.92rem;
+      }
+
+      .calendar-meta {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+
+      .calendar-empty {
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+
       @media (max-width: 1100px) {
-        .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .recommendation-grid,
         .prescription-grid,
-        .detail-grid { grid-template-columns: 1fr; }
+        .detail-grid,
+        .calendar-grid { grid-template-columns: 1fr; }
       }
 
       @media (max-width: 720px) {
         .topline { flex-direction: column; }
-        .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      }
-
-      @media (max-width: 520px) {
+        .topline { grid-template-columns: 1fr; }
         .metrics-grid { grid-template-columns: 1fr; }
       }
     </style>
@@ -300,13 +345,11 @@
     <main>
       <section class="topline">
         <div>
+          <p id="greeting" class="greeting">Good day, John. Let's get active.</p>
           <h1>Adaptive Running Coach</h1>
-          <p class="subtle">
-            A daily training view built around the question: how should you run and lift today based on what your body and your recent work are saying?
-          </p>
         </div>
         <div class="meta-row">
-          <span class="chip" id="todayChip">Today: loading...</span>
+          <span class="chip" id="todayChip">Loading date...</span>
           <span class="chip" id="athleteChip">Athlete: loading...</span>
         </div>
       </section>
@@ -340,9 +383,9 @@
             <span id="yesterdayRunText">Most recent run mileage</span>
           </div>
           <div class="metric-card">
-            <p class="section-title">7-Day Mileage</p>
+            <p class="section-title">Recent Load</p>
             <strong id="mileage">-</strong>
-            <span>Recent running mileage total</span>
+            <span>Seven-day mileage total</span>
           </div>
         </div>
       </section>
@@ -355,7 +398,6 @@
           <div class="pill-row" style="margin-top: 18px;">
             <span id="intensity" class="pill accent"></span>
             <span id="duration" class="pill"></span>
-            <span id="confidence" class="pill forest"></span>
           </div>
         </div>
 
@@ -364,11 +406,6 @@
             <p class="section-title">Goal Context</p>
             <strong id="goalRace">-</strong>
             <span id="goalContext">Goal race and weekly structure</span>
-          </div>
-          <div class="mini-card">
-            <p class="section-title">Most Recent Run</p>
-            <strong id="yesterdayDuration">-</strong>
-            <span id="yesterdayWorkout">Most recent run duration and type</span>
           </div>
           <div class="action-row">
             <a class="button primary" href="/setup">Open setup</a>
@@ -406,35 +443,65 @@
         </article>
       </section>
 
-      <section class="section detail-grid">
-        <article>
-          <p class="section-title">Recent Activities</p>
-          <div id="activities" class="activity-list"></div>
-        </article>
-        <article>
-          <p class="section-title">Status And Feeds</p>
-          <div class="status-stack">
-            <span id="stravaStatus" class="status-pill"><span class="dot"></span>Strava: checking...</span>
-            <span id="whoopStatus" class="status-pill"><span class="dot"></span>WHOOP: checking...</span>
-          </div>
-          <p class="subtle" id="dataMode" style="margin-top: 16px;">Checking current data source mode.</p>
-          <p class="subtle" id="dataDetail" style="margin-top: 10px;">Loading connection detail.</p>
-          <p class="subtle" style="margin-top: 16px;">Strava callback:<br /><code id="stravaCallback"></code></p>
-          <p class="subtle" style="margin-top: 12px;">WHOOP callback:<br /><code id="whoopCallback"></code></p>
-        </article>
+      <section class="section">
+        <p class="section-title">Recent Activity Calendar</p>
+        <div id="calendar" class="calendar-grid"></div>
+      </section>
+
+      <section class="section">
+        <p class="section-title">Activity Detail</p>
+        <div id="activities" class="activity-list"></div>
       </section>
 
       <section class="section">
         <p class="section-title">Things To Watch</p>
         <ul id="warnings" class="list"></ul>
       </section>
+
+      <section class="section detail-grid">
+        <article>
+          <p class="section-title">Account Tools</p>
+          <div class="mini-card">
+            <strong>Manage connections separately</strong>
+            <span>Use setup if you ever need to reconnect Strava or WHOOP, but those controls stay out of the main training view.</span>
+            <div class="action-row" style="margin-top: 14px;">
+              <a class="button primary" href="/setup">Open setup</a>
+              <a class="button secondary" href="/connect/strava">Reconnect Strava</a>
+              <a class="button secondary" href="/connect/whoop">Reconnect WHOOP</a>
+            </div>
+          </div>
+        </article>
+        <article>
+          <p class="section-title">Data Mode</p>
+          <div class="mini-card">
+            <strong id="dataMode">Checking current data source mode.</strong>
+            <span id="dataDetail">Loading connection detail.</span>
+          </div>
+        </article>
+      </section>
     </main>
 
     <script>
+      function greetingForNow(name) {
+        const hour = new Date().getHours();
+        const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+        return "Good " + period + ", " + name + ". Let's get active.";
+      }
+
       function formatRaceDate(dateString) {
         if (!dateString) return "-";
         const date = new Date(dateString + "T12:00:00");
         return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+      }
+
+      function formatPrettyDate(dateString) {
+        if (!dateString) return "Today";
+        const date = new Date(dateString + "T12:00:00");
+        return date.toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "long",
+          day: "numeric"
+        });
       }
 
       function formatPace(value) {
@@ -442,19 +509,6 @@
         const whole = Math.floor(value);
         const seconds = Math.round((value - whole) * 60).toString().padStart(2, "0");
         return whole + ":" + seconds + "/mi";
-      }
-
-      function setStatusPill(element, providerName, setupComplete, connected) {
-        let text = providerName + ": setup not saved";
-        let dotClass = "off";
-        if (connected) {
-          text = providerName + ": connected";
-          dotClass = "live";
-        } else if (setupComplete) {
-          text = providerName + ": ready to connect";
-          dotClass = "partial";
-        }
-        element.innerHTML = '<span class="dot ' + dotClass + '"></span>' + text;
       }
 
       function addListItems(listEl, items, type, emptyText) {
@@ -514,6 +568,54 @@
         });
       }
 
+      function renderCalendar(container, days) {
+        container.innerHTML = "";
+        days.forEach((day) => {
+          const card = document.createElement("div");
+          card.className = "calendar-day";
+
+          const title = document.createElement("h3");
+          const date = new Date(day.day + "T12:00:00");
+          title.textContent = date.toLocaleDateString(undefined, { weekday: "short" });
+
+          const subtitle = document.createElement("div");
+          subtitle.className = "calendar-date";
+          subtitle.textContent = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+          card.appendChild(title);
+          card.appendChild(subtitle);
+
+          if (!day.activities || !day.activities.length) {
+            const empty = document.createElement("div");
+            empty.className = "calendar-empty";
+            empty.textContent = "No logged activity";
+            card.appendChild(empty);
+          } else {
+            day.activities.forEach((activity) => {
+              const item = document.createElement("div");
+              item.className = "calendar-activity";
+
+              const name = document.createElement("strong");
+              name.textContent = activity.name;
+              item.appendChild(name);
+
+              const meta = document.createElement("div");
+              meta.className = "calendar-meta";
+              const bits = [];
+              if (activity.distance_miles) bits.push(activity.distance_miles + " mi");
+              if (activity.duration_minutes) bits.push(activity.duration_minutes + " min");
+              if (activity.average_pace_min_per_mile) bits.push(formatPace(activity.average_pace_min_per_mile));
+              if (activity.strain) bits.push("Strain " + activity.strain);
+              meta.textContent = bits.join(" | ") || activity.sport || "Activity";
+              item.appendChild(meta);
+              card.appendChild(item);
+            });
+          }
+
+          container.appendChild(card);
+        });
+      }
+
       async function loadDashboard() {
         const response = await fetch("/api/dashboard");
         const data = await response.json();
@@ -522,18 +624,18 @@
         const isLive = data.data_mode.mode === "live";
 
         document.title = "Adaptive Running Coach";
-        document.querySelector("#todayChip").textContent = "Today: " + (data.today || "Unknown");
+        document.querySelector("#todayChip").textContent = formatPrettyDate(data.today);
         document.querySelector("#athleteChip").textContent = "Athlete: " + (data.profile.name || "Runner");
+        document.querySelector("#greeting").textContent = greetingForNow(data.profile.name || "Runner");
         document.querySelector("#goalRace").textContent = formatRaceDate(data.profile.goal_race_date);
         document.querySelector("#goalContext").textContent =
-          "Target: " + data.profile.weekly_mileage_target + " mi/week | Long run: " + data.profile.preferred_long_run_day;
+          "Race date: " + formatRaceDate(data.profile.goal_race_date) + " | Long run: " + data.profile.preferred_long_run_day;
 
         document.querySelector("#workout").textContent = data.recommendation.workout;
         document.querySelector("#coachSummary").textContent =
           data.recommendation.explanation[0] || "This recommendation is based on the latest recovery and training signals.";
         document.querySelector("#intensity").textContent = "Intensity: " + data.recommendation.intensity;
         document.querySelector("#duration").textContent = "Duration: " + data.recommendation.duration_minutes + " min";
-        document.querySelector("#confidence").textContent = "Confidence: " + data.recommendation.confidence;
 
         document.querySelector("#sleep").textContent = data.summary.latest_sleep_hours + " hrs";
         document.querySelector("#recovery").textContent = data.summary.latest_recovery + "%";
@@ -542,10 +644,9 @@
         document.querySelector("#mileage").textContent = data.summary.recent_mileage + " mi";
         document.querySelector("#yesterdayMiles").textContent = (previousRun.distance_miles || 0) + " mi";
         document.querySelector("#yesterdayRunText").textContent =
-          previousRun.day ? "Most recent run on " + previousRun.day : "No recent run found";
-        document.querySelector("#yesterdayDuration").textContent = (previousRun.duration_minutes || 0) + " min";
-        document.querySelector("#yesterdayWorkout").textContent =
-          previousRun.workout_type ? "Workout: " + previousRun.workout_type : "No recent workout details yet";
+          previousRun.day
+            ? "Most recent run on " + previousRun.day + " | " + (previousRun.duration_minutes || 0) + " min"
+            : "No recent run found";
 
         document.querySelector("#runDistance").textContent = data.recommendation.run_distance_miles + " miles";
         document.querySelector("#runPrescription").textContent =
@@ -553,15 +654,9 @@
         document.querySelector("#liftFocus").textContent = data.recommendation.lift_focus;
         document.querySelector("#liftGuidance").textContent = data.recommendation.lift_guidance;
 
-        setStatusPill(document.querySelector("#stravaStatus"), "Strava", data.connections.setup_complete.strava, data.connections.status.strava);
-        setStatusPill(document.querySelector("#whoopStatus"), "WHOOP", data.connections.setup_complete.whoop, data.connections.status.whoop);
-
-        document.querySelector("#stravaCallback").textContent = data.connections.strava_callback_url || "Not available yet";
-        document.querySelector("#whoopCallback").textContent = data.connections.whoop_callback_url || "Not available yet";
-
         document.querySelector("#dataMode").textContent = isLive
-          ? "This recommendation is using your live Strava and WHOOP data."
-          : "This recommendation is using sample data until both connections are active.";
+          ? "Live Strava and WHOOP data are active."
+          : "Sample data is still active.";
         document.querySelector("#dataDetail").textContent = isLive
           ? "Loaded " + data.data_mode.strava_runs_found + " recent runs and " + data.data_mode.whoop_days_found + " WHOOP records."
           : (data.data_mode.warning || "Connect both services to switch from sample signals to your real training feed.");
@@ -570,6 +665,7 @@
         addListItems(document.querySelector("#recap"), data.recommendation.recap, "recap", "No recent recap was generated.");
         addListItems(document.querySelector("#warnings"), data.recommendation.warnings, "warn", "No immediate caution flags appeared in the current data.");
         renderActivities(document.querySelector("#activities"), data.activity_feed || []);
+        renderCalendar(document.querySelector("#calendar"), data.activity_calendar || []);
       }
 
       loadDashboard();

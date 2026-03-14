@@ -224,10 +224,12 @@ def coach_recommendation(
         lift_guidance = "A normal strength session fits today. Emphasize quality reps, compound lifts, and stop before form breaks down."
         explanation.append("Current readiness supports building aerobic volume.")
 
-    if seven_day_miles < profile.weekly_mileage_target * 0.65:
-        explanation.append("Weekly mileage is below target, so the engine leans toward maintaining consistency.")
-    elif seven_day_miles > profile.weekly_mileage_target * 1.15:
-        warnings.append("Recent mileage is above your target range; be cautious about piling on more stress.")
+    if prior_run and prior_run.duration_minutes >= 55:
+        explanation.append("Your most recent run was already fairly substantial, so today's guidance stays grounded in recovery from that work.")
+    if prior_run and prior_run.distance_miles >= 7:
+        warnings.append("Recent mileage is coming from longer efforts, so be careful not to stack too much leg stress too quickly.")
+    if three_day_load >= 150:
+        warnings.append("Your last few days already carry meaningful load, so today's recommendation favors durability over forcing extra volume.")
 
     if sleep_low:
         warnings.append("Sleep dipped below 6.5 hours, which can reduce workout quality and recovery.")
@@ -235,6 +237,8 @@ def coach_recommendation(
         warnings.append("Resting heart rate is elevated relative to your recent baseline.")
     if latest_metrics.recovery_score >= 80:
         explanation.append("Recovery is strong today, which supports quality if the broader load picture agrees.")
+    elif latest_metrics.recovery_score <= 60:
+        explanation.append("Recovery is only moderate today, so the recommendation leans more conservative even if your cardio feels ready for more.")
 
     if recovery_low or elevated_rhr:
         confidence = "medium"

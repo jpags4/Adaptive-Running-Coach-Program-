@@ -5,6 +5,7 @@ import os
 from html import escape
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from datetime import datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
 from coach import coach_recommendation, recent_mileage
@@ -62,6 +63,36 @@ def sample_activity_preview(runs: list) -> list[dict]:
         }
         for run in ordered
     ]
+
+
+def calendar_days(activity_feed: list[dict], metrics: list, days: int = 7) -> list[dict]:
+    if metrics:
+        latest_day = max(item.day for item in metrics)
+        anchor = datetime.strptime(latest_day, "%Y-%m-%d").date()
+    else:
+        anchor = datetime.utcnow().date()
+
+    feed_by_day: dict[str, list[dict]] = {}
+    for item in activity_feed:
+        day = item.get("day", "")
+        if not day:
+            continue
+        feed_by_day.setdefault(day, []).append(item)
+
+    cards: list[dict] = []
+    for offset in range(days):
+        day = (anchor - timedelta(days=offset)).isoformat()
+        cards.append(
+            {
+                "day": day,
+                "activities": sorted(
+                    feed_by_day.get(day, []),
+                    key=lambda item: (item.get("source", ""), item.get("duration_minutes", 0)),
+                    reverse=True,
+                ),
+            }
+        )
+    return cards
 
 
 def html_page(title: str, body: str) -> str:
@@ -530,6 +561,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                 },
                 "recommendation": recommendation.to_dict(),
                 "activity_feed": activity_feed,
+                "activity_calendar": calendar_days(activity_feed, metrics),
                 "connections": {
                     "status": connection_status,
                     "setup_complete": {
