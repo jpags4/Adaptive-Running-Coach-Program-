@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: adaptive-half-marathon-coach
+    runtime: python
+    plan: free
+    buildCommand: ""
+    startCommand: python3 app.py
+    envVars:
+      - key: APP_BASE_URL
+        sync: false
+      - key: STRAVA_CLIENT_ID
+        sync: false
+      - key: STRAVA_CLIENT_SECRET
+        sync: false
+      - key: WHOOP_CLIENT_ID
+        sync: false
+      - key: WHOOP_CLIENT_SECRET
+        sync: false
+      - key: ATHLETE_NAME
+        sync: false
+      - key: GOAL_RACE_DATE
+        sync: false
+      - key: WEEKLY_MILEAGE_TARGET
+        value: "28"
+      - key: PREFERRED_LONG_RUN_DAY
+        value: Sunday
+      - key: ALLOW_INSECURE_SSL
+        value: "false"
