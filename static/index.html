@@ -20,7 +20,6 @@
       }
 
       * { box-sizing: border-box; }
-
       body {
         margin: 0;
         min-height: 100vh;
@@ -48,14 +47,8 @@
 
       h1 {
         margin: 0;
-        font-size: clamp(2.15rem, 4vw, 3.4rem);
+        font-size: clamp(2.15rem, 4vw, 3.5rem);
         line-height: 0.98;
-      }
-
-      .subtle {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.65;
       }
 
       .greeting {
@@ -64,15 +57,20 @@
         color: var(--accent-deep);
       }
 
-      .meta-row,
-      .pill-row,
-      .action-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
+      .subtle {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
       }
 
-      .chip,
+      .date-line {
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.4;
+        text-align: right;
+        padding-top: 4px;
+      }
+
       .button,
       .pill {
         display: inline-flex;
@@ -100,7 +98,6 @@
 
       .accent { color: var(--accent-deep); background: rgba(204, 91, 52, 0.1); }
       .forest { color: var(--forest); background: rgba(36, 94, 76, 0.1); }
-      .gold { color: var(--gold); background: rgba(181, 132, 44, 0.1); }
 
       .section {
         background: var(--panel);
@@ -111,7 +108,6 @@
       }
 
       .section + .section { margin-top: 18px; }
-
       .section-title {
         margin: 0 0 8px;
         color: var(--muted);
@@ -137,9 +133,7 @@
         border-right: 1px solid var(--line);
       }
 
-      .metric-card:last-child {
-        border-right: 0;
-      }
+      .metric-card:last-child { border-right: 0; }
 
       .metric-card strong,
       .mini-card strong {
@@ -156,9 +150,11 @@
         line-height: 1.5;
       }
 
-      .recommendation-grid {
+      .recommendation-grid,
+      .prescription-grid,
+      .detail-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 18px;
       }
 
@@ -184,16 +180,11 @@
         font-size: 1.04rem;
       }
 
-      .side-stack {
-        display: grid;
-        gap: 12px;
-      }
-
-      .prescription-grid,
-      .detail-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 18px;
+      .pill-row,
+      .bottom-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
       }
 
       .list {
@@ -263,18 +254,6 @@
         font-size: 0.88rem;
       }
 
-      code {
-        display: inline-block;
-        margin-top: 8px;
-        padding: 8px 10px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px solid var(--line);
-        color: var(--muted);
-        font-size: 0.84rem;
-        word-break: break-word;
-      }
-
       .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -282,7 +261,7 @@
       }
 
       .calendar-day {
-        min-height: 240px;
+        min-height: 220px;
         padding: 14px;
         border-radius: 18px;
         background: var(--panel-soft);
@@ -311,10 +290,7 @@
         gap: 6px;
       }
 
-      .calendar-activity strong {
-        font-size: 0.92rem;
-      }
-
+      .calendar-activity strong { font-size: 0.92rem; }
       .calendar-meta {
         color: var(--muted);
         font-size: 0.8rem;
@@ -327,17 +303,18 @@
       }
 
       @media (max-width: 1100px) {
-        .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .metrics-grid,
         .recommendation-grid,
         .prescription-grid,
         .detail-grid,
-        .calendar-grid { grid-template-columns: 1fr; }
+        .calendar-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 720px) {
-        .topline { flex-direction: column; }
         .topline { grid-template-columns: 1fr; }
-        .metrics-grid { grid-template-columns: 1fr; }
+        .date-line { text-align: left; }
       }
     </style>
   </head>
@@ -345,13 +322,10 @@
     <main>
       <section class="topline">
         <div>
-          <p id="greeting" class="greeting">Good day, John. Let's get active.</p>
+          <p id="greeting" class="greeting">Good evening, John.</p>
           <h1>Adaptive Running Coach</h1>
         </div>
-        <div class="meta-row">
-          <span class="chip" id="todayChip">Loading date...</span>
-          <span class="chip" id="athleteChip">Athlete: loading...</span>
-        </div>
+        <div id="todayChip" class="date-line">Saturday, March 14</div>
       </section>
 
       <section class="section">
@@ -373,19 +347,9 @@
             <span>Latest WHOOP strain reading</span>
           </div>
           <div class="metric-card">
-            <p class="section-title">Resting HR</p>
-            <strong id="restingHr">-</strong>
-            <span>Latest resting heart rate</span>
-          </div>
-          <div class="metric-card">
-            <p class="section-title">Yesterday</p>
-            <strong id="yesterdayMiles">-</strong>
-            <span id="yesterdayRunText">Most recent run mileage</span>
-          </div>
-          <div class="metric-card">
             <p class="section-title">Recent Load</p>
             <strong id="mileage">-</strong>
-            <span>Seven-day mileage total</span>
+            <span id="yesterdayRunText">Most recent run and seven-day mileage</span>
           </div>
         </div>
       </section>
@@ -399,48 +363,39 @@
             <span id="intensity" class="pill accent"></span>
             <span id="duration" class="pill"></span>
           </div>
+          <div style="margin-top: 24px;">
+            <p class="section-title">Why The Model Chose This</p>
+            <ul id="reasons" class="list"></ul>
+          </div>
+          <div style="margin-top: 18px;">
+            <p class="section-title">Recap Of Recent Days</p>
+            <ul id="recap" class="list"></ul>
+          </div>
+          <div style="margin-top: 18px;">
+            <p class="section-title">Things To Watch</p>
+            <ul id="warnings" class="list"></ul>
+          </div>
         </div>
 
-        <div class="side-stack">
+        <div>
           <div class="mini-card">
             <p class="section-title">Goal Context</p>
             <strong id="goalRace">-</strong>
-            <span id="goalContext">Goal race and weekly structure</span>
+            <span id="goalContext">Race date and weekly structure</span>
           </div>
-          <div class="action-row">
-            <a class="button primary" href="/setup">Open setup</a>
-            <a class="button secondary" href="/connect/strava">Connect Strava</a>
-            <a class="button secondary" href="/connect/whoop">Connect WHOOP</a>
+          <div class="prescription-grid" style="margin-top: 18px;">
+            <div class="mini-card">
+              <p class="section-title">Run Prescription</p>
+              <strong id="runDistance">-</strong>
+              <span id="runPrescription">Mileage and pacing guidance for today</span>
+            </div>
+            <div class="mini-card">
+              <p class="section-title">Lifting Recommendation</p>
+              <strong id="liftFocus">-</strong>
+              <span id="liftGuidance">Strength guidance for today</span>
+            </div>
           </div>
         </div>
-      </section>
-
-      <section class="section prescription-grid">
-        <article>
-          <p class="section-title">Run Prescription</p>
-          <div class="mini-card">
-            <strong id="runDistance">-</strong>
-            <span id="runPrescription">Mileage and pacing guidance for today</span>
-          </div>
-        </article>
-        <article>
-          <p class="section-title">Lifting Recommendation</p>
-          <div class="mini-card">
-            <strong id="liftFocus">-</strong>
-            <span id="liftGuidance">Strength guidance for today</span>
-          </div>
-        </article>
-      </section>
-
-      <section class="section detail-grid">
-        <article>
-          <p class="section-title">Why The Model Chose This</p>
-          <ul id="reasons" class="list"></ul>
-        </article>
-        <article>
-          <p class="section-title">Recap Of Recent Days</p>
-          <ul id="recap" class="list"></ul>
-        </article>
       </section>
 
       <section class="section">
@@ -454,30 +409,20 @@
       </section>
 
       <section class="section">
-        <p class="section-title">Things To Watch</p>
-        <ul id="warnings" class="list"></ul>
+        <p class="section-title">Data Mode</p>
+        <div class="mini-card">
+          <strong id="dataMode">Checking current data source mode.</strong>
+          <span id="dataDetail">Loading connection detail.</span>
+        </div>
       </section>
 
-      <section class="section detail-grid">
-        <article>
-          <p class="section-title">Account Tools</p>
-          <div class="mini-card">
-            <strong>Manage connections separately</strong>
-            <span>Use setup if you ever need to reconnect Strava or WHOOP, but those controls stay out of the main training view.</span>
-            <div class="action-row" style="margin-top: 14px;">
-              <a class="button primary" href="/setup">Open setup</a>
-              <a class="button secondary" href="/connect/strava">Reconnect Strava</a>
-              <a class="button secondary" href="/connect/whoop">Reconnect WHOOP</a>
-            </div>
-          </div>
-        </article>
-        <article>
-          <p class="section-title">Data Mode</p>
-          <div class="mini-card">
-            <strong id="dataMode">Checking current data source mode.</strong>
-            <span id="dataDetail">Loading connection detail.</span>
-          </div>
-        </article>
+      <section class="section">
+        <p class="section-title">Account Tools</p>
+        <div class="bottom-tools" style="margin-top: 12px;">
+          <a class="button primary" href="/setup">Open setup</a>
+          <a class="button secondary" href="/connect/strava">Connect Strava</a>
+          <a class="button secondary" href="/connect/whoop">Connect WHOOP</a>
+        </div>
       </section>
     </main>
 
@@ -485,7 +430,7 @@
       function greetingForNow(name) {
         const hour = new Date().getHours();
         const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
-        return "Good " + period + ", " + name + ". Let's get active.";
+        return "Good " + period + ", " + name + ".";
       }
 
       function formatRaceDate(dateString) {
@@ -547,12 +492,10 @@
           meta.className = "activity-meta";
 
           const pills = [
-            activity.sport ? activity.sport : null,
             activity.distance_miles ? activity.distance_miles + " mi" : null,
             activity.duration_minutes ? activity.duration_minutes + " min" : null,
             activity.average_pace_min_per_mile ? formatPace(activity.average_pace_min_per_mile) : null,
-            activity.strain ? "Strain " + activity.strain : null,
-            activity.source ? activity.source : null
+            activity.strain ? "Strain " + activity.strain : null
           ].filter(Boolean);
 
           pills.forEach((item) => {
@@ -574,8 +517,8 @@
           const card = document.createElement("div");
           card.className = "calendar-day";
 
-          const title = document.createElement("h3");
           const date = new Date(day.day + "T12:00:00");
+          const title = document.createElement("h3");
           title.textContent = date.toLocaleDateString(undefined, { weekday: "short" });
 
           const subtitle = document.createElement("div");
@@ -606,7 +549,7 @@
               if (activity.duration_minutes) bits.push(activity.duration_minutes + " min");
               if (activity.average_pace_min_per_mile) bits.push(formatPace(activity.average_pace_min_per_mile));
               if (activity.strain) bits.push("Strain " + activity.strain);
-              meta.textContent = bits.join(" | ") || activity.sport || "Activity";
+              meta.textContent = bits.join(" | ") || "Activity";
               item.appendChild(meta);
               card.appendChild(item);
             });
@@ -619,14 +562,12 @@
       async function loadDashboard() {
         const response = await fetch("/api/dashboard");
         const data = await response.json();
-
         const previousRun = data.summary.previous_run || {};
         const isLive = data.data_mode.mode === "live";
 
         document.title = "Adaptive Running Coach";
         document.querySelector("#todayChip").textContent = formatPrettyDate(data.today);
-        document.querySelector("#athleteChip").textContent = "Athlete: " + (data.profile.name || "Runner");
-        document.querySelector("#greeting").textContent = greetingForNow(data.profile.name || "Runner");
+        document.querySelector("#greeting").textContent = greetingForNow(data.profile.name || "John");
         document.querySelector("#goalRace").textContent = formatRaceDate(data.profile.goal_race_date);
         document.querySelector("#goalContext").textContent =
           "Race date: " + formatRaceDate(data.profile.goal_race_date) + " | Long run: " + data.profile.preferred_long_run_day;
@@ -640,7 +581,6 @@
         document.querySelector("#sleep").textContent = data.summary.latest_sleep_hours + " hrs";
         document.querySelector("#recovery").textContent = data.summary.latest_recovery + "%";
         document.querySelector("#strain").textContent = data.summary.latest_strain;
-        document.querySelector("#restingHr").textContent = data.summary.latest_resting_hr + " bpm";
         document.querySelector("#mileage").textContent = data.summary.recent_mileage + " mi";
         document.querySelector("#yesterdayMiles").textContent = (previousRun.distance_miles || 0) + " mi";
         document.querySelector("#yesterdayRunText").textContent =

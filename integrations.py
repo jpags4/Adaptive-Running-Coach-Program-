@@ -390,12 +390,13 @@ def strava_activity_preview(activities: list[dict]) -> list[dict]:
         distance_miles = round(float(activity.get("distance", 0)) * 0.000621371, 2)
         duration_minutes = max(1, int(activity.get("moving_time", 0) / 60))
         pace = round(duration_minutes / distance_miles, 2) if distance_miles > 0 else 0.0
+        sport = activity.get("sport_type") or activity.get("type") or "Activity"
         previews.append(
             {
                 "source": "Strava",
-                "name": activity.get("name") or activity.get("sport_type") or activity.get("type") or "Activity",
+                "name": sport,
                 "day": (activity.get("start_date_local") or activity.get("start_date") or "")[:10],
-                "sport": activity.get("sport_type") or activity.get("type") or "Activity",
+                "sport": sport,
                 "distance_miles": distance_miles,
                 "duration_minutes": duration_minutes,
                 "average_pace_min_per_mile": pace,
@@ -465,6 +466,8 @@ def whoop_workout_preview(snapshot: dict) -> list[dict]:
             or workout.get("workout_type")
             or "Workout"
         )
+        if str(sport_name).lower() in {"run", "running"}:
+            continue
         strain = workout.get("score", {}).get("strain")
         duration_minutes = 0
         if start and end:
