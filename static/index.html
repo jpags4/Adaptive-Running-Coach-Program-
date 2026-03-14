@@ -7,21 +7,19 @@
     <style>
       :root {
         --bg: #f5f0e8;
-        --panel: rgba(255, 252, 247, 0.92);
-        --panel-soft: rgba(255, 249, 243, 0.78);
-        --ink: #17211f;
-        --muted: #66736d;
-        --line: rgba(23, 33, 31, 0.1);
-        --accent: #d05c34;
-        --accent-deep: #8f381d;
-        --forest: #245c4a;
-        --gold: #b7842a;
-        --shadow: 0 22px 60px rgba(77, 64, 48, 0.12);
+        --panel: rgba(255, 252, 247, 0.94);
+        --panel-soft: rgba(255, 248, 241, 0.82);
+        --ink: #18211f;
+        --muted: #65736d;
+        --line: rgba(24, 33, 31, 0.1);
+        --accent: #cc5b34;
+        --accent-deep: #8f391d;
+        --forest: #245e4c;
+        --gold: #b5842c;
+        --shadow: 0 24px 64px rgba(78, 64, 46, 0.12);
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
       body {
         margin: 0;
@@ -29,37 +27,40 @@
         font-family: Georgia, "Times New Roman", serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(208, 92, 52, 0.22), transparent 28%),
-          linear-gradient(145deg, #f7f1e8, #e7efe7 62%, #e0ebe6);
+          radial-gradient(circle at top left, rgba(204, 91, 52, 0.22), transparent 28%),
+          radial-gradient(circle at top right, rgba(36, 94, 76, 0.16), transparent 24%),
+          linear-gradient(145deg, #f8f2e9, #e8efe7 62%, #e1ebe6);
       }
 
       main {
-        width: min(1180px, calc(100% - 32px));
+        width: min(1220px, calc(100% - 28px));
         margin: 0 auto;
-        padding: 28px 0 56px;
+        padding: 28px 0 54px;
       }
 
       .topline {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        gap: 16px;
+        align-items: flex-start;
+        gap: 18px;
         margin-bottom: 18px;
       }
 
       h1 {
         margin: 0;
-        font-size: clamp(2.1rem, 4vw, 3.4rem);
+        font-size: clamp(2.15rem, 4vw, 3.5rem);
         line-height: 0.98;
       }
 
       .subtle {
-        margin: 0;
+        margin: 8px 0 0;
         color: var(--muted);
-        line-height: 1.6;
+        line-height: 1.65;
       }
 
-      .meta-row {
+      .meta-row,
+      .pill-row,
+      .action-row {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
@@ -67,6 +68,7 @@
 
       .chip,
       .button,
+      .pill,
       .status-pill {
         display: inline-flex;
         align-items: center;
@@ -74,7 +76,7 @@
         padding: 10px 14px;
         border-radius: 999px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.76);
+        background: rgba(255, 255, 255, 0.78);
         color: var(--ink);
         text-decoration: none;
         font-size: 0.95rem;
@@ -87,14 +89,13 @@
       }
 
       .button.secondary {
-        background: #fff5ed;
+        background: #fff4eb;
         color: var(--accent-deep);
       }
 
-      .layout {
-        display: grid;
-        gap: 18px;
-      }
+      .accent { color: var(--accent-deep); background: rgba(204, 91, 52, 0.1); }
+      .forest { color: var(--forest); background: rgba(36, 94, 76, 0.1); }
+      .gold { color: var(--gold); background: rgba(181, 132, 44, 0.1); }
 
       .section {
         background: var(--panel);
@@ -103,6 +104,8 @@
         box-shadow: var(--shadow);
         padding: 24px;
       }
+
+      .section + .section { margin-top: 18px; }
 
       .section-title {
         margin: 0 0 8px;
@@ -118,132 +121,134 @@
         gap: 12px;
       }
 
-      .metric-card {
+      .metric-card,
+      .mini-card {
         padding: 18px;
         border-radius: 20px;
         background: var(--panel-soft);
         border: 1px solid var(--line);
       }
 
-      .metric-card strong {
+      .metric-card strong,
+      .mini-card strong {
         display: block;
         margin-top: 8px;
-        font-size: 1.7rem;
+        font-size: 1.6rem;
         line-height: 1;
       }
 
-      .metric-card span {
+      .metric-card span,
+      .mini-card span {
         color: var(--muted);
         font-size: 0.92rem;
         line-height: 1.5;
       }
 
-      .recommendation-box {
+      .recommendation-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+        grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
         gap: 18px;
-        align-items: stretch;
       }
 
       .recommendation-main {
         padding: 30px;
         border-radius: 24px;
         background:
-          radial-gradient(circle at top right, rgba(208, 92, 52, 0.16), transparent 30%),
-          linear-gradient(180deg, rgba(255, 254, 251, 0.96), rgba(252, 245, 237, 0.96));
-        border: 1px solid rgba(208, 92, 52, 0.14);
+          radial-gradient(circle at top right, rgba(204, 91, 52, 0.16), transparent 30%),
+          linear-gradient(180deg, rgba(255, 254, 251, 0.98), rgba(252, 245, 237, 0.98));
+        border: 1px solid rgba(204, 91, 52, 0.16);
       }
 
       .recommendation-main h2 {
         margin: 10px 0 14px;
-        font-size: clamp(2.6rem, 5vw, 4.6rem);
+        font-size: clamp(2.75rem, 5vw, 4.9rem);
         line-height: 0.92;
       }
 
       .recommendation-main p {
         margin: 0;
         color: var(--muted);
-        line-height: 1.7;
+        line-height: 1.72;
         font-size: 1.04rem;
       }
 
-      .recommendation-side {
+      .side-stack {
         display: grid;
         gap: 12px;
       }
 
-      .side-card {
-        padding: 18px;
-        border-radius: 20px;
-        background: var(--panel-soft);
-        border: 1px solid var(--line);
-      }
-
-      .side-card strong {
-        display: block;
-        margin-top: 6px;
-        font-size: 1.35rem;
-      }
-
-      .pill-row,
-      .action-row,
-      .status-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      .pill {
-        padding: 10px 14px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.84);
-        border: 1px solid var(--line);
-        font-size: 0.95rem;
-      }
-
-      .accent {
-        color: var(--accent-deep);
-        background: rgba(208, 92, 52, 0.1);
-      }
-
-      .forest {
-        color: var(--forest);
-        background: rgba(36, 92, 74, 0.1);
-      }
-
-      .gold {
-        color: var(--gold);
-        background: rgba(183, 132, 42, 0.1);
-      }
-
+      .prescription-grid,
       .detail-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 18px;
       }
 
-      .detail-list {
+      .list {
         display: grid;
         gap: 12px;
+        list-style: none;
         margin: 0;
         padding: 0;
-        list-style: none;
       }
 
-      .detail-item {
+      .list-item {
         padding: 16px 18px;
         border-radius: 18px;
         background: var(--panel-soft);
         border: 1px solid var(--line);
-        line-height: 1.65;
+        line-height: 1.66;
       }
 
-      .detail-item.good {
-        border-left: 4px solid var(--forest);
+      .list-item.good { border-left: 4px solid var(--forest); }
+      .list-item.warn { border-left: 4px solid var(--accent); }
+      .list-item.recap { border-left: 4px solid var(--gold); }
+
+      .activity-list {
+        display: grid;
+        gap: 12px;
       }
 
-      .detail-item.warn {
-        border-left: 4px solid var(--accent);
+      .activity-card {
+        display: grid;
+        gap: 10px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
+      }
+
+      .activity-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        align-items: baseline;
+      }
+
+      .activity-name {
+        font-size: 1.08rem;
+        margin: 0;
+      }
+
+      .activity-date {
+        color: var(--muted);
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+
+      .activity-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .activity-pill {
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.84);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.88rem;
       }
 
       .status-stack {
@@ -258,60 +263,36 @@
         background: var(--muted);
       }
 
-      .dot.live {
-        background: var(--forest);
-      }
-
-      .dot.partial {
-        background: var(--gold);
-      }
-
-      .dot.off {
-        background: var(--accent);
-      }
+      .dot.live { background: var(--forest); }
+      .dot.partial { background: var(--gold); }
+      .dot.off { background: var(--accent); }
 
       code {
         display: inline-block;
         margin-top: 8px;
         padding: 8px 10px;
         border-radius: 12px;
+        background: rgba(255, 255, 255, 0.82);
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.8);
         color: var(--muted);
         font-size: 0.84rem;
         word-break: break-word;
       }
 
-      @media (max-width: 1040px) {
-        .metrics-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-
-        .recommendation-box,
-        .detail-grid {
-          grid-template-columns: 1fr;
-        }
+      @media (max-width: 1100px) {
+        .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .recommendation-grid,
+        .prescription-grid,
+        .detail-grid { grid-template-columns: 1fr; }
       }
 
-      @media (max-width: 700px) {
-        .topline {
-          flex-direction: column;
-          align-items: flex-start;
-        }
-
-        .metrics-grid {
-          grid-template-columns: 1fr 1fr;
-        }
+      @media (max-width: 720px) {
+        .topline { flex-direction: column; }
+        .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
 
       @media (max-width: 520px) {
-        .metrics-grid {
-          grid-template-columns: 1fr;
-        }
-
-        main {
-          width: min(100% - 20px, 1180px);
-        }
+        .metrics-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -320,8 +301,8 @@
       <section class="topline">
         <div>
           <h1>Adaptive Running Coach</h1>
-          <p class="subtle" id="subtitle">
-            Training guidance shaped by your latest Strava load and WHOOP recovery.
+          <p class="subtle">
+            A daily training view built around the question: how should you run and lift today based on what your body and your recent work are saying?
           </p>
         </div>
         <div class="meta-row">
@@ -359,18 +340,18 @@
             <span id="yesterdayRunText">Most recent run mileage</span>
           </div>
           <div class="metric-card">
-            <p class="section-title">7-Day Load</p>
+            <p class="section-title">7-Day Mileage</p>
             <strong id="mileage">-</strong>
             <span>Recent running mileage total</span>
           </div>
         </div>
       </section>
 
-      <section class="section recommendation-box">
+      <section class="section recommendation-grid">
         <div class="recommendation-main">
           <p class="section-title">Daily Recommendation</p>
           <h2 id="workout">Loading...</h2>
-          <p id="coachSummary">Building your coaching recommendation from training and recovery signals.</p>
+          <p id="coachSummary">Building your run and lifting recommendation from training and recovery signals.</p>
           <div class="pill-row" style="margin-top: 18px;">
             <span id="intensity" class="pill accent"></span>
             <span id="duration" class="pill"></span>
@@ -378,14 +359,14 @@
           </div>
         </div>
 
-        <div class="recommendation-side">
-          <div class="side-card">
+        <div class="side-stack">
+          <div class="mini-card">
             <p class="section-title">Goal Context</p>
             <strong id="goalRace">-</strong>
-            <span id="goalContext">Goal race date and weekly structure</span>
+            <span id="goalContext">Goal race and weekly structure</span>
           </div>
-          <div class="side-card">
-            <p class="section-title">Recent Run Load</p>
+          <div class="mini-card">
+            <p class="section-title">Most Recent Run</p>
             <strong id="yesterdayDuration">-</strong>
             <span id="yesterdayWorkout">Most recent run duration and type</span>
           </div>
@@ -397,13 +378,40 @@
         </div>
       </section>
 
-      <section class="detail-grid">
-        <article class="section">
-          <p class="section-title">Why The Model Chose This</p>
-          <ul id="reasons" class="detail-list"></ul>
+      <section class="section prescription-grid">
+        <article>
+          <p class="section-title">Run Prescription</p>
+          <div class="mini-card">
+            <strong id="runDistance">-</strong>
+            <span id="runPrescription">Mileage and pacing guidance for today</span>
+          </div>
         </article>
+        <article>
+          <p class="section-title">Lifting Recommendation</p>
+          <div class="mini-card">
+            <strong id="liftFocus">-</strong>
+            <span id="liftGuidance">Strength guidance for today</span>
+          </div>
+        </article>
+      </section>
 
-        <article class="section">
+      <section class="section detail-grid">
+        <article>
+          <p class="section-title">Why The Model Chose This</p>
+          <ul id="reasons" class="list"></ul>
+        </article>
+        <article>
+          <p class="section-title">Recap Of Recent Days</p>
+          <ul id="recap" class="list"></ul>
+        </article>
+      </section>
+
+      <section class="section detail-grid">
+        <article>
+          <p class="section-title">Recent Activities</p>
+          <div id="activities" class="activity-list"></div>
+        </article>
+        <article>
           <p class="section-title">Status And Feeds</p>
           <div class="status-stack">
             <span id="stravaStatus" class="status-pill"><span class="dot"></span>Strava: checking...</span>
@@ -416,9 +424,9 @@
         </article>
       </section>
 
-      <section class="section" style="margin-top: 18px;">
+      <section class="section">
         <p class="section-title">Things To Watch</p>
-        <ul id="warnings" class="detail-list"></ul>
+        <ul id="warnings" class="list"></ul>
       </section>
     </main>
 
@@ -429,10 +437,16 @@
         return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
       }
 
+      function formatPace(value) {
+        if (!value || value <= 0) return "n/a";
+        const whole = Math.floor(value);
+        const seconds = Math.round((value - whole) * 60).toString().padStart(2, "0");
+        return whole + ":" + seconds + "/mi";
+      }
+
       function setStatusPill(element, providerName, setupComplete, connected) {
         let text = providerName + ": setup not saved";
         let dotClass = "off";
-
         if (connected) {
           text = providerName + ": connected";
           dotClass = "live";
@@ -440,19 +454,63 @@
           text = providerName + ": ready to connect";
           dotClass = "partial";
         }
-
         element.innerHTML = '<span class="dot ' + dotClass + '"></span>' + text;
       }
 
-      function addItems(listEl, items, type, emptyText) {
+      function addListItems(listEl, items, type, emptyText) {
         listEl.innerHTML = "";
         const values = items.length ? items : [emptyText];
-
         values.forEach((item) => {
           const li = document.createElement("li");
-          li.className = "detail-item " + type;
+          li.className = "list-item " + type;
           li.textContent = item;
           listEl.appendChild(li);
+        });
+      }
+
+      function renderActivities(container, activities) {
+        container.innerHTML = "";
+        const values = activities.length ? activities : [{
+          name: "No activity imported yet",
+          day: "",
+          sport: "Activity",
+          distance_miles: 0,
+          duration_minutes: 0,
+          average_pace_min_per_mile: 0
+        }];
+
+        values.forEach((activity) => {
+          const card = document.createElement("div");
+          card.className = "activity-card";
+
+          const head = document.createElement("div");
+          head.className = "activity-head";
+          head.innerHTML =
+            '<p class="activity-name">' + activity.name + '</p>' +
+            '<span class="activity-date">' + (activity.day || "") + '</span>';
+
+          const meta = document.createElement("div");
+          meta.className = "activity-meta";
+
+          const pills = [
+            activity.sport ? activity.sport : null,
+            activity.distance_miles ? activity.distance_miles + " mi" : null,
+            activity.duration_minutes ? activity.duration_minutes + " min" : null,
+            activity.average_pace_min_per_mile ? formatPace(activity.average_pace_min_per_mile) : null,
+            activity.strain ? "Strain " + activity.strain : null,
+            activity.source ? activity.source : null
+          ].filter(Boolean);
+
+          pills.forEach((item) => {
+            const pill = document.createElement("span");
+            pill.className = "activity-pill";
+            pill.textContent = item;
+            meta.appendChild(pill);
+          });
+
+          card.appendChild(head);
+          card.appendChild(meta);
+          container.appendChild(card);
         });
       }
 
@@ -468,7 +526,7 @@
         document.querySelector("#athleteChip").textContent = "Athlete: " + (data.profile.name || "Runner");
         document.querySelector("#goalRace").textContent = formatRaceDate(data.profile.goal_race_date);
         document.querySelector("#goalContext").textContent =
-          "Target: " + data.profile.weekly_mileage_target + " miles per week | Long run: " + data.profile.preferred_long_run_day;
+          "Target: " + data.profile.weekly_mileage_target + " mi/week | Long run: " + data.profile.preferred_long_run_day;
 
         document.querySelector("#workout").textContent = data.recommendation.workout;
         document.querySelector("#coachSummary").textContent =
@@ -487,22 +545,16 @@
           previousRun.day ? "Most recent run on " + previousRun.day : "No recent run found";
         document.querySelector("#yesterdayDuration").textContent = (previousRun.duration_minutes || 0) + " min";
         document.querySelector("#yesterdayWorkout").textContent =
-          previousRun.workout_type
-            ? "Workout: " + previousRun.workout_type
-            : "No recent workout details yet";
+          previousRun.workout_type ? "Workout: " + previousRun.workout_type : "No recent workout details yet";
 
-        setStatusPill(
-          document.querySelector("#stravaStatus"),
-          "Strava",
-          data.connections.setup_complete.strava,
-          data.connections.status.strava
-        );
-        setStatusPill(
-          document.querySelector("#whoopStatus"),
-          "WHOOP",
-          data.connections.setup_complete.whoop,
-          data.connections.status.whoop
-        );
+        document.querySelector("#runDistance").textContent = data.recommendation.run_distance_miles + " miles";
+        document.querySelector("#runPrescription").textContent =
+          "Aim for roughly " + data.recommendation.run_pace_guidance + " with the effort feeling " + data.recommendation.intensity + ".";
+        document.querySelector("#liftFocus").textContent = data.recommendation.lift_focus;
+        document.querySelector("#liftGuidance").textContent = data.recommendation.lift_guidance;
+
+        setStatusPill(document.querySelector("#stravaStatus"), "Strava", data.connections.setup_complete.strava, data.connections.status.strava);
+        setStatusPill(document.querySelector("#whoopStatus"), "WHOOP", data.connections.setup_complete.whoop, data.connections.status.whoop);
 
         document.querySelector("#stravaCallback").textContent = data.connections.strava_callback_url || "Not available yet";
         document.querySelector("#whoopCallback").textContent = data.connections.whoop_callback_url || "Not available yet";
@@ -510,24 +562,14 @@
         document.querySelector("#dataMode").textContent = isLive
           ? "This recommendation is using your live Strava and WHOOP data."
           : "This recommendation is using sample data until both connections are active.";
-
         document.querySelector("#dataDetail").textContent = isLive
-          ? "Loaded " + data.data_mode.strava_runs_found + " recent runs and " + data.data_mode.whoop_days_found + " recent WHOOP records."
-          : (data.data_mode.warning || "Connect both services to switch from sample signals to your real metrics.");
+          ? "Loaded " + data.data_mode.strava_runs_found + " recent runs and " + data.data_mode.whoop_days_found + " WHOOP records."
+          : (data.data_mode.warning || "Connect both services to switch from sample signals to your real training feed.");
 
-        addItems(
-          document.querySelector("#reasons"),
-          data.recommendation.explanation,
-          "good",
-          "No explanation was generated for this recommendation."
-        );
-
-        addItems(
-          document.querySelector("#warnings"),
-          data.recommendation.warnings,
-          "warn",
-          "No immediate caution flags appeared in the current data."
-        );
+        addListItems(document.querySelector("#reasons"), data.recommendation.explanation, "good", "No explanation was generated for this recommendation.");
+        addListItems(document.querySelector("#recap"), data.recommendation.recap, "recap", "No recent recap was generated.");
+        addListItems(document.querySelector("#warnings"), data.recommendation.warnings, "warn", "No immediate caution flags appeared in the current data.");
+        renderActivities(document.querySelector("#activities"), data.activity_feed || []);
       }
 
       loadDashboard();

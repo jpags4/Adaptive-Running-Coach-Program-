@@ -366,16 +366,42 @@ def strava_runs_to_model(activities: list[dict]) -> list[Run]:
         if not start:
             continue
 
+        distance_miles = round(float(activity.get("distance", 0)) * 0.000621371, 2)
+        duration_minutes = max(1, int(activity.get("moving_time", 0) / 60))
+        average_pace = round(duration_minutes / distance_miles, 2) if distance_miles > 0 else 0.0
+
         runs.append(
             Run(
                 day=start[:10],
-                distance_miles=round(float(activity.get("distance", 0)) * 0.000621371, 2),
-                duration_minutes=max(1, int(activity.get("moving_time", 0) / 60)),
+                distance_miles=distance_miles,
+                duration_minutes=duration_minutes,
                 effort=_effort_from_activity(activity),
                 workout_type=(activity.get("name") or "run").lower().replace(" ", "_"),
+                average_pace_min_per_mile=average_pace,
+                source="strava",
             )
         )
     return runs
+
+
+def strava_activity_preview(activities: list[dict]) -> list[dict]:
+    previews: list[dict] = []
+    for activity in activities[:8]:
+        distance_miles = round(float(activity.get("distance", 0)) * 0.000621371, 2)
+        duration_minutes = max(1, int(activity.get("moving_time", 0) / 60))
+        pace = round(duration_minutes / distance_miles, 2) if distance_miles > 0 else 0.0
+        previews.append(
+            {
+                "source": "Strava",
+                "name": activity.get("name") or activity.get("sport_type") or activity.get("type") or "Activity",
+                "day": (activity.get("start_date_local") or activity.get("start_date") or "")[:10],
+                "sport": activity.get("sport_type") or activity.get("type") or "Activity",
+                "distance_miles": distance_miles,
+                "duration_minutes": duration_minutes,
+                "average_pace_min_per_mile": pace,
+            }
+        )
+    return previews
 
 
 def whoop_metrics_to_model(snapshot: dict) -> list[RecoveryMetrics]:
@@ -426,6 +452,42 @@ def whoop_metrics_to_model(snapshot: dict) -> list[RecoveryMetrics]:
 
     metrics.sort(key=lambda item: item.day)
     return metrics
+
+
+def whoop_workout_preview(snapshot: dict) -> list[dict]:
+    previews: list[dict] = []
+    for workout in snapshot.get("workouts", {}).get("records", [])[:8]:
+        start = workout.get("start") or workout.get("created_at") or ""
+        end = workout.get("end") or workout.get("updated_at") or ""
+        sport_name = (
+            workout.get("sport_name")
+            or workout.get("activity_name")
+            or workout.get("workout_type")
+            or "Workout"
+        )
+        strain = workout.get("score", {}).get("strain")
+        duration_minutes = 0
+        if start and end:
+            try:
+                start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+                end_dt = datetime.fromisoformat(end.replace("Z", "+00:00"))
+                duration_minutes = max(1, int((end_dt - start_dt).total_seconds() / 60))
+            except Exception:
+                duration_minutes = 0
+
+        previews.append(
+            {
+                "source": "WHOOP",
+                "name": sport_name,
+                "day": start[:10],
+                "sport": sport_name,
+                "distance_miles": 0,
+                "duration_minutes": duration_minutes,
+                "average_pace_min_per_mile": 0,
+                "strain": round(float(strain), 1) if strain is not None else None,
+            }
+        )
+    return previews
 
 
 def profile_from_settings(settings: dict) -> AthleteProfile:

@@ -15,6 +15,7 @@ from integrations import (
     exchange_strava_code,
     exchange_whoop_code,
     fetch_strava_snapshot,
+    strava_activity_preview,
     fetch_whoop_snapshot,
     generate_state,
     merge_live_data,
@@ -23,6 +24,7 @@ from integrations import (
     snapshot_preview,
     strava_redirect_uri,
     valid_access_token,
+    whoop_workout_preview,
     whoop_redirect_uri,
 )
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
@@ -44,6 +46,22 @@ def previous_run_summary(runs: list) -> dict:
         "duration_minutes": latest_run.duration_minutes,
         "workout_type": latest_run.workout_type.replace("_", " "),
     }
+
+
+def sample_activity_preview(runs: list) -> list[dict]:
+    ordered = sorted(runs, key=lambda item: item.day, reverse=True)[:8]
+    return [
+        {
+            "source": "Strava",
+            "name": run.workout_type.replace("_", " "),
+            "day": run.day,
+            "sport": "Run",
+            "distance_miles": run.distance_miles,
+            "duration_minutes": run.duration_minutes,
+            "average_pace_min_per_mile": run.average_pace_min_per_mile,
+        }
+        for run in ordered
+    ]
 
 
 def html_page(title: str, body: str) -> str:
@@ -449,6 +467,7 @@ class CoachHandler(BaseHTTPRequestHandler):
             runs = SAMPLE_RUNS
             metrics = SAMPLE_METRICS
             live_preview = {"mode": "sample"}
+            activity_feed = sample_activity_preview(runs)
 
             try:
                 live_strava = None
@@ -482,6 +501,8 @@ class CoachHandler(BaseHTTPRequestHandler):
                         profile = merged["profile"]
                         runs = merged["runs"]
                         metrics = merged["metrics"]
+                        activity_feed = strava_activity_preview(live_strava.get("activities", [])) + whoop_workout_preview(live_whoop)
+                        activity_feed = sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True)[:10]
                         live_preview = {
                             "mode": "live",
                             "strava_runs_found": len(runs),
@@ -508,6 +529,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                     "previous_run": previous_run_summary(runs),
                 },
                 "recommendation": recommendation.to_dict(),
+                "activity_feed": activity_feed,
                 "connections": {
                     "status": connection_status,
                     "setup_complete": {
