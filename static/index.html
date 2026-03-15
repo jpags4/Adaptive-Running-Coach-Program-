@@ -103,6 +103,12 @@
         letter-spacing: 0.03em;
       }
 
+      .calendar-heading {
+        margin: 0 0 6px;
+        font-size: clamp(1.6rem, 3vw, 2.25rem);
+        line-height: 1.05;
+      }
+
       .metrics-row {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -256,8 +262,8 @@
         display: block;
         margin-top: 8px;
         color: var(--muted);
-        line-height: 1.55;
-        font-size: 0.93rem;
+        line-height: 1.45;
+        font-size: 0.9rem;
       }
 
       details.plan-details {
@@ -282,6 +288,15 @@
 
       details.plan-details summary span {
         color: var(--muted);
+      }
+
+      .summary-arrow {
+        font-size: 1rem;
+        transition: transform 160ms ease;
+      }
+
+      details[open] .summary-arrow {
+        transform: rotate(180deg);
       }
 
       .details-body {
@@ -606,7 +621,7 @@
               <span class="primary-label">How Much You Run Today</span>
             </div>
             <strong id="runDistance" class="primary-value">-</strong>
-            <span id="runDetail" class="primary-sub">Today's run target</span>
+            <span id="runDetail" class="primary-sub">Today's distance target</span>
           </div>
 
           <div class="primary-card pace">
@@ -615,7 +630,7 @@
               <span class="primary-label">Pace And Intensity</span>
             </div>
             <strong id="runPrescription" class="primary-value">-</strong>
-            <span id="paceDetail" class="primary-sub">Pacing and effort guidance</span>
+            <span id="paceDetail" class="primary-sub">Your target effort band</span>
           </div>
 
           <div class="primary-card lift">
@@ -624,14 +639,14 @@
               <span class="primary-label">Can You Lift Today?</span>
             </div>
             <strong id="liftFocus" class="primary-value">-</strong>
-            <span id="liftGuidance" class="primary-sub">Strength guidance for today</span>
+            <span id="liftGuidance" class="primary-sub">Focus for today's lift</span>
           </div>
         </div>
 
         <details class="plan-details">
           <summary>
             <strong>Open Detailed Reasoning</strong>
-            <span>Tap to expand or collapse</span>
+            <span class="summary-arrow">&#9662;</span>
           </summary>
           <div class="details-body">
             <div class="reason-grid">
@@ -671,7 +686,8 @@
       </section>
 
       <section class="section">
-        <p class="section-title">Monthly Training Calendar</p>
+        <p class="section-title">Training Calendar</p>
+        <h3 id="calendarTitle" class="calendar-heading">March Training Calendar</h3>
         <p class="calendar-note">Past days show what you actually did. Future days are projections based on your current progress and will update as new data comes in.</p>
         <div class="weekday-row">
           <div class="weekday">Sunday</div>
@@ -808,9 +824,24 @@
         if (activity.projected) bits.push("Projected");
         if (activity.distance_miles) bits.push(activity.distance_miles + " mi");
         if (activity.duration_minutes) bits.push(activity.duration_minutes + " min");
+        if (activity.pace_text) bits.push(activity.pace_text);
+        if (activity.lift_focus) bits.push(titleCase(activity.lift_focus));
         if (activity.average_pace_min_per_mile) bits.push(formatPace(activity.average_pace_min_per_mile));
         if (activity.strain) bits.push("Strain " + activity.strain);
         return bits.join(" | ") || "No metrics";
+      }
+
+      function shortPaceText(value) {
+        const text = stringValue(value, "Unavailable");
+        const first = text.split(/[.!?]/)[0].trim();
+        if (first.length <= 42) return first;
+        return first.slice(0, 39).trim() + "...";
+      }
+
+      function shortLiftText(value) {
+        const text = titleCase(stringValue(value, "Unavailable"));
+        if (text.length <= 32) return text;
+        return text.slice(0, 29).trim() + "...";
       }
 
       function renderCalendar(container, days) {
@@ -847,7 +878,8 @@
             tag.classList.add("projected");
             tag.textContent = "Projected";
           } else {
-            tag.textContent = formatShortDate(day.day);
+            tag.textContent = "";
+            tag.style.visibility = "hidden";
           }
 
           top.appendChild(dayLabel);
@@ -899,11 +931,13 @@
           const stravaConnected = Boolean(connections.strava);
           const whoopConnected = Boolean(connections.whoop);
           const todayText = formatDisplayDate(data.today, false);
+          const calendarDate = new Date(data.today + "T12:00:00");
 
           document.title = "Adaptive Running Coach";
           text("#greeting", "Good " + (new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening") + ", " + stringValue(profile.name, "John") + ".");
           text("#goalLine", "Goal: Half Marathon on " + formatDisplayDate(profile.goal_race_date, true));
           text("#todayChip", todayText);
+          text("#calendarTitle", calendarDate.toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
 
           text("#sleep", numberValue(summary.latest_sleep_hours, 0).toFixed(1) + " hrs");
           text("#recovery", numberValue(summary.latest_recovery, 0) + "%");
@@ -923,11 +957,11 @@
 
           const runMiles = numberValue(recommendation.run_distance_miles, 0);
           text("#runDistance", runMiles > 0 ? runMiles + " Miles" : "Unavailable");
-          text("#runDetail", runMiles > 0 ? "Planned running volume for " + todayText : "Run target unavailable until the model responds.");
-          text("#runPrescription", stringValue(recommendation.run_pace_guidance, "Unavailable"));
-          text("#paceDetail", "Recommended pace and effort for today's run.");
+          text("#runDetail", runMiles > 0 ? "Distance target for today" : "Run target unavailable until the model responds.");
+          text("#runPrescription", shortPaceText(recommendation.run_pace_guidance));
+          text("#paceDetail", "Intensity: " + titleCase(recommendation.intensity || "steady"));
           text("#liftFocus", titleCase(recommendation.lift_focus || "Unavailable"));
-          text("#liftGuidance", stringValue(recommendation.lift_guidance, "Strength guidance unavailable."));
+          text("#liftGuidance", shortLiftText((recommendation.lift_focus || "Strength guidance unavailable").split(/[,.]/)[0]));
 
           text("#reasonOverall", stringValue(sections.overall, FALLBACK_RECOMMENDATION.explanation_sections.overall));
           text("#reasonRun", stringValue(sections.run, FALLBACK_RECOMMENDATION.explanation_sections.run));

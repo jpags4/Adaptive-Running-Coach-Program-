@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import calendar as calendar_lib
 import json
 import os
 from html import escape
@@ -77,29 +76,17 @@ def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, lis
     projection_date = anchor + timedelta(days=1)
     cycle = 0
     while projection_date <= end_day and cycle < 10:
-        if cycle % 3 == 0:
+        if cycle % 2 == 0:
             projections[projection_date.isoformat()] = [
                 {
                     "source": "Projection",
-                    "name": recommendation.workout,
+                    "name": "Projected Run",
                     "day": projection_date.isoformat(),
                     "sport": "Projected Run",
                     "distance_miles": round(max(2.5, recommendation.run_distance_miles - 0.3), 1),
                     "duration_minutes": max(20, recommendation.duration_minutes),
                     "average_pace_min_per_mile": 0,
-                    "projected": True,
-                }
-            ]
-        elif cycle % 3 == 1:
-            projections[projection_date.isoformat()] = [
-                {
-                    "source": "Projection",
-                    "name": recommendation.lift_focus,
-                    "day": projection_date.isoformat(),
-                    "sport": "Projected Strength",
-                    "distance_miles": 0,
-                    "duration_minutes": 35,
-                    "average_pace_min_per_mile": 0,
+                    "pace_text": recommendation.run_pace_guidance,
                     "projected": True,
                 }
             ]
@@ -107,12 +94,13 @@ def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, lis
             projections[projection_date.isoformat()] = [
                 {
                     "source": "Projection",
-                    "name": "Recovery / Mobility",
+                    "name": "Projected Lift",
                     "day": projection_date.isoformat(),
-                    "sport": "Projected Recovery",
+                    "sport": "Projected Strength",
                     "distance_miles": 0,
-                    "duration_minutes": 20,
+                    "duration_minutes": 35,
                     "average_pace_min_per_mile": 0,
+                    "lift_focus": recommendation.lift_focus,
                     "projected": True,
                 }
             ]
@@ -130,17 +118,14 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
             continue
         feed_by_day.setdefault(day, []).append(item)
 
-    month_start = anchor.replace(day=1)
-    month_end = anchor.replace(day=calendar_lib.monthrange(anchor.year, anchor.month)[1])
-    projected_by_day = projected_calendar_entries(anchor, recommendation, month_end)
+    start_day = anchor - timedelta(days=7)
+    start_day = start_day - timedelta(days=(start_day.weekday() + 1) % 7)
+    end_day = start_day + timedelta(days=20)
+    projected_by_day = projected_calendar_entries(anchor, recommendation, end_day)
 
     cards: list[dict] = []
-    leading_blanks = (month_start.weekday() + 1) % 7
-    for _ in range(leading_blanks):
-        cards.append({"day": "", "activities": [], "is_today": False, "is_current_month": False, "is_projection": False})
-
-    current_day = month_start
-    while current_day <= month_end:
+    current_day = start_day
+    while current_day <= end_day:
         iso_day = current_day.isoformat()
         activities = feed_by_day.get(iso_day, [])
         projected = False
@@ -157,14 +142,11 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
                     reverse=True,
                 ),
                 "is_today": iso_day == anchor.isoformat(),
-                "is_current_month": True,
+                "is_current_month": current_day.month == anchor.month,
                 "is_projection": projected,
             }
         )
         current_day += timedelta(days=1)
-
-    while len(cards) % 7:
-        cards.append({"day": "", "activities": [], "is_today": False, "is_current_month": False, "is_projection": False})
 
     return cards
 
