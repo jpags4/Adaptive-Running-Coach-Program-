@@ -76,36 +76,35 @@ def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, lis
     projection_date = anchor + timedelta(days=1)
     cycle = 0
     while projection_date <= end_day and cycle < 10:
-        if cycle % 2 == 0:
-            projections[projection_date.isoformat()] = [
-                {
-                    "source": "Projection",
-                    "name": "Projected Run",
-                    "day": projection_date.isoformat(),
-                    "sport": "Projected Run",
-                    "distance_miles": round(max(2.5, recommendation.run_distance_miles - 0.3), 1),
-                    "duration_minutes": max(20, recommendation.duration_minutes),
-                    "average_pace_min_per_mile": 0,
-                    "pace_text": recommendation.run_pace_guidance,
-                    "intensity": recommendation.intensity,
-                    "projected": True,
-                }
-            ]
-        else:
-            projections[projection_date.isoformat()] = [
-                {
-                    "source": "Projection",
-                    "name": "Projected Lift",
-                    "day": projection_date.isoformat(),
-                    "sport": "Projected Strength",
-                    "distance_miles": 0,
-                    "duration_minutes": 35,
-                    "average_pace_min_per_mile": 0,
-                    "lift_focus": recommendation.lift_focus,
-                    "intensity": recommendation.intensity,
-                    "projected": True,
-                }
-            ]
+        adjusted_distance = round(max(2.5, recommendation.run_distance_miles - (0.2 if cycle % 3 else 0.0)), 1)
+        run_intensity = recommendation.intensity if cycle % 3 != 2 else "easy"
+        lift_intensity = "moderate" if cycle % 3 == 0 else "easy"
+        projections[projection_date.isoformat()] = [
+            {
+                "source": "Projection",
+                "name": "Run",
+                "day": projection_date.isoformat(),
+                "sport": "Projected Run",
+                "distance_miles": adjusted_distance,
+                "duration_minutes": max(20, recommendation.duration_minutes),
+                "average_pace_min_per_mile": 0,
+                "pace_text": recommendation.run_pace_guidance,
+                "intensity": run_intensity,
+                "projected": True,
+            },
+            {
+                "source": "Projection",
+                "name": "Lift",
+                "day": projection_date.isoformat(),
+                "sport": "Projected Strength",
+                "distance_miles": 0,
+                "duration_minutes": 35,
+                "average_pace_min_per_mile": 0,
+                "lift_focus": recommendation.lift_focus,
+                "intensity": lift_intensity,
+                "projected": True,
+            },
+        ]
         projection_date += timedelta(days=1)
         cycle += 1
     return projections

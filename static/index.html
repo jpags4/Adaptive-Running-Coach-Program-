@@ -934,17 +934,6 @@
 
       function calendarEntryMeta(activity) {
         const bits = [];
-        if (activity.projected && activity.distance_miles) {
-          bits.push(activity.distance_miles + " mi");
-          if (activity.pace_text) bits.push(cleanPaceText(activity.pace_text));
-          if (activity.intensity) bits.push(titleCase(activity.intensity));
-          return bits.join(" | ");
-        }
-        if (activity.projected && activity.lift_focus) {
-          bits.push(titleCase(activity.lift_focus));
-          if (activity.intensity) bits.push(titleCase(activity.intensity));
-          return bits.join(" | ");
-        }
         if (activity.distance_miles) bits.push(activity.distance_miles + " mi");
         if (activity.duration_minutes) bits.push(activity.duration_minutes + " min");
         if (activity.average_pace_min_per_mile) bits.push(formatPace(activity.average_pace_min_per_mile));
@@ -1043,7 +1032,8 @@
                 };
 
                 if (activity.distance_miles) addBadge(activity.distance_miles + " mi");
-                if (activity.duration_minutes) addBadge(activity.duration_minutes + " min");
+                if (activity.pace_text) addBadge(cleanPaceText(activity.pace_text));
+                if (activity.lift_focus) addBadge(titleCase(activity.lift_focus));
                 if (activity.intensity) {
                   const level = titleCase(activity.intensity);
                   const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
