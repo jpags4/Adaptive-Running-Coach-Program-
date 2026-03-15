@@ -6,33 +6,37 @@
     <title>Adaptive Running Coach</title>
     <style>
       :root {
-        --bg: #f5f0e8;
-        --panel: rgba(255, 252, 247, 0.94);
-        --panel-soft: rgba(255, 248, 241, 0.82);
-        --ink: #18211f;
-        --muted: #65736d;
-        --line: rgba(24, 33, 31, 0.1);
-        --accent: #cc5b34;
-        --accent-deep: #8f391d;
-        --forest: #245e4c;
-        --gold: #b5842c;
-        --shadow: 0 24px 64px rgba(78, 64, 46, 0.12);
+        --bg: #f4efe7;
+        --panel: rgba(255, 252, 247, 0.95);
+        --panel-soft: rgba(248, 242, 234, 0.88);
+        --panel-strong: rgba(255, 248, 240, 0.98);
+        --ink: #19211f;
+        --muted: #66746e;
+        --line: rgba(25, 33, 31, 0.1);
+        --accent: #cb5a34;
+        --accent-soft: rgba(203, 90, 52, 0.1);
+        --forest: #275f4d;
+        --forest-soft: rgba(39, 95, 77, 0.1);
+        --gold: #b58631;
+        --gold-soft: rgba(181, 134, 49, 0.1);
+        --shadow: 0 22px 64px rgba(74, 60, 46, 0.12);
       }
 
       * { box-sizing: border-box; }
+
       body {
         margin: 0;
         min-height: 100vh;
         font-family: Georgia, "Times New Roman", serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(204, 91, 52, 0.22), transparent 28%),
-          radial-gradient(circle at top right, rgba(36, 94, 76, 0.16), transparent 24%),
-          linear-gradient(145deg, #f8f2e9, #e8efe7 62%, #e1ebe6);
+          radial-gradient(circle at top left, rgba(203, 90, 52, 0.16), transparent 24%),
+          radial-gradient(circle at top right, rgba(39, 95, 77, 0.12), transparent 22%),
+          linear-gradient(145deg, #f7f1e8, #e8eee8 60%, #e2ebe5);
       }
 
       main {
-        width: min(1220px, calc(100% - 28px));
+        width: min(1180px, calc(100% - 28px));
         margin: 0 auto;
         padding: 28px 0 54px;
       }
@@ -41,63 +45,28 @@
         display: grid;
         grid-template-columns: 1fr auto;
         gap: 18px;
-        margin-bottom: 18px;
         align-items: start;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(2.15rem, 4vw, 3.5rem);
-        line-height: 0.98;
+        margin-bottom: 18px;
       }
 
       .greeting {
         margin: 0 0 6px;
-        font-size: clamp(1.3rem, 2.2vw, 1.9rem);
-        color: var(--accent-deep);
+        font-size: clamp(1.35rem, 2.3vw, 1.95rem);
+        color: #994122;
       }
 
-      .subtle {
+      h1 {
         margin: 0;
-        color: var(--muted);
-        line-height: 1.65;
+        font-size: clamp(2.3rem, 4.4vw, 3.9rem);
+        line-height: 0.96;
       }
 
       .date-line {
         color: var(--muted);
         font-size: 1rem;
-        line-height: 1.4;
         text-align: right;
-        padding-top: 4px;
+        padding-top: 6px;
       }
-
-      .button,
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.78);
-        color: var(--ink);
-        text-decoration: none;
-        font-size: 0.95rem;
-      }
-
-      .button.primary {
-        background: var(--accent);
-        border-color: transparent;
-        color: white;
-      }
-
-      .button.secondary {
-        background: #fff4eb;
-        color: var(--accent-deep);
-      }
-
-      .accent { color: var(--accent-deep); background: rgba(204, 91, 52, 0.1); }
-      .forest { color: var(--forest); background: rgba(36, 94, 76, 0.1); }
 
       .section {
         background: var(--panel);
@@ -108,135 +77,405 @@
       }
 
       .section + .section { margin-top: 18px; }
+
       .section-title {
         margin: 0 0 8px;
         color: var(--muted);
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        font-size: 0.74rem;
+        letter-spacing: 0.03em;
+        font-size: 0.8rem;
+        font-weight: 700;
       }
 
-      .metrics-grid {
+      .metrics-row {
         display: grid;
-        grid-template-columns: 1.2fr 1fr 1fr 1fr;
-        gap: 0;
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        overflow: hidden;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .metric {
+        padding: 16px 18px;
+        border-radius: 20px;
         background: var(--panel-soft);
+        border: 1px solid var(--line);
       }
 
-      .metric-card,
-      .mini-card {
-        padding: 18px;
-        background: transparent;
-        border-right: 1px solid var(--line);
-      }
-
-      .metric-card:last-child { border-right: 0; }
-
-      .metric-card strong,
-      .mini-card strong {
+      .metric strong {
         display: block;
-        margin-top: 8px;
-        font-size: 1.6rem;
+        margin-top: 6px;
+        font-size: 1.55rem;
         line-height: 1;
       }
 
-      .metric-card span,
-      .mini-card span {
+      .metric span {
+        display: block;
+        margin-top: 6px;
         color: var(--muted);
-        font-size: 0.92rem;
-        line-height: 1.5;
+        font-size: 0.9rem;
+        line-height: 1.45;
       }
 
-      .recommendation-grid,
-      .prescription-grid,
-      .detail-grid {
+      .coach-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-columns: 1.45fr 0.95fr;
         gap: 18px;
       }
 
-      .recommendation-main {
-        padding: 30px;
-        border-radius: 24px;
+      .plan-card {
+        padding: 28px;
+        border-radius: 26px;
         background:
-          radial-gradient(circle at top right, rgba(204, 91, 52, 0.16), transparent 30%),
-          linear-gradient(180deg, rgba(255, 254, 251, 0.98), rgba(252, 245, 237, 0.98));
-        border: 1px solid rgba(204, 91, 52, 0.16);
+          radial-gradient(circle at top right, rgba(203, 90, 52, 0.14), transparent 32%),
+          linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(252, 245, 236, 0.98));
+        border: 1px solid rgba(203, 90, 52, 0.14);
       }
 
-      .recommendation-main h2 {
+      .plan-card h2 {
         margin: 10px 0 14px;
-        font-size: clamp(2.75rem, 5vw, 4.9rem);
+        font-size: clamp(2.45rem, 4.6vw, 4.5rem);
         line-height: 0.92;
       }
 
-      .recommendation-main p {
+      .summary-line {
         margin: 0;
         color: var(--muted);
-        line-height: 1.72;
-        font-size: 1.04rem;
+        font-size: 0.98rem;
+        line-height: 1.65;
       }
 
-      .pill-row,
-      .bottom-tools {
+      .pill-row {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
+        margin-top: 18px;
       }
 
-      .list {
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.82);
+        font-size: 0.93rem;
+      }
+
+      .pill.accent {
+        background: var(--accent-soft);
+        color: #8d391d;
+      }
+
+      .plan-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      .plan-block {
+        padding: 16px 18px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.76);
+        border: 1px solid var(--line);
+        position: relative;
+      }
+
+      .plan-block::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        border-radius: 20px 0 0 20px;
+        background: var(--accent);
+      }
+
+      .plan-block.lift::before {
+        background: var(--forest);
+      }
+
+      .plan-block strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.45rem;
+      }
+
+      .plan-block span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        line-height: 1.5;
+        font-size: 0.92rem;
+      }
+
+      .expand-card {
+        margin-top: 18px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.72);
+        overflow: hidden;
+      }
+
+      .expand-card summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 16px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        font-size: 0.98rem;
+      }
+
+      .expand-card summary::-webkit-details-marker { display: none; }
+
+      .expand-card summary span {
+        color: var(--muted);
+      }
+
+      .expand-body {
+        border-top: 1px solid var(--line);
+        padding: 16px 18px 18px;
         display: grid;
         gap: 12px;
-        list-style: none;
-        margin: 0;
-        padding: 0;
       }
 
-      .list-item {
-        padding: 16px 18px;
+      .reason-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .reason-item {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
+        display: grid;
+        gap: 8px;
+      }
+
+      .reason-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .reason-icon {
+        min-width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        background: var(--accent-soft);
+        color: #8d391d;
+      }
+
+      .reason-icon.forest {
+        background: var(--forest-soft);
+        color: var(--forest);
+      }
+
+      .reason-icon.gold {
+        background: var(--gold-soft);
+        color: #8f6421;
+      }
+
+      .reason-item strong {
+        display: block;
+        font-size: 1rem;
+        color: var(--ink);
+        margin: 0;
+      }
+
+      .reason-item p {
+        margin: 0;
+        line-height: 1.65;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .brief-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .brief-item {
+        padding: 13px 14px;
+        border-radius: 16px;
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
+        color: var(--ink);
+        line-height: 1.6;
+        font-size: 0.94rem;
+      }
+
+      .brief-item.warn {
+        background: rgba(255, 244, 238, 0.96);
+        border-color: rgba(203, 90, 52, 0.18);
+        color: #7f3a24;
+      }
+
+      .side-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .side-card {
+        padding: 18px;
+        border-radius: 22px;
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
+      }
+
+      .side-card strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 1.35rem;
+      }
+
+      .side-card span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        line-height: 1.55;
+        font-size: 0.92rem;
+      }
+
+      .side-note {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        line-height: 1.55;
+        font-size: 0.92rem;
+      }
+
+      .history-layout {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 18px;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .calendar-day {
+        min-height: 160px;
+        padding: 12px;
         border-radius: 18px;
         background: var(--panel-soft);
         border: 1px solid var(--line);
-        line-height: 1.66;
+        display: grid;
+        align-content: start;
+        gap: 8px;
       }
 
-      .list-item.good { border-left: 4px solid var(--forest); }
-      .list-item.warn { border-left: 4px solid var(--accent); }
-      .list-item.recap { border-left: 4px solid var(--gold); }
+      .calendar-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .calendar-top strong {
+        font-size: 0.96rem;
+      }
+
+      .calendar-top span {
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 0.78rem;
+      }
+
+      .calendar-activity {
+        padding: 10px 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid var(--line);
+        display: grid;
+        gap: 4px;
+      }
+
+      .calendar-activity strong {
+        font-size: 0.9rem;
+      }
+
+      .calendar-meta,
+      .calendar-empty {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
 
       .activity-list {
         display: grid;
-        gap: 12px;
+        gap: 10px;
       }
 
       .activity-card {
-        display: grid;
-        gap: 10px;
-        padding: 16px 18px;
+        padding: 15px 16px;
         border-radius: 18px;
         background: var(--panel-soft);
         border: 1px solid var(--line);
+        display: grid;
+        gap: 10px;
       }
 
       .activity-head {
         display: flex;
         justify-content: space-between;
-        gap: 14px;
-        align-items: baseline;
+        gap: 12px;
+        align-items: center;
       }
 
       .activity-name {
-        font-size: 1.08rem;
         margin: 0;
+        font-size: 1rem;
       }
 
       .activity-date {
-        color: var(--muted);
-        font-size: 0.9rem;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.84);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 0.8rem;
         white-space: nowrap;
+      }
+
+      .activity-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: var(--forest-soft);
+        color: var(--forest);
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .activity-badge.strength {
+        background: var(--gold-soft);
+        color: #8f6421;
+      }
+
+      .activity-badge.recovery {
+        background: var(--accent-soft);
+        color: #8d391d;
       }
 
       .activity-meta {
@@ -246,69 +485,45 @@
       }
 
       .activity-pill {
-        padding: 8px 10px;
+        padding: 6px 9px;
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.84);
         border: 1px solid var(--line);
         color: var(--muted);
-        font-size: 0.88rem;
+        font-size: 0.83rem;
       }
 
-      .calendar-grid {
-        display: grid;
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-        gap: 12px;
-      }
-
-      .calendar-day {
-        min-height: 220px;
-        padding: 14px;
-        border-radius: 18px;
-        background: var(--panel-soft);
+      .button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
         border: 1px solid var(--line);
-        display: grid;
-        align-content: start;
-        gap: 10px;
-      }
-
-      .calendar-day h3 {
-        margin: 0;
-        font-size: 1rem;
-      }
-
-      .calendar-date {
-        color: var(--muted);
-        font-size: 0.84rem;
-      }
-
-      .calendar-activity {
-        padding: 10px 11px;
-        border-radius: 14px;
         background: rgba(255, 255, 255, 0.82);
-        border: 1px solid var(--line);
-        display: grid;
-        gap: 6px;
+        color: var(--ink);
+        text-decoration: none;
+        font-size: 0.93rem;
       }
 
-      .calendar-activity strong { font-size: 0.92rem; }
-      .calendar-meta {
-        color: var(--muted);
-        font-size: 0.8rem;
-        line-height: 1.45;
+      .button.primary {
+        background: var(--accent);
+        border-color: transparent;
+        color: white;
       }
 
-      .calendar-empty {
-        color: var(--muted);
-        font-size: 0.84rem;
+      .button.secondary {
+        background: #fff4eb;
+        color: #8f391d;
       }
 
       .connection-footer {
         display: grid;
-        gap: 16px;
-        align-items: center;
+        gap: 14px;
       }
 
-      .connection-lights {
+      .connection-lights,
+      .bottom-tools {
         display: flex;
         flex-wrap: wrap;
         gap: 14px;
@@ -319,7 +534,7 @@
         align-items: center;
         gap: 8px;
         color: var(--muted);
-        font-size: 0.95rem;
+        font-size: 0.94rem;
       }
 
       .light-dot {
@@ -336,32 +551,34 @@
       }
 
       .status-copy {
-        display: grid;
-        gap: 4px;
+        color: var(--muted);
+        line-height: 1.55;
       }
 
       .status-copy strong {
-        font-size: 1rem;
-      }
-
-      .status-copy span {
-        color: var(--muted);
-        line-height: 1.5;
+        display: block;
+        color: var(--ink);
+        margin-bottom: 4px;
       }
 
       @media (max-width: 1100px) {
-        .metrics-grid,
-        .recommendation-grid,
-        .prescription-grid,
-        .detail-grid,
-        .calendar-grid {
+        .metrics-row,
+        .coach-layout,
+        .history-layout,
+        .calendar-grid,
+        .plan-grid {
           grid-template-columns: 1fr;
         }
       }
 
       @media (max-width: 720px) {
-        .topline { grid-template-columns: 1fr; }
-        .date-line { text-align: left; }
+        .topline {
+          grid-template-columns: 1fr;
+        }
+
+        .date-line {
+          text-align: left;
+        }
       }
     </style>
   </head>
@@ -377,23 +594,23 @@
 
       <section class="section">
         <p class="section-title">Current Metrics</p>
-        <div class="metrics-grid">
-          <div class="metric-card">
+        <div class="metrics-row">
+          <div class="metric">
             <p class="section-title">Sleep</p>
             <strong id="sleep">-</strong>
             <span>Latest WHOOP sleep duration</span>
           </div>
-          <div class="metric-card">
+          <div class="metric">
             <p class="section-title">Recovery</p>
             <strong id="recovery">-</strong>
             <span>Latest WHOOP recovery score</span>
           </div>
-          <div class="metric-card">
+          <div class="metric">
             <p class="section-title">Strain</p>
             <strong id="strain">-</strong>
             <span>Latest WHOOP strain reading</span>
           </div>
-          <div class="metric-card">
+          <div class="metric">
             <p class="section-title">Recent Load</p>
             <strong id="mileage">-</strong>
             <span id="yesterdayRunText">Most recent run and seven-day mileage</span>
@@ -401,63 +618,100 @@
         </div>
       </section>
 
-      <section class="section recommendation-grid">
-        <div class="recommendation-main">
-          <p class="section-title">Daily Recommendation</p>
+      <section class="section coach-layout">
+        <div class="plan-card">
+          <p class="section-title">Today's Plan</p>
           <h2 id="workout">Loading...</h2>
-          <p id="coachSummary">Building your run and lifting recommendation from training and recovery signals.</p>
-          <div class="pill-row" style="margin-top: 18px;">
+          <p id="coachSummary" class="summary-line">Building your run and lifting recommendation from training and recovery signals.</p>
+          <div class="pill-row">
             <span id="intensity" class="pill accent"></span>
             <span id="duration" class="pill"></span>
           </div>
-          <div style="margin-top: 24px;">
-            <p class="section-title">Why The Model Chose This</p>
-            <ul id="reasons" class="list"></ul>
-          </div>
-          <div style="margin-top: 18px;">
-            <p class="section-title">Recap Of Recent Days</p>
-            <ul id="recap" class="list"></ul>
-          </div>
-          <div style="margin-top: 18px;">
-            <p class="section-title">Things To Watch</p>
-            <ul id="warnings" class="list"></ul>
-          </div>
-        </div>
 
-        <div>
-          <div class="mini-card">
-            <p class="section-title">Goal Context</p>
-            <strong id="goalRace">-</strong>
-            <span id="goalContext">Race date and weekly structure</span>
-          </div>
-          <div class="prescription-grid" style="margin-top: 18px;">
-            <div class="mini-card">
-              <p class="section-title">Run Prescription</p>
+          <div class="plan-grid">
+            <div class="plan-block">
+              <p class="section-title">Run</p>
               <strong id="runDistance">-</strong>
               <span id="runPrescription">Mileage and pacing guidance for today</span>
             </div>
-            <div class="mini-card">
-              <p class="section-title">Lifting Recommendation</p>
+            <div class="plan-block lift">
+              <p class="section-title">Lift</p>
               <strong id="liftFocus">-</strong>
               <span id="liftGuidance">Strength guidance for today</span>
             </div>
           </div>
+
+          <details class="expand-card">
+            <summary>
+              <strong>Why this plan was chosen</strong>
+              <span>Open detailed reasoning</span>
+            </summary>
+            <div class="expand-body">
+              <div class="reason-grid">
+                <div class="reason-item">
+                  <div class="reason-head"><span class="reason-icon">DAY</span><strong>Overall</strong></div>
+                  <p id="reasonOverall">Loading overall reasoning.</p>
+                </div>
+                <div class="reason-item">
+                  <div class="reason-head"><span class="reason-icon">RUN</span><strong>Run Distance</strong></div>
+                  <p id="reasonRun">Loading run reasoning.</p>
+                </div>
+                <div class="reason-item">
+                  <div class="reason-head"><span class="reason-icon forest">PAC</span><strong>Pace</strong></div>
+                  <p id="reasonPace">Loading pace reasoning.</p>
+                </div>
+                <div class="reason-item">
+                  <div class="reason-head"><span class="reason-icon gold">LFT</span><strong>Lifting</strong></div>
+                  <p id="reasonLift">Loading lifting reasoning.</p>
+                </div>
+                <div class="reason-item">
+                  <div class="reason-head"><span class="reason-icon forest">REC</span><strong>Recovery</strong></div>
+                  <p id="reasonRecovery">Loading recovery reasoning.</p>
+                </div>
+              </div>
+
+              <div>
+                <p class="section-title">Recent Recap</p>
+                <div id="recap" class="brief-list"></div>
+              </div>
+
+              <div>
+                <p class="section-title">Watchouts</p>
+                <div id="warnings" class="brief-list"></div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="side-stack">
+          <div class="side-card">
+            <p class="section-title">Goal Context</p>
+            <strong id="goalRace">-</strong>
+            <span id="goalContext">Race date and weekly structure</span>
+          </div>
+          <div class="side-card">
+            <p class="section-title">Coach Notes</p>
+            <strong>What changed today</strong>
+            <span id="coachHeadline">Loading quick coaching notes.</span>
+            <div class="side-note" id="coachNotes">Your detailed coaching notes will appear here once the recommendation loads.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section history-layout">
+        <div>
+          <p class="section-title">Recent Activity</p>
+          <div id="calendar" class="calendar-grid"></div>
+        </div>
+        <div>
+          <p class="section-title">Workout Log</p>
+          <div id="activities" class="activity-list"></div>
         </div>
       </section>
 
       <section class="section">
-        <p class="section-title">Recent Activity Calendar</p>
-        <div id="calendar" class="calendar-grid"></div>
-      </section>
-
-      <section class="section">
-        <p class="section-title">Activity Detail</p>
-        <div id="activities" class="activity-list"></div>
-      </section>
-
-      <section class="section">
         <p class="section-title">Account Tools</p>
-        <div class="connection-footer" style="margin-top: 12px;">
+        <div class="connection-footer">
           <div class="connection-lights">
             <span class="light-item"><span id="stravaLight" class="light-dot"></span><span id="stravaStatus">Strava not connected</span></span>
             <span class="light-item"><span id="whoopLight" class="light-dot"></span><span id="whoopStatus">WHOOP not connected</span></span>
@@ -485,6 +739,13 @@
         lift_focus: "Light mobility",
         lift_guidance: "Keep lifting light until the recommendation reloads.",
         explanation: ["The app could not fully build today's recommendation, so some fields are using safe fallback text."],
+        explanation_sections: {
+          overall: "The app could not fully build today's recommendation.",
+          run: "Run details did not load completely.",
+          pace: "Pace guidance did not load completely.",
+          lift: "Lifting guidance did not load completely.",
+          recovery: "Recovery reasoning did not load completely."
+        },
         recap: ["Recent training details did not fully load."],
         warnings: ["Refresh the page after a moment if this persists."]
       };
@@ -498,6 +759,17 @@
         if (typeof value === "string" && value.trim()) return value.trim();
         if (typeof value === "number" && Number.isFinite(value)) return String(value);
         return fallback;
+      }
+
+      function titleCase(value) {
+        return stringValue(value, "")
+          .replace(/_/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .split(" ")
+          .filter(Boolean)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(" ");
       }
 
       function numberValue(value, fallback) {
@@ -537,15 +809,33 @@
         return whole + ":" + seconds + "/mi";
       }
 
-      function addListItems(listEl, items, type, emptyText) {
-        if (!listEl) return;
-        listEl.innerHTML = "";
+      function formatShortDate(dateString) {
+        if (!dateString) return "";
+        const date = new Date(dateString + "T12:00:00");
+        return date.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric"
+        });
+      }
+
+      function activityBadge(activity) {
+        const sport = stringValue(activity.sport || activity.name, "Activity").toLowerCase();
+        if (sport.includes("run")) return { label: "Run Day", className: "activity-badge" };
+        if (sport.includes("lift") || sport.includes("strength") || sport.includes("weight")) {
+          return { label: "Strength", className: "activity-badge strength" };
+        }
+        return { label: "Recovery", className: "activity-badge recovery" };
+      }
+
+      function renderBriefItems(container, items, emptyText, warn) {
+        if (!container) return;
+        container.innerHTML = "";
         const values = Array.isArray(items) && items.length ? items : [emptyText];
         values.forEach((item) => {
-          const li = document.createElement("li");
-          li.className = "list-item " + type;
-          li.textContent = item;
-          listEl.appendChild(li);
+          const node = document.createElement("div");
+          node.className = warn ? "brief-item warn" : "brief-item";
+          node.textContent = item;
+          container.appendChild(node);
         });
       }
 
@@ -555,7 +845,6 @@
         const values = Array.isArray(activities) && activities.length ? activities : [{
           name: "No activity imported yet",
           day: "",
-          sport: "Activity",
           distance_miles: 0,
           duration_minutes: 0,
           average_pace_min_per_mile: 0
@@ -567,9 +856,10 @@
 
           const head = document.createElement("div");
           head.className = "activity-head";
+          const badge = activityBadge(activity);
           head.innerHTML =
-            '<p class="activity-name">' + activity.name + '</p>' +
-            '<span class="activity-date">' + (activity.day || "") + '</span>';
+            '<div><span class="' + badge.className + '">' + badge.label + '</span><p class="activity-name">' + titleCase(activity.name || "Activity") + '</p></div>' +
+            '<span class="activity-date">' + formatShortDate(activity.day) + '</span>';
 
           const meta = document.createElement("div");
           meta.className = "activity-meta";
@@ -580,6 +870,8 @@
             activity.average_pace_min_per_mile ? formatPace(activity.average_pace_min_per_mile) : null,
             activity.strain ? "Strain " + activity.strain : null
           ].filter(Boolean);
+
+          if (!pills.length) pills.push("No detailed metrics");
 
           pills.forEach((item) => {
             const pill = document.createElement("span");
@@ -598,20 +890,18 @@
         if (!container) return;
         container.innerHTML = "";
         const values = Array.isArray(days) && days.length ? days : [];
+
         values.forEach((day) => {
           const card = document.createElement("div");
           card.className = "calendar-day";
 
+          const top = document.createElement("div");
+          top.className = "calendar-top";
           const date = new Date(day.day + "T12:00:00");
-          const title = document.createElement("h3");
-          title.textContent = date.toLocaleDateString(undefined, { weekday: "short" });
-
-          const subtitle = document.createElement("div");
-          subtitle.className = "calendar-date";
-          subtitle.textContent = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-
-          card.appendChild(title);
-          card.appendChild(subtitle);
+          top.innerHTML =
+            "<strong>" + date.toLocaleDateString(undefined, { weekday: "short" }) + "</strong>" +
+            "<span>" + date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + "</span>";
+          card.appendChild(top);
 
           if (!day.activities || !day.activities.length) {
             const empty = document.createElement("div");
@@ -622,14 +912,16 @@
             day.activities.forEach((activity) => {
               const item = document.createElement("div");
               item.className = "calendar-activity";
+              const badge = activityBadge(activity);
 
               const name = document.createElement("strong");
-              name.textContent = activity.name;
+              name.textContent = titleCase(activity.name || badge.label);
               item.appendChild(name);
 
               const meta = document.createElement("div");
               meta.className = "calendar-meta";
               const bits = [];
+              bits.push(badge.label);
               if (activity.distance_miles) bits.push(activity.distance_miles + " mi");
               if (activity.duration_minutes) bits.push(activity.duration_minutes + " min");
               if (activity.average_pace_min_per_mile) bits.push(formatPace(activity.average_pace_min_per_mile));
@@ -646,7 +938,7 @@
         if (!values.length) {
           const card = document.createElement("div");
           card.className = "calendar-day";
-          card.innerHTML = '<h3>Recent activity</h3><div class="calendar-date">No days loaded</div><div class="calendar-empty">Your recent activity calendar will appear here once the dashboard data finishes loading.</div>';
+          card.innerHTML = '<div class="calendar-top"><strong>Recent</strong><span>No data</span></div><div class="calendar-empty">Your recent activity calendar will appear here once the dashboard data finishes loading.</div>';
           container.appendChild(card);
         }
       }
@@ -654,18 +946,18 @@
       async function loadDashboard() {
         try {
           const response = await fetch("/api/dashboard");
-          if (!response.ok) {
-            throw new Error("Dashboard request failed with status " + response.status);
-          }
+          if (!response.ok) throw new Error("Dashboard request failed with status " + response.status);
 
           const data = await response.json();
           const profile = data.profile || {};
           const summary = data.summary || {};
           const previousRun = summary.previous_run || {};
           const recommendation = Object.assign({}, FALLBACK_RECOMMENDATION, data.recommendation || {});
-          const explanation = listValue(recommendation.explanation, FALLBACK_RECOMMENDATION.explanation);
+          recommendation.explanation_sections = Object.assign({}, FALLBACK_RECOMMENDATION.explanation_sections, recommendation.explanation_sections || {});
           const recap = listValue(recommendation.recap, FALLBACK_RECOMMENDATION.recap);
           const warnings = listValue(recommendation.warnings, FALLBACK_RECOMMENDATION.warnings);
+          const explanation = listValue(recommendation.explanation, FALLBACK_RECOMMENDATION.explanation);
+          const sections = recommendation.explanation_sections || FALLBACK_RECOMMENDATION.explanation_sections;
           const dataMode = data.data_mode || {};
           const isLive = dataMode.mode === "live";
           const connections = (data.connections && data.connections.status) || {};
@@ -676,15 +968,12 @@
           text("#todayChip", formatPrettyDate(data.today));
           text("#greeting", greetingForNow(stringValue(profile.name, "John")));
           text("#goalRace", formatRaceDate(profile.goal_race_date));
-          text(
-            "#goalContext",
-            "Race date: " + formatRaceDate(profile.goal_race_date) + " | Long run: " + stringValue(profile.preferred_long_run_day, "Sunday")
-          );
+          text("#goalContext", "Race date: " + formatRaceDate(profile.goal_race_date) + " | Long run: " + stringValue(profile.preferred_long_run_day, "Sunday"));
 
           text("#workout", stringValue(recommendation.workout, FALLBACK_RECOMMENDATION.workout));
-          text("#coachSummary", explanation[0] || "This recommendation is based on the latest recovery and training signals.");
-          text("#intensity", "Intensity: " + stringValue(recommendation.intensity, "steady"));
-          text("#duration", "Duration: " + numberValue(recommendation.duration_minutes, 45) + " min");
+          text("#coachSummary", stringValue(sections.overall, explanation[0] || FALLBACK_RECOMMENDATION.explanation[0]));
+          text("#intensity", "Intensity: " + titleCase(recommendation.intensity || "steady"));
+          text("#duration", numberValue(recommendation.duration_minutes, 45) > 0 ? "Time: " + numberValue(recommendation.duration_minutes, 45) + " min" : "Time: model unavailable");
 
           text("#sleep", numberValue(summary.latest_sleep_hours, 0).toFixed(1) + " hrs");
           text("#recovery", numberValue(summary.latest_recovery, 0) + "%");
@@ -693,17 +982,23 @@
           text(
             "#yesterdayRunText",
             previousRun.day
-              ? "Most recent run on " + previousRun.day + " | " + numberValue(previousRun.distance_miles, 0).toFixed(1) + " mi in " + numberValue(previousRun.duration_minutes, 0) + " min"
+              ? "Latest run: " + numberValue(previousRun.distance_miles, 0).toFixed(1) + " mi in " + numberValue(previousRun.duration_minutes, 0) + " min on " + previousRun.day
               : "No recent run found"
           );
 
-          text("#runDistance", numberValue(recommendation.run_distance_miles, 4) + " miles");
-          text(
-            "#runPrescription",
-            "Aim for roughly " + stringValue(recommendation.run_pace_guidance, "easy conversational pace") + " with the effort feeling " + stringValue(recommendation.intensity, "steady") + "."
-          );
-          text("#liftFocus", stringValue(recommendation.lift_focus, "Light mobility"));
-          text("#liftGuidance", stringValue(recommendation.lift_guidance, "Keep lifting light today."));
+          text("#runDistance", numberValue(recommendation.run_distance_miles, 0) > 0 ? numberValue(recommendation.run_distance_miles, 0) + " miles" : "Model unavailable");
+          text("#runPrescription", stringValue(recommendation.run_pace_guidance, "Pace guidance unavailable"));
+          text("#liftFocus", stringValue(recommendation.lift_focus, "Model unavailable"));
+          text("#liftGuidance", stringValue(recommendation.lift_guidance, "Lifting guidance unavailable"));
+
+          text("#reasonOverall", stringValue(sections.overall, FALLBACK_RECOMMENDATION.explanation_sections.overall));
+          text("#reasonRun", stringValue(sections.run, FALLBACK_RECOMMENDATION.explanation_sections.run));
+          text("#reasonPace", stringValue(sections.pace, FALLBACK_RECOMMENDATION.explanation_sections.pace));
+          text("#reasonLift", stringValue(sections.lift, FALLBACK_RECOMMENDATION.explanation_sections.lift));
+          text("#reasonRecovery", stringValue(sections.recovery, FALLBACK_RECOMMENDATION.explanation_sections.recovery));
+
+          text("#coachHeadline", explanation[0] || "Today's recommendation is built from your recent training and recovery picture.");
+          text("#coachNotes", explanation.slice(1).join(" ") || stringValue(sections.recovery, FALLBACK_RECOMMENDATION.explanation_sections.recovery));
 
           const stravaLight = document.querySelector("#stravaLight");
           const whoopLight = document.querySelector("#whoopLight");
@@ -711,12 +1006,7 @@
           if (whoopLight) whoopLight.classList.toggle("live", whoopConnected);
           text("#stravaStatus", stravaConnected ? "Strava connected" : "Strava not connected");
           text("#whoopStatus", whoopConnected ? "WHOOP connected" : "WHOOP not connected");
-          text(
-            "#connectionHeadline",
-            stravaConnected && whoopConnected
-              ? "Both fitness platforms are hooked up."
-              : "One or more fitness platforms need attention."
-          );
+          text("#connectionHeadline", stravaConnected && whoopConnected ? "Both fitness platforms are hooked up." : "One or more fitness platforms need attention.");
           text(
             "#connectionDetail",
             isLive
@@ -726,19 +1016,24 @@
                 : stringValue(dataMode.warning, "The app is using sample or fallback data right now.")
           );
 
-          addListItems(document.querySelector("#reasons"), explanation, "good", "No explanation was generated for this recommendation.");
-          addListItems(document.querySelector("#recap"), recap, "recap", "No recent recap was generated.");
-          addListItems(document.querySelector("#warnings"), warnings, "warn", "No immediate caution flags appeared in the current data.");
+          renderBriefItems(document.querySelector("#recap"), recap, "No recent recap was generated.", false);
+          renderBriefItems(document.querySelector("#warnings"), warnings, "No immediate caution flags appeared in the current data.", true);
           renderActivities(document.querySelector("#activities"), data.activity_feed || []);
           renderCalendar(document.querySelector("#calendar"), data.activity_calendar || []);
         } catch (error) {
           text("#workout", "Dashboard failed to load");
           text("#coachSummary", "The page could not load your current recommendation. Refresh in a moment and try again.");
+          text("#coachHeadline", "Recommendation unavailable.");
+          text("#coachNotes", error.message || "An unexpected dashboard error occurred.");
           text("#connectionHeadline", "Connection status unavailable right now.");
           text("#connectionDetail", error.message || "An unexpected dashboard error occurred.");
-          addListItems(document.querySelector("#reasons"), FALLBACK_RECOMMENDATION.explanation, "warn", "Dashboard loading failed.");
-          addListItems(document.querySelector("#recap"), FALLBACK_RECOMMENDATION.recap, "recap", "Dashboard loading failed.");
-          addListItems(document.querySelector("#warnings"), FALLBACK_RECOMMENDATION.warnings, "warn", "Dashboard loading failed.");
+          text("#reasonOverall", FALLBACK_RECOMMENDATION.explanation_sections.overall);
+          text("#reasonRun", FALLBACK_RECOMMENDATION.explanation_sections.run);
+          text("#reasonPace", FALLBACK_RECOMMENDATION.explanation_sections.pace);
+          text("#reasonLift", FALLBACK_RECOMMENDATION.explanation_sections.lift);
+          text("#reasonRecovery", FALLBACK_RECOMMENDATION.explanation_sections.recovery);
+          renderBriefItems(document.querySelector("#recap"), FALLBACK_RECOMMENDATION.recap, "Dashboard loading failed.", false);
+          renderBriefItems(document.querySelector("#warnings"), FALLBACK_RECOMMENDATION.warnings, "Dashboard loading failed.", true);
           renderActivities(document.querySelector("#activities"), []);
           renderCalendar(document.querySelector("#calendar"), []);
         }
