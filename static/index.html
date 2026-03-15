@@ -41,8 +41,22 @@
 
       .topline {
         display: grid;
-        gap: 10px;
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+        align-items: start;
         margin-bottom: 18px;
+      }
+
+      .topline-main {
+        display: grid;
+        gap: 8px;
+      }
+
+      .topline-side {
+        display: grid;
+        justify-items: end;
+        gap: 8px;
+        text-align: right;
       }
 
       .greeting {
@@ -58,29 +72,28 @@
       }
 
       .goal-line {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
+        display: grid;
+        gap: 4px;
         color: var(--muted);
         font-size: 0.98rem;
       }
 
-      .goal-pill,
-      .date-pill,
-      .micro-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.82);
+      .goal-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
       }
 
-      .goal-pill {
-        background: var(--gold-soft);
-        color: #855f20;
+      .goal-text {
+        font-size: 1rem;
+        color: var(--ink);
+      }
+
+      .date-line {
+        color: var(--muted);
+        font-size: 1rem;
       }
 
       .section {
@@ -222,30 +235,7 @@
       .primary-head {
         display: flex;
         align-items: center;
-        gap: 10px;
         margin-bottom: 10px;
-      }
-
-      .primary-icon {
-        min-width: 34px;
-        height: 34px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        font-size: 1rem;
-        background: var(--accent-soft);
-        color: #8a381d;
-      }
-
-      .primary-icon.pace {
-        background: var(--gold-soft);
-        color: #855f20;
-      }
-
-      .primary-icon.lift {
-        background: var(--forest-soft);
-        color: var(--forest);
       }
 
       .primary-label {
@@ -515,6 +505,40 @@
         line-height: 1.45;
       }
 
+      .entry-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .entry-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.72rem;
+        line-height: 1;
+      }
+
+      .entry-badge.easy {
+        background: var(--forest-soft);
+        color: var(--forest);
+      }
+
+      .entry-badge.moderate {
+        background: var(--gold-soft);
+        color: #855f20;
+      }
+
+      .entry-badge.hard {
+        background: var(--accent-soft);
+        color: #8a381d;
+      }
+
       .calendar-empty {
         color: var(--muted);
         font-size: 0.8rem;
@@ -645,11 +669,16 @@
   <body>
     <main>
       <section class="topline">
-        <p id="greeting" class="greeting">Good evening, John.</p>
-        <h1>Adaptive Running Coach</h1>
-        <div class="goal-line">
-          <span id="goalLine" class="goal-pill">Goal: Half Marathon on Sunday, May 17th, 2026</span>
-          <span id="todayChip" class="date-pill">Sunday, March 15th</span>
+        <div class="topline-main">
+          <p id="greeting" class="greeting">Good evening, John.</p>
+          <h1>Adaptive Running Coach</h1>
+        </div>
+        <div class="topline-side">
+          <div id="todayChip" class="date-line">Sunday, March 15th</div>
+          <div class="goal-line">
+            <span class="goal-label">Goal</span>
+            <span id="goalLine" class="goal-text">Half Marathon on Sunday, May 17th, 2026</span>
+          </div>
         </div>
       </section>
 
@@ -669,7 +698,7 @@
           <div class="metric">
             <p class="section-title">Strain</p>
             <strong id="strain">-</strong>
-            <span>Latest WHOOP strain reading</span>
+            <span>Yesterday's WHOOP strain reading</span>
           </div>
           <div class="metric">
             <p class="section-title">Recent Load</p>
@@ -678,7 +707,7 @@
           </div>
         </div>
         <div class="metric-actions">
-          <button id="openRecap" class="button secondary" type="button">📈 Weekly Recap</button>
+          <button id="openRecap" class="button secondary" type="button">Weekly Recap</button>
         </div>
       </section>
 
@@ -694,7 +723,6 @@
         <div class="primary-grid">
           <div class="primary-card">
             <div class="primary-head">
-              <span class="primary-icon">🏃</span>
               <span class="primary-label">Run</span>
             </div>
             <strong id="runDistance" class="primary-value">-</strong>
@@ -713,7 +741,6 @@
 
           <div class="primary-card lift">
             <div class="primary-head">
-              <span class="primary-icon lift">🏋️</span>
               <span class="primary-label">Lift</span>
             </div>
             <strong id="liftFocus" class="primary-value">-</strong>
@@ -909,7 +936,7 @@
         const bits = [];
         if (activity.projected && activity.distance_miles) {
           bits.push(activity.distance_miles + " mi");
-          if (activity.pace_text) bits.push(shortPaceText(activity.pace_text));
+          if (activity.pace_text) bits.push(cleanPaceText(activity.pace_text));
           if (activity.intensity) bits.push(titleCase(activity.intensity));
           return bits.join(" | ");
         }
@@ -925,11 +952,21 @@
         return bits.join(" | ") || "No metrics";
       }
 
-      function shortPaceText(value) {
+      function cleanPaceText(value) {
         const text = stringValue(value, "Unavailable");
-        const first = text.split(/[.!?]/)[0].trim();
-        if (first.length <= 42) return first;
-        return first.slice(0, 39).trim() + "...";
+        const rangeMatch = text.match(/\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\s*(?:min\/mi|\/mi)?/i);
+        if (rangeMatch) {
+          return rangeMatch[0].replace(/\s*min\/mi/i, "/mi").replace(/\s+/g, " ").trim();
+        }
+        const singleMatch = text.match(/\d{1,2}:\d{2}\s*(?:min\/mi|\/mi)/i);
+        if (singleMatch) {
+          return singleMatch[0].replace(/\s*min\/mi/i, "/mi").trim();
+        }
+        return text;
+      }
+
+      function shortPaceText(value) {
+        return cleanPaceText(value);
       }
 
       function shortLiftText(value) {
@@ -994,9 +1031,30 @@
               name.textContent = titleCase(activity.name || "Activity");
               entry.appendChild(name);
 
-              const meta = document.createElement("span");
-              meta.textContent = calendarEntryMeta(activity);
-              entry.appendChild(meta);
+              if (activity.projected) {
+                const badges = document.createElement("div");
+                badges.className = "entry-badges";
+
+                const addBadge = (label, className) => {
+                  const badge = document.createElement("span");
+                  badge.className = "entry-badge" + (className ? " " + className : "");
+                  badge.textContent = label;
+                  badges.appendChild(badge);
+                };
+
+                if (activity.distance_miles) addBadge(activity.distance_miles + " mi");
+                if (activity.duration_minutes) addBadge(activity.duration_minutes + " min");
+                if (activity.intensity) {
+                  const level = titleCase(activity.intensity);
+                  const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
+                  addBadge(level, className);
+                }
+                entry.appendChild(badges);
+              } else {
+                const meta = document.createElement("span");
+                meta.textContent = calendarEntryMeta(activity);
+                entry.appendChild(meta);
+              }
               card.appendChild(entry);
             });
           }
@@ -1029,18 +1087,23 @@
 
           document.title = "Adaptive Running Coach";
           text("#greeting", "Good " + (new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening") + ", " + stringValue(profile.name, "John") + ".");
-          text("#goalLine", "Goal: Half Marathon on " + formatDisplayDate(profile.goal_race_date, true));
+          text("#goalLine", "Half Marathon on " + formatDisplayDate(profile.goal_race_date, true));
           text("#todayChip", todayText);
           text("#calendarTitle", calendarDate.toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
 
           text("#sleep", numberValue(summary.latest_sleep_hours, 0).toFixed(1) + " hrs");
           text("#recovery", numberValue(summary.latest_recovery, 0) + "%");
           text("#strain", String(numberValue(summary.latest_strain, 0)));
-          text("#mileage", numberValue(summary.recent_mileage, 0).toFixed(1) + " mi");
+          text(
+            "#mileage",
+            previousRun.day
+              ? numberValue(previousRun.distance_miles, 0).toFixed(1) + " mi in " + numberValue(previousRun.duration_minutes, 0) + " min"
+              : "No recent run"
+          );
           text(
             "#yesterdayRunText",
             previousRun.day
-              ? "Latest run: " + numberValue(previousRun.distance_miles, 0).toFixed(1) + " mi in " + numberValue(previousRun.duration_minutes, 0) + " min on " + formatDisplayDate(previousRun.day, true)
+              ? "Seven-day load: " + numberValue(summary.recent_mileage, 0).toFixed(1) + " miles"
               : "No recent run found"
           );
 
