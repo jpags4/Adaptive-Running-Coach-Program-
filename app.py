@@ -119,9 +119,8 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
             continue
         feed_by_day.setdefault(day, []).append(item)
 
-    start_day = anchor - timedelta(days=7)
-    start_day = start_day - timedelta(days=(start_day.weekday() + 1) % 7)
-    end_day = start_day + timedelta(days=20)
+    start_day = anchor - timedelta(days=anchor.weekday())
+    end_day = start_day + timedelta(days=13)
     projected_by_day = projected_calendar_entries(anchor, recommendation, end_day)
 
     cards: list[dict] = []
