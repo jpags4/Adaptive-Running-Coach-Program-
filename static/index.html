@@ -247,10 +247,11 @@
       }
 
       .lift-title {
-        font-size: 2.2rem;
+        font-size: clamp(2rem, 3.6vw, 3rem);
         line-height: 0.98;
         letter-spacing: -0.05em;
         font-weight: 500;
+        max-width: 540px;
       }
 
       .lift-list {
@@ -289,7 +290,8 @@
 
       .summary-box {
         margin-top: 24px;
-        background: var(--panel-soft);
+        background: rgba(10, 167, 111, 0.08);
+        border: 1px solid rgba(10, 167, 111, 0.1);
         border-radius: 18px;
         padding: 18px 20px;
         color: #434944;
@@ -550,7 +552,7 @@
         content: "";
         position: absolute;
         left: 0;
-        top: 36px;
+        top: 44px;
         bottom: 14px;
         width: 5px;
         border-radius: 999px;
@@ -563,6 +565,7 @@
 
       .calendar-day.today {
         border: 3px solid #1d1d1d;
+        padding-top: 56px;
       }
 
       .calendar-day.today::after {
@@ -571,7 +574,7 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 40px;
+        height: 46px;
         background: #1d1d1d;
       }
 
@@ -613,6 +616,10 @@
         font-size: 0.94rem;
       }
 
+      .calendar-entry.actual strong {
+        font-size: 0.88rem;
+      }
+
       .calendar-runline,
       .calendar-liftline {
         display: grid;
@@ -628,6 +635,10 @@
       .calendar-liftline {
         font-size: 0.82rem;
         color: var(--muted);
+      }
+
+      .calendar-entry.projected .calendar-liftline {
+        max-width: 100%;
       }
 
       .entry-badges {
@@ -667,6 +678,19 @@
       .connection-footer {
         display: grid;
         gap: 14px;
+      }
+
+      .loading-banner {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: rgba(23, 27, 24, 0.05);
+        color: var(--muted);
+        font-size: 0.96rem;
+      }
+
+      .loading-banner.hidden {
+        display: none;
       }
 
       .connection-lights,
@@ -852,6 +876,7 @@
         </div>
 
         <div id="coachSummary" class="summary-box">Building your run and lifting recommendation from training and recovery signals.</div>
+        <div id="loadingBanner" class="loading-banner">Generating today's plan...</div>
 
         <details class="plan-details" open>
           <summary>
@@ -1099,6 +1124,13 @@
         return titleCase(clean || recommendation.intensity || "Training");
       }
 
+      function shortLiftFocus(value) {
+        const text = titleCase(stringValue(value, "Optional"));
+        const stripped = text.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
+        if (stripped.length <= 34) return stripped;
+        return stripped.slice(0, 31).trim() + "...";
+      }
+
       function renderBriefItems(container, items, emptyText, warn) {
         if (!container) return;
         container.innerHTML = "";
@@ -1125,20 +1157,78 @@
       function renderLiftList(container, recommendation) {
         if (!container) return;
         container.innerHTML = "";
+
         const focus = titleCase(stringValue(recommendation.lift_focus, ""));
+        const raw = stringValue(recommendation.lift_guidance, "");
         const items = [];
-        if (focus && !/unavailable/i.test(focus)) {
-          items.push({ title: focus, detail: "15-20 minutes" });
-          items.push({ title: "Mobility", detail: "10 minutes" });
-        } else {
-          items.push({ title: "Optional", detail: "Keep it light and skip if your legs feel flat." });
+        const numbered = raw.match(/\d+\)\s*[^;]+/g) || [];
+
+        numbered.forEach((segment) => {
+          const cleaned = segment.replace(/^\d+\)\s*/, "").trim();
+          const parts = cleaned.split(/\s+[—-]\s+/);
+          items.push({
+            title: titleCase(parts[0] || cleaned),
+            detail: (parts[1] || "").trim() || "Controlled reps with light to moderate load."
+          });
+        });
+
+        if (!items.length && focus && !/unavailable/i.test(focus)) {
+          items.push({ title: focus, detail: "Keep the session controlled and moderate." });
         }
+        if (!items.length) {
+          items.push({ title: "Optional", detail: "Skip it if your legs feel unusually heavy." });
+        }
+
         items.slice(0, 2).forEach((item) => {
           const row = document.createElement("div");
           row.className = "lift-item";
           row.innerHTML = "<span class=\"lift-dot\"></span><div><strong>" + item.title + "</strong><span>" + item.detail + "</span></div>";
           container.appendChild(row);
         });
+      }
+
+      function canonicalActivityKey(activity) {
+        const raw = normalizeActivityName(activity.name || activity.sport || "");
+        if (/weight|strength|lift|weighttraining|weightlifting/.test(raw)) return "strength";
+        if (/dance/.test(raw)) return "dance";
+        if (/run/.test(raw)) return "run";
+        return raw;
+      }
+
+      function normalizeActivityName(name) {
+        return stringValue(name, "")
+          .toLowerCase()
+          .replace(/[^a-z]/g, "");
+      }
+
+      function dedupeActivities(activities) {
+        const seen = new Set();
+        return (activities || []).filter((activity) => {
+          const key = [
+            activity.day || "",
+            canonicalActivityKey(activity),
+            String(activity.duration_minutes || 0),
+            String(activity.distance_miles || 0)
+          ].join("|");
+
+          if (seen.has(key)) return false;
+
+          seen.add(key);
+          return true;
+        });
+      }
+
+      function inferIntensity(activity) {
+        const text = (stringValue(activity.name, "") + " " + stringValue(activity.sport, "")).toLowerCase();
+        if (/hard|tempo|interval|threshold|race/.test(text)) return "hard";
+        if (/easy|recovery/.test(text)) return "easy";
+        if (activity.intensity) return titleCase(activity.intensity).toLowerCase();
+        const pace = numberValue(activity.average_pace_min_per_mile, 0);
+        const distance = numberValue(activity.distance_miles, 0);
+        const strain = numberValue(activity.strain, 0);
+        if (strain >= 15 || (pace > 0 && pace < 7.8)) return "hard";
+        if (distance >= 6 || strain >= 10 || (pace > 0 && pace < 8.8)) return "moderate";
+        return "easy";
       }
 
       function renderRecapDays(container, days) {
@@ -1200,9 +1290,9 @@
           card.className = "calendar-day";
           if (day.is_today) card.classList.add("today");
 
-          const activities = Array.isArray(day.activities) ? day.activities : [];
-          const dominant = activities.find((activity) => activity.intensity) || {};
-          const intensity = titleCase(stringValue(dominant.intensity, ""));
+          const activities = dedupeActivities(Array.isArray(day.activities) ? day.activities : []);
+          const dominant = activities[0] || {};
+          const intensity = inferIntensity(dominant);
           if (/easy/i.test(intensity)) card.classList.add("intensity-easy");
           if (/moderate|steady/i.test(intensity)) card.classList.add("intensity-moderate");
           if (/hard/i.test(intensity)) card.classList.add("intensity-hard");
@@ -1224,7 +1314,13 @@
             activities.forEach((activity) => {
               const entry = document.createElement("div");
               entry.className = "calendar-entry";
-              const name = titleCase(activity.name || "Activity");
+              const kind = canonicalActivityKey(activity);
+              const name = kind === "run"
+                ? "Run"
+                : kind === "strength"
+                  ? "Lift"
+                  : titleCase(activity.name || "Activity");
+              entry.classList.add(activity.projected ? "projected" : "actual");
               entry.innerHTML = "<strong>" + name + "</strong>";
 
               if (activity.projected) {
@@ -1237,27 +1333,38 @@
                 if (/lift/i.test(name) && activity.lift_focus) {
                   const lift = document.createElement("div");
                   lift.className = "calendar-liftline";
-                  lift.textContent = "+ " + titleCase(activity.lift_focus);
+                  lift.textContent = shortLiftFocus(activity.lift_focus);
                   entry.appendChild(lift);
                 }
-                if (activity.intensity) {
-                  const badges = document.createElement("div");
-                  badges.className = "entry-badges";
-                  const badge = document.createElement("span");
-                  const level = titleCase(activity.intensity);
-                  const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
-                  badge.className = "entry-badge " + className;
-                  badge.textContent = level.toLowerCase();
-                  badges.appendChild(badge);
-                  entry.appendChild(badges);
-                }
+                const badges = document.createElement("div");
+                badges.className = "entry-badges";
+                const badge = document.createElement("span");
+                const level = titleCase(inferIntensity(activity));
+                const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
+                badge.className = "entry-badge " + className;
+                badge.textContent = level.toLowerCase();
+                badges.appendChild(badge);
+                entry.appendChild(badges);
               } else {
                 const meta = document.createElement("div");
                 meta.className = "calendar-runline";
-                meta.innerHTML = "<span class=\"mile\">" + (activity.distance_miles ? activity.distance_miles + " mi" : name) + "</span><span class=\"sub\">" +
-                  (activity.average_pace_min_per_mile ? formatPace(activity.average_pace_min_per_mile) : (activity.duration_minutes ? activity.duration_minutes + " min" : "")) +
-                  "</span>";
+                if (kind === "run") {
+                  meta.innerHTML = "<span class=\"mile\">" + (activity.distance_miles ? activity.distance_miles + " mi" : "") + "</span><span class=\"sub\">" +
+                    (activity.average_pace_min_per_mile ? formatPace(activity.average_pace_min_per_mile) : (activity.duration_minutes ? activity.duration_minutes + " min" : "")) +
+                    "</span>";
+                } else {
+                  meta.innerHTML = "<span class=\"sub\">" + (activity.duration_minutes ? activity.duration_minutes + " min" : "") + "</span>";
+                }
                 entry.appendChild(meta);
+                const badges = document.createElement("div");
+                badges.className = "entry-badges";
+                const badge = document.createElement("span");
+                const level = titleCase(inferIntensity(activity));
+                const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
+                badge.className = "entry-badge " + className;
+                badge.textContent = level.toLowerCase();
+                badges.appendChild(badge);
+                entry.appendChild(badges);
               }
 
               card.appendChild(entry);
@@ -1269,6 +1376,7 @@
 
       async function loadDashboard() {
         try {
+          document.querySelector("#loadingBanner")?.classList.remove("hidden");
           const response = await fetch("/api/dashboard");
           if (!response.ok) throw new Error("Dashboard request failed with status " + response.status);
           const data = await response.json();
@@ -1302,9 +1410,9 @@
           text("#runDistance", numberValue(recommendation.run_distance_miles, 0).toFixed(1) + " mi");
           text("#runPrescription", paceRangeOnly(recommendation.run_pace_guidance));
           text("#runDetail", "Planned running volume for " + formatDisplayDate(data.today, false));
-          text("#paceDetail", titleCase(recommendation.intensity || "steady"));
+          text("#paceDetail", titleCase(stringValue(recommendation.intensity, "steady").replace(/\s*\([^)]*\)/g, "").split(/[;,.]/)[0]));
           text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
-          text("#liftFocus", titleCase(recommendation.lift_focus || "Optional"));
+          text("#liftFocus", shortLiftFocus(recommendation.lift_focus || "Optional"));
           text("#liftGuidance", stringValue(recommendation.lift_guidance, "Keep the lift optional and light."));
           text("#coachSummary", compactSummary(recommendation));
           renderLiftList(document.querySelector("#liftList"), recommendation);
@@ -1329,9 +1437,11 @@
           updateRecapStats(data.activity_calendar || []);
           renderCalendar(document.querySelector("#calendar"), data.activity_calendar || []);
           text("#calendarTitle", new Date(data.today + "T12:00:00").toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
+          document.querySelector("#loadingBanner")?.classList.add("hidden");
         } catch (error) {
           text("#coachSummary", "The dashboard could not load your training data. Refresh in a moment and try again.");
           renderBriefItems(document.querySelector("#warnings"), [String(error.message || error)], "Dashboard load failed.", true);
+          document.querySelector("#loadingBanner")?.classList.add("hidden");
         }
       }
 

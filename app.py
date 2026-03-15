@@ -68,6 +68,37 @@ def sample_activity_preview(runs: list) -> list[dict]:
     ]
 
 
+def _calendar_activity_kind(activity: dict) -> str:
+    raw = str(activity.get("name") or activity.get("sport") or "").lower()
+    normalized = "".join(char for char in raw if char.isalpha())
+    if any(token in normalized for token in ("weight", "strength", "lift", "mobility", "stretch", "yoga", "pilates", "core")):
+        return "strength"
+    if "run" in normalized:
+        return "run"
+    return normalized
+
+
+def _filter_calendar_activities(activity_feed: list[dict]) -> list[dict]:
+    filtered: list[dict] = []
+    seen: set[tuple[str, str, int, str]] = set()
+
+    for activity in activity_feed:
+        kind = _calendar_activity_kind(activity)
+        if kind not in {"run", "strength"}:
+            continue
+
+        duration = int(activity.get("duration_minutes") or 0)
+        distance = str(activity.get("distance_miles") or 0)
+        key = (str(activity.get("day") or ""), kind, duration, distance)
+        if key in seen:
+            continue
+
+        seen.add(key)
+        filtered.append(activity)
+
+    return filtered
+
+
 def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, list[dict]]:
     if not recommendation or recommendation.run_distance_miles <= 0:
         return {}
@@ -594,7 +625,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                         runs = merged["runs"]
                         metrics = merged["metrics"]
                         activity_feed = strava_activity_preview(live_strava.get("activities", [])) + whoop_workout_preview(live_whoop)
-                        activity_feed = sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True)[:10]
+                        activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))[:10]
                         live_preview = {
                             "mode": "live",
                             "strava_runs_found": len(runs),
@@ -613,7 +644,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                             activity_feed = whoop_activities
 
                     if live_strava or live_whoop:
-                        activity_feed = sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True)[:10]
+                        activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))[:10]
                         live_preview = {
                             "mode": "mixed",
                             "strava_runs_found": len(runs) if live_strava else 0,
