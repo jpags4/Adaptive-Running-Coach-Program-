@@ -1,8 +1,10 @@
 import unittest
 from datetime import date
+from unittest import mock
 
 from coach import coach_recommendation
 from integrations import build_strava_authorize_url, build_whoop_authorize_url
+from llm_coach import llm_recommendation
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 
 
@@ -31,6 +33,19 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertIn("client_id=whoop-client", url)
         self.assertIn("redirect_uri=https%3A%2F%2Fdemo.ngrok-free.dev%2Fwhoop%2Fcallback", url)
         self.assertIn("state=whoopstate", url)
+
+    @mock.patch.dict("os.environ", {}, clear=False)
+    def test_llm_recommendation_reports_unavailable_without_key(self) -> None:
+        recommendation, meta = llm_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            today=date(2026, 3, 14),
+        )
+        self.assertEqual(meta["source"], "unavailable")
+        self.assertEqual(recommendation.workout, "Recommendation unavailable")
+        self.assertIn("OPENAI_API_KEY not set", recommendation.warnings)
+        self.assertIn("overall", recommendation.explanation_sections)
 
 
 if __name__ == "__main__":

@@ -46,6 +46,7 @@ class Recommendation:
     lift_guidance: str
     recap: list[str]
     explanation: list[str]
+    explanation_sections: dict[str, str]
     warnings: list[str]
     confidence: str
 
@@ -258,6 +259,13 @@ def coach_recommendation(
         lift_guidance=lift_guidance,
         recap=recap,
         explanation=explanation,
+        explanation_sections={
+            "overall": explanation[0] if explanation else "",
+            "run": f"Today's run is set at {run_distance:.1f} miles to match your current training load and recovery picture.",
+            "pace": f"The suggested pace band of {run_pace} is meant to keep the effort aligned with the day's goal rather than chasing speed.",
+            "lift": lift_guidance,
+            "recovery": f"Recovery is {latest_metrics.recovery_score}% with {latest_metrics.sleep_hours:.1f} hours of sleep and {latest_metrics.strain:.1f} strain, which shaped today's load.",
+        },
         warnings=warnings,
         confidence=confidence,
     )

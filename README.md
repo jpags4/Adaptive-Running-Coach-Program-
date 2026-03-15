@@ -101,12 +101,9 @@ You can see an example in `.env.example`.
 
 ## OpenAI-powered recommendations
 
-The app now supports two recommendation modes:
+The app now relies on OpenAI as the recommendation engine through `llm_coach.py`.
 
-- primary OpenAI reasoning from `llm_coach.py`
-- emergency deterministic fallback from `coach.py` only if the API key is missing or the OpenAI call fails
-
-If `OPENAI_API_KEY` is set, the app sends recent runs, recovery metrics, and training context directly to OpenAI and asks for a structured coaching recommendation. The older built-in logic is no longer used to shape the model's answer. It is only kept as a technical backup if the API key is missing or the OpenAI call fails.
+If `OPENAI_API_KEY` is set, the app sends recent runs, recovery metrics, and training context directly to OpenAI and asks for a structured coaching recommendation. The older built-in logic is no longer used for the app's recommendation path. If the OpenAI request fails, the app now reports that the recommendation is unavailable instead of silently reverting to the older coaching rules.
 
 ### Important note about storage
 

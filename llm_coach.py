@@ -4,14 +4,14 @@ import json
 import os
 from datetime import date
 
-from coach import AthleteProfile, Recommendation, RecoveryMetrics, Run, coach_recommendation
+from coach import AthleteProfile, Recommendation, RecoveryMetrics, Run, recent_mileage
 
 
 def openai_enabled() -> bool:
     return bool(os.environ.get("OPENAI_API_KEY", "").strip())
 
 
-def _recent_runs_payload(runs: list[Run], limit: int = 7) -> list[dict]:
+def _recent_runs_payload(runs: list[Run], limit: int = 10) -> list[dict]:
     ordered = sorted(runs, key=lambda item: item.day, reverse=True)[:limit]
     return [
         {
@@ -27,7 +27,7 @@ def _recent_runs_payload(runs: list[Run], limit: int = 7) -> list[dict]:
     ]
 
 
-def _recent_metrics_payload(metrics: list[RecoveryMetrics], limit: int = 5) -> list[dict]:
+def _recent_metrics_payload(metrics: list[RecoveryMetrics], limit: int = 7) -> list[dict]:
     ordered = sorted(metrics, key=lambda item: item.day, reverse=True)[:limit]
     return [
         {
@@ -40,6 +40,28 @@ def _recent_metrics_payload(metrics: list[RecoveryMetrics], limit: int = 5) -> l
         }
         for metric in ordered
     ]
+
+
+def _latest_run_summary(runs: list[Run]) -> dict:
+    if not runs:
+        return {
+            "day": "",
+            "distance_miles": 0.0,
+            "duration_minutes": 0,
+            "average_pace_min_per_mile": 0.0,
+            "effort": "",
+            "workout_type": "",
+        }
+
+    latest = max(runs, key=lambda item: item.day)
+    return {
+        "day": latest.day,
+        "distance_miles": latest.distance_miles,
+        "duration_minutes": latest.duration_minutes,
+        "average_pace_min_per_mile": latest.average_pace_min_per_mile,
+        "effort": latest.effort,
+        "workout_type": latest.workout_type,
+    }
 
 
 def _recommendation_schema() -> dict:
@@ -55,6 +77,18 @@ def _recommendation_schema() -> dict:
             "lift_guidance": {"type": "string"},
             "recap": {"type": "array", "items": {"type": "string"}},
             "explanation": {"type": "array", "items": {"type": "string"}},
+            "explanation_sections": {
+                "type": "object",
+                "properties": {
+                    "overall": {"type": "string"},
+                    "run": {"type": "string"},
+                    "pace": {"type": "string"},
+                    "lift": {"type": "string"},
+                    "recovery": {"type": "string"},
+                },
+                "required": ["overall", "run", "pace", "lift", "recovery"],
+                "additionalProperties": False,
+            },
             "warnings": {"type": "array", "items": {"type": "string"}},
             "confidence": {"type": "string"},
         },
@@ -68,6 +102,7 @@ def _recommendation_schema() -> dict:
             "lift_guidance",
             "recap",
             "explanation",
+            "explanation_sections",
             "warnings",
             "confidence",
         ],
@@ -89,6 +124,66 @@ def _parse_response_json(response) -> dict:
     raise ValueError("OpenAI response did not include structured JSON output.")
 
 
+def _fallback_recap(profile: AthleteProfile, runs: list[Run], metrics: list[RecoveryMetrics]) -> list[str]:
+    latest_run = _latest_run_summary(runs)
+    latest_metrics = max(metrics, key=lambda item: item.day) if metrics else None
+    recap = []
+    if latest_run["day"]:
+        recap.append(
+            f"Most recent run: {latest_run['distance_miles']:.1f} miles in {latest_run['duration_minutes']} minutes."
+        )
+    recap.append(f"Seven-day running total: {recent_mileage(runs):.1f} miles.")
+    if latest_metrics:
+        recap.append(
+            f"Latest WHOOP: recovery {latest_metrics.recovery_score}%, sleep {latest_metrics.sleep_hours:.1f} hours, strain {latest_metrics.strain:.1f}."
+        )
+    recap.append(f"Goal race date: {profile.goal_race_date}.")
+    return recap
+
+
+def _model_unavailable_recommendation(
+    profile: AthleteProfile,
+    runs: list[Run],
+    metrics: list[RecoveryMetrics],
+    reason: str,
+    today: date | None = None,
+) -> tuple[Recommendation, dict]:
+    if today is None:
+        if metrics:
+            today_str = max(metrics, key=lambda item: item.day).day
+        else:
+            today_str = date.today().isoformat()
+    else:
+        today_str = today.isoformat()
+
+    explanation_sections = {
+        "overall": "The app could not get a model-generated recommendation right now.",
+        "run": "Run details are unavailable because the language model did not return a valid coaching plan.",
+        "pace": "Pace guidance is unavailable until the model responds successfully.",
+        "lift": "Lifting guidance is unavailable until the model responds successfully.",
+        "recovery": "Recovery metrics may still be loading, but the recommendation engine itself did not finish.",
+    }
+    recommendation = Recommendation(
+        date=today_str,
+        workout="Recommendation unavailable",
+        intensity="unavailable",
+        duration_minutes=0,
+        run_distance_miles=0.0,
+        run_pace_guidance="Unavailable until the model responds",
+        lift_focus="Unavailable until the model responds",
+        lift_guidance="No lifting recommendation is available right now because the model did not complete.",
+        recap=_fallback_recap(profile, runs, metrics),
+        explanation=list(explanation_sections.values()),
+        explanation_sections=explanation_sections,
+        warnings=[
+            "The app is currently relying on the language model for recommendations and did not receive a usable response.",
+            reason,
+        ],
+        confidence="unavailable",
+    )
+    return recommendation, {"source": "unavailable", "model": None, "reason": reason}
+
+
 def llm_recommendation(
     profile: AthleteProfile,
     runs: list[Run],
@@ -96,19 +191,30 @@ def llm_recommendation(
     today: date | None = None,
 ) -> tuple[Recommendation, dict]:
     if not openai_enabled():
-        fallback = coach_recommendation(profile, runs, metrics, today=today)
-        return fallback, {"source": "deterministic", "model": None, "reason": "OPENAI_API_KEY not set"}
+        return _model_unavailable_recommendation(
+            profile,
+            runs,
+            metrics,
+            "OPENAI_API_KEY not set",
+            today=today,
+        )
 
     try:
         from openai import OpenAI
     except Exception:
-        fallback = coach_recommendation(profile, runs, metrics, today=today)
-        return fallback, {"source": "deterministic", "model": None, "reason": "openai package not installed"}
+        return _model_unavailable_recommendation(
+            profile,
+            runs,
+            metrics,
+            "openai package not installed",
+            today=today,
+        )
 
     model = os.environ.get("OPENAI_MODEL", "gpt-5-mini").strip() or "gpt-5-mini"
     client = OpenAI()
 
     latest_metric = max(metrics, key=lambda item: item.day)
+    today_str = today.isoformat() if today else latest_metric.day
     context = {
         "athlete_profile": {
             "name": profile.name,
@@ -118,30 +224,34 @@ def llm_recommendation(
         },
         "recent_runs": _recent_runs_payload(runs),
         "recent_recovery_metrics": _recent_metrics_payload(metrics),
-        "today": today.isoformat() if today else latest_metric.day,
-        "training_philosophy": [
-            "Cardio may be ahead of leg durability, so avoid overloading connective tissue.",
-            "Use hills as built-in stress and be careful about stacking intensity.",
-            "Prioritize easy running when sleep, recovery, or leg soreness suggest backing off.",
-            "Include a practical lifting recommendation every day.",
-            "The athlete cares more about recent activity and current recovery than about hitting a rigid weekly mileage target.",
-            "Recommendations should feel like thoughtful coaching, not generic mileage formulas.",
+        "latest_run_summary": _latest_run_summary(runs),
+        "today": today_str,
+        "coach_preferences": [
+            "The recommendation engine should rely on the language model as the source of reasoning rather than earlier hand-written coach logic.",
+            "Every recommendation should explain why the run distance is what it is, why the pace is what it is, why the lifting recommendation is what it is, and how recovery metrics changed the plan.",
+            "Leg durability is often a bigger limiter than cardio, especially on hilly terrain.",
+            "The athlete wants recommendations that feel individualized and grounded in recent activity, not rigid mileage templates.",
+            "Poor sleep, emotional stress, hills, and lingering soreness should meaningfully shape the recommendation.",
+            "When the athlete is ready for a bigger day, say so clearly instead of defaulting conservative.",
         ],
     }
 
     developer_prompt = (
-        "You are an adaptive running coach for a fit athlete training for a half marathon. "
-        "Reason from recent training history and health metrics. "
-        "Return a practical recommendation for today's run and lifting. "
-        "Be especially careful about leg durability, fatigue from hills, poor sleep, elevated strain, "
-        "and recent heavy running load. "
-        "Do not anchor on arbitrary weekly mileage targets unless recent training data supports them. "
-        "Use the athlete's recent runs, pace history, recovery, sleep, and strain as the main drivers. "
-        "Give a concrete running prescription in mileage and rough pace, plus specific lifting guidance. "
-        "Explain your reasoning in plain language. "
-        "Do not mention uncertainty unless it materially changes the plan. "
-        "Keep pace guidance rough and usable, not over-precise. "
-        "Return valid JSON matching the provided schema."
+        "You are the primary coaching engine for an adaptive running coach app. "
+        "You must produce the training recommendation yourself from the athlete data provided. "
+        "Do not imitate or defer to earlier rule-based logic. "
+        "Return a specific run plan, rough pace guidance, and lifting plan for today. "
+        "Reason carefully from recent training, recent pace history, WHOOP recovery metrics, sleep, strain, and likely leg durability. "
+        "The athlete often has more cardio fitness than leg durability, and hills create extra muscular load. "
+        "Recommendations should be concrete and personalized, not generic. "
+        "Explain the logic behind each major piece of the day in plain English. "
+        "Your explanation_sections object must separately explain: "
+        "overall why this day fits, why the run distance is set where it is, why the pace guidance is set where it is, "
+        "why the lifting recommendation is set where it is, and how recovery metrics changed the recommendation. "
+        "The explanation array should be a concise bullet-style version of those same ideas. "
+        "The recap should summarize the most relevant recent work and current readiness. "
+        "Keep the pace guidance rough and human-usable, not over-precise. "
+        "Return valid JSON matching the schema."
     )
 
     try:
@@ -158,11 +268,11 @@ def llm_recommendation(
                     "schema": _recommendation_schema(),
                     "strict": True,
                 }
-            }
+            },
         )
         payload = _parse_response_json(response)
         recommendation = Recommendation(
-            date=context["today"],
+            date=today_str,
             workout=payload["workout"],
             intensity=payload["intensity"],
             duration_minutes=int(payload["duration_minutes"]),
@@ -172,10 +282,16 @@ def llm_recommendation(
             lift_guidance=payload["lift_guidance"],
             recap=list(payload["recap"]),
             explanation=list(payload["explanation"]),
+            explanation_sections=dict(payload["explanation_sections"]),
             warnings=list(payload["warnings"]),
             confidence=payload["confidence"],
         )
         return recommendation, {"source": "openai", "model": model, "reason": None}
     except Exception as exc:
-        fallback = coach_recommendation(profile, runs, metrics, today=today)
-        return fallback, {"source": "deterministic", "model": None, "reason": str(exc)}
+        return _model_unavailable_recommendation(
+            profile,
+            runs,
+            metrics,
+            f"OpenAI request failed: {exc}",
+            today=today,
+        )
