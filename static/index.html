@@ -1219,15 +1219,48 @@
 
       function inferIntensity(activity) {
         const text = (stringValue(activity.name, "") + " " + stringValue(activity.sport, "")).toLowerCase();
-        if (/hard|tempo|interval|threshold|race/.test(text)) return "hard";
-        if (/easy|recovery/.test(text)) return "easy";
-        if (activity.intensity) return titleCase(activity.intensity).toLowerCase();
+        const explicit = stringValue(activity.intensity, "").toLowerCase();
+        if (/hard|tempo|interval|threshold|race/.test(explicit) || /hard|tempo|interval|threshold|race/.test(text)) return "hard";
+        if (/moderate|steady/.test(explicit)) return "moderate";
+        if (/easy|recovery|conversational/.test(explicit) || /easy|recovery/.test(text)) return "easy";
+        if (explicit) return explicit;
         const pace = numberValue(activity.average_pace_min_per_mile, 0);
         const distance = numberValue(activity.distance_miles, 0);
         const strain = numberValue(activity.strain, 0);
         if (strain >= 15 || (pace > 0 && pace < 7.8)) return "hard";
         if (distance >= 6 || strain >= 10 || (pace > 0 && pace < 8.8)) return "moderate";
         return "easy";
+      }
+
+      function todayPlanActivities(recommendation, today) {
+        const miles = numberValue(recommendation.run_distance_miles, 0);
+        if (!miles) return [];
+        return [
+          {
+            name: "Run",
+            sport: "Projected Run",
+            day: today,
+            distance_miles: Number(miles.toFixed(1)),
+            duration_minutes: maxInt(numberValue(recommendation.duration_minutes, 0), 20),
+            average_pace_min_per_mile: 0,
+            pace_text: recommendation.run_pace_guidance,
+            intensity: inferIntensity({ intensity: recommendation.intensity }),
+            projected: true
+          },
+          {
+            name: "Lift",
+            sport: "Projected Strength",
+            day: today,
+            duration_minutes: 35,
+            lift_focus: recommendation.lift_focus,
+            intensity: inferIntensity({ intensity: recommendation.intensity }),
+            projected: true
+          }
+        ];
+      }
+
+      function maxInt(value, minimum) {
+        return Math.max(minimum, Math.round(value || 0));
       }
 
       function renderRecapDays(container, days) {
@@ -1279,7 +1312,7 @@
         text("#recapStrengthSub", strengthSessions ? "Sessions completed" : "No strength sessions logged");
       }
 
-      function renderCalendar(container, days) {
+      function renderCalendar(container, days, recommendation, today) {
         if (!container) return;
         container.innerHTML = "";
         const values = Array.isArray(days) ? days : [];
@@ -1289,7 +1322,10 @@
           card.className = "calendar-day";
           if (day.is_today) card.classList.add("today");
 
-          const activities = dedupeActivities(Array.isArray(day.activities) ? day.activities : []);
+          let activities = dedupeActivities(Array.isArray(day.activities) ? day.activities : []);
+          if (day.is_today && !activities.length) {
+            activities = todayPlanActivities(recommendation || {}, today || day.day);
+          }
           const dominant = activities[0] || {};
           const intensity = inferIntensity(dominant);
           if (/easy/i.test(intensity)) card.classList.add("intensity-easy");
@@ -1338,11 +1374,11 @@
                 const badges = document.createElement("div");
                 badges.className = "entry-badges";
                 const badge = document.createElement("span");
-                const level = titleCase(inferIntensity(activity));
-                const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
-                badge.className = "entry-badge " + className;
-                badge.textContent = level.toLowerCase();
-                badges.appendChild(badge);
+                  const level = titleCase(inferIntensity(activity));
+                  const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
+                  badge.className = "entry-badge " + className;
+                  badge.textContent = level.toLowerCase();
+                  badges.appendChild(badge);
                 entry.appendChild(badges);
               } else {
                 const meta = document.createElement("div");
@@ -1434,12 +1470,13 @@
           renderBriefItems(document.querySelector("#recap"), recap, "No recent recap was generated.", false);
           renderRecapDays(document.querySelector("#recapDays"), data.activity_calendar || []);
           updateRecapStats(data.activity_calendar || []);
-          renderCalendar(document.querySelector("#calendar"), data.activity_calendar || []);
+          renderCalendar(document.querySelector("#calendar"), data.activity_calendar || [], recommendation, data.today);
           text("#calendarTitle", new Date(data.today + "T12:00:00").toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
           document.querySelector("#loadingBanner")?.classList.add("hidden");
         } catch (error) {
           text("#coachSummary", "The dashboard could not load your training data. Refresh in a moment and try again.");
           renderBriefItems(document.querySelector("#warnings"), [String(error.message || error)], "Dashboard load failed.", true);
+          renderCalendar(document.querySelector("#calendar"), [], FALLBACK_RECOMMENDATION, "");
           document.querySelector("#loadingBanner")?.classList.add("hidden");
         }
       }
