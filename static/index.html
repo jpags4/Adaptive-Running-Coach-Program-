@@ -6,8 +6,8 @@
     <title>Adaptive Running Coach</title>
     <style>
       :root {
-        --panel: rgba(255, 252, 247, 0.96);
-        --panel-soft: rgba(248, 243, 236, 0.88);
+        --panel: rgba(255, 252, 247, 0.98);
+        --panel-soft: rgba(250, 247, 242, 0.92);
         --ink: #19211f;
         --muted: #68756f;
         --line: rgba(25, 33, 31, 0.1);
@@ -25,12 +25,10 @@
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: Georgia, "Times New Roman", serif;
+        font-family: "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(202, 91, 53, 0.15), transparent 25%),
-          radial-gradient(circle at top right, rgba(39, 95, 77, 0.12), transparent 22%),
-          linear-gradient(145deg, #f7f1e8, #e8eee8 60%, #e3ebe5);
+          linear-gradient(180deg, #fcfbf8, #f8f6f2 58%, #f5f3ee);
       }
 
       main {
@@ -42,14 +40,16 @@
       .topline {
         display: grid;
         grid-template-columns: 1fr auto;
-        gap: 16px;
+        gap: 24px;
         align-items: start;
         margin-bottom: 18px;
+        padding-bottom: 26px;
+        border-bottom: 1px solid var(--line);
       }
 
       .topline-main {
         display: grid;
-        gap: 8px;
+        gap: 10px;
       }
 
       .topline-side {
@@ -61,14 +61,20 @@
 
       .greeting {
         margin: 0;
-        font-size: clamp(1.35rem, 2.2vw, 1.9rem);
-        color: #984021;
+        font-size: clamp(2.4rem, 5vw, 4.2rem);
+        color: var(--ink);
+        font-weight: 600;
+        letter-spacing: -0.05em;
       }
 
       h1 {
         margin: 0;
-        font-size: clamp(2.35rem, 4.5vw, 4rem);
-        line-height: 0.96;
+        font-size: 0.92rem;
+        line-height: 1.1;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #9b9b9b;
+        font-weight: 600;
       }
 
       .goal-line {
@@ -76,6 +82,7 @@
         gap: 4px;
         color: var(--muted);
         font-size: 0.98rem;
+        justify-items: end;
       }
 
       .goal-label {
@@ -87,21 +94,26 @@
       }
 
       .goal-text {
-        font-size: 1rem;
+        font-size: 1.05rem;
         color: var(--ink);
       }
 
       .date-line {
         color: var(--muted);
-        font-size: 1rem;
+        font-size: 0.95rem;
+      }
+
+      .goal-subtext {
+        color: var(--muted);
+        font-size: 0.95rem;
       }
 
       .section {
         background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 28px;
-        box-shadow: var(--shadow);
-        padding: 24px;
+        border: 1px solid rgba(25, 33, 31, 0.08);
+        border-radius: 24px;
+        box-shadow: 0 14px 34px rgba(72, 58, 42, 0.06);
+        padding: 24px 26px;
       }
 
       .section + .section {
@@ -122,10 +134,18 @@
         line-height: 1.05;
       }
 
+      .metrics-shell {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 18px 0 24px;
+      }
+
       .metrics-row {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
+        gap: 18px;
       }
 
       .metric-actions {
@@ -133,16 +153,17 @@
       }
 
       .metric {
-        padding: 16px 18px;
-        border-radius: 20px;
-        background: var(--panel-soft);
-        border: 1px solid var(--line);
+        padding: 8px 0;
+        background: transparent;
+        border: 0;
       }
 
       .metric strong {
         display: block;
-        margin-top: 6px;
-        font-size: 1.55rem;
+        margin-top: 10px;
+        font-size: 1.9rem;
+        font-weight: 500;
+        letter-spacing: -0.04em;
       }
 
       .metric span {
@@ -154,25 +175,26 @@
       }
 
       .plan-card {
-        padding: 30px;
-        border-radius: 26px;
-        background:
-          radial-gradient(circle at top right, rgba(202, 91, 53, 0.15), transparent 30%),
-          linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(252, 246, 238, 0.98));
-        border: 1px solid rgba(202, 91, 53, 0.14);
+        padding: 34px 34px 28px;
+        border-radius: 22px;
+        background: #ffffff;
+        border: 1px solid rgba(25, 33, 31, 0.1);
       }
 
       .plan-card h2 {
-        margin: 8px 0 14px;
-        font-size: clamp(2.5rem, 4.8vw, 4.6rem);
-        line-height: 0.92;
+        margin: 8px 0 10px;
+        font-size: clamp(2.2rem, 5vw, 4rem);
+        line-height: 0.94;
+        max-width: 840px;
+        letter-spacing: -0.05em;
       }
 
       .summary-line {
         margin: 0;
-        color: var(--muted);
-        line-height: 1.65;
+        color: #4c504d;
+        line-height: 1.5;
         font-size: 1rem;
+        max-width: 900px;
       }
 
       .status-row {
@@ -194,8 +216,8 @@
       }
 
       .status-pill.accent {
-        background: var(--accent-soft);
-        color: #8a381d;
+        background: rgba(39, 95, 77, 0.12);
+        color: var(--forest);
       }
 
       .status-pill.forest {
@@ -205,32 +227,24 @@
 
       .primary-grid {
         display: grid;
-        grid-template-columns: 1.45fr 0.85fr;
-        gap: 14px;
-        margin-top: 22px;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 22px;
+        margin-top: 28px;
+        align-items: stretch;
       }
 
       .primary-card {
-        padding: 18px;
-        border-radius: 22px;
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px solid var(--line);
+        padding: 12px 4px;
+        border-radius: 0;
+        background: transparent;
+        border: 0;
         position: relative;
       }
 
-      .primary-card::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        border-radius: 22px 0 0 22px;
-        background: var(--accent);
+      .primary-card + .primary-card {
+        border-left: 1px solid rgba(25, 33, 31, 0.1);
+        padding-left: 28px;
       }
-
-      .primary-card.pace::before { background: var(--gold); }
-      .primary-card.lift::before { background: var(--forest); }
 
       .primary-head {
         display: flex;
@@ -242,13 +256,16 @@
         font-size: 0.82rem;
         color: var(--muted);
         font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
       }
 
       .primary-value {
         display: block;
-        font-size: 1.55rem;
-        font-weight: 700;
-        line-height: 1.1;
+        font-size: clamp(2.5rem, 6vw, 5rem);
+        font-weight: 500;
+        line-height: 0.98;
+        letter-spacing: -0.06em;
       }
 
       .primary-sub {
@@ -267,10 +284,11 @@
       }
 
       .quick-stat {
-        padding: 10px 12px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.72);
-        border: 1px solid var(--line);
+        padding: 0;
+        border-radius: 0;
+        background: transparent;
+        border: 0;
+        min-width: 0;
       }
 
       .quick-stat-label {
@@ -283,16 +301,17 @@
       .quick-stat-value {
         display: block;
         margin-top: 6px;
-        font-size: 1.1rem;
+        font-size: 1.35rem;
         font-weight: 700;
         line-height: 1.2;
+        letter-spacing: -0.03em;
       }
 
       details.plan-details {
-        margin-top: 18px;
+        margin-top: 24px;
         border: 1px solid var(--line);
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.74);
+        border-radius: 18px;
+        background: #fff;
         overflow: hidden;
       }
 
@@ -407,6 +426,7 @@
         color: var(--muted);
         line-height: 1.55;
         font-size: 0.95rem;
+        max-width: 760px;
       }
 
       .weekday-row {
@@ -426,19 +446,20 @@
       .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, minmax(0, 1fr));
-        gap: 10px;
+        gap: 12px;
       }
 
       .calendar-day {
-        min-height: 156px;
-        padding: 12px;
+        min-height: 188px;
+        padding: 14px 14px 12px;
         border-radius: 18px;
-        background: var(--panel-soft);
+        background: #fff;
         border: 1px solid var(--line);
         display: grid;
         align-content: start;
         gap: 8px;
         overflow: hidden;
+        position: relative;
       }
 
       .calendar-day.empty {
@@ -455,6 +476,48 @@
         border-color: rgba(39, 95, 77, 0.2);
       }
 
+      .calendar-day.projection::before,
+      .calendar-day.actual::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 30px;
+        bottom: 12px;
+        width: 4px;
+        border-radius: 999px;
+        background: #dcdcdc;
+      }
+
+      .calendar-day.today {
+        border: 3px solid #1f1f1f;
+      }
+
+      .calendar-day.today::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 32px;
+        background: #1f1f1f;
+      }
+
+      .calendar-day.today .calendar-number,
+      .calendar-day.today .calendar-tag {
+        color: #fff;
+        position: relative;
+        z-index: 1;
+      }
+
+      .calendar-day.today .calendar-tag {
+        background: transparent;
+        border-color: transparent;
+      }
+
+      .calendar-day.intensity-easy::before { background: #17c98b; }
+      .calendar-day.intensity-moderate::before { background: #ffba08; }
+      .calendar-day.intensity-hard::before { background: #ff5f7a; }
+
       .calendar-top {
         display: flex;
         justify-content: space-between;
@@ -463,45 +526,36 @@
       }
 
       .calendar-number {
-        font-size: 1rem;
+        font-size: 1.1rem;
         font-weight: 700;
       }
 
       .calendar-tag {
-        padding: 4px 8px;
-        border-radius: 999px;
-        font-size: 0.74rem;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.82);
-        color: var(--ink);
-      }
-
-      .calendar-tag.today {
-        background: var(--accent-soft);
-        color: #8a381d;
-      }
-
-      .calendar-tag.projected {
-        background: var(--forest-soft);
-        color: var(--forest);
+        padding: 0;
+        border-radius: 0;
+        font-size: 0.75rem;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
       }
 
       .calendar-entry {
-        padding: 9px 10px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.84);
-        border: 1px solid var(--line);
+        padding: 8px 0 0 0;
+        border-radius: 0;
+        background: transparent;
+        border: 0;
         display: grid;
         gap: 5px;
+        border-top: 1px solid rgba(25, 33, 31, 0.08);
       }
 
       .calendar-entry strong {
-        font-size: 0.88rem;
+        font-size: 0.92rem;
       }
 
       .calendar-entry span {
         color: var(--muted);
-        font-size: 0.78rem;
+        font-size: 0.82rem;
         line-height: 1.45;
       }
 
@@ -522,6 +576,27 @@
         color: var(--muted);
         font-size: 0.72rem;
         line-height: 1;
+      }
+
+      .calendar-runline {
+        display: grid;
+        gap: 5px;
+      }
+
+      .calendar-runline .mile {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .calendar-runline .sub {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .calendar-liftline {
+        color: var(--muted);
+        font-size: 0.82rem;
       }
 
       .entry-badge.easy {
@@ -663,6 +738,15 @@
         .calendar-grid {
           grid-template-columns: 1fr;
         }
+
+        .topline {
+          grid-template-columns: 1fr;
+        }
+
+        .topline-side {
+          justify-items: start;
+          text-align: left;
+        }
       }
     </style>
   </head>
@@ -671,18 +755,19 @@
       <section class="topline">
         <div class="topline-main">
           <p id="greeting" class="greeting">Good evening, John.</p>
+          <div id="todayChip" class="date-line">Sunday, March 15th</div>
           <h1>Adaptive Running Coach</h1>
         </div>
         <div class="topline-side">
-          <div id="todayChip" class="date-line">Sunday, March 15th</div>
           <div class="goal-line">
-            <span class="goal-label">Goal</span>
+            <span class="goal-label">Race Goal</span>
             <span id="goalLine" class="goal-text">Half Marathon on Sunday, May 17th, 2026</span>
+            <span id="goalSubtext" class="goal-subtext">6 weeks out</span>
           </div>
         </div>
       </section>
 
-      <section class="section">
+      <section class="section metrics-shell">
         <p class="section-title">Current Metrics</p>
         <div class="metrics-row">
           <div class="metric">
@@ -717,7 +802,7 @@
         <p id="coachSummary" class="summary-line">Building your run and lifting recommendation from training and recovery signals.</p>
         <div class="status-row">
           <span id="intensity" class="status-pill accent"></span>
-          <span id="duration" class="status-pill"></span>
+          <span id="duration" class="status-pill forest"></span>
         </div>
 
         <div class="primary-grid">
@@ -954,8 +1039,53 @@
         return text;
       }
 
+      function paceRangeOnly(value) {
+        const cleaned = cleanPaceText(value);
+        const match = cleaned.match(/\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\/mi/i);
+        if (match) return match[0];
+        const single = cleaned.match(/\d{1,2}:\d{2}\/mi/i);
+        if (single) return single[0];
+        return cleaned;
+      }
+
+      function weeksUntilGoal(value) {
+        if (!value) return "";
+        const now = new Date();
+        const goal = new Date(value + "T12:00:00");
+        const diff = goal - now;
+        const weeks = Math.max(0, Math.ceil(diff / (7 * 86400000)));
+        return weeks === 1 ? "1 week out" : weeks + " weeks out";
+      }
+
+      function shortWorkoutTitle(recommendation) {
+        const miles = numberValue(recommendation.run_distance_miles, 0);
+        const intensity = titleCase(stringValue(recommendation.intensity, ""));
+        if (miles > 0) {
+          return (intensity ? intensity + " " : "") + miles.toFixed(1) + "-Mile Run";
+        }
+        if (stringValue(recommendation.lift_focus, "")) {
+          return titleCase(recommendation.lift_focus) + " Lift";
+        }
+        return "Training Recommendation";
+      }
+
+      function compactSummary(recommendation) {
+        const runBits = [];
+        const miles = numberValue(recommendation.run_distance_miles, 0);
+        if (miles > 0) runBits.push(miles.toFixed(1) + " mi");
+        const pace = paceRangeOnly(recommendation.run_pace_guidance);
+        if (pace && !/unavailable/i.test(pace)) runBits.push(pace);
+        const intensity = titleCase(stringValue(recommendation.intensity, ""));
+        if (intensity) runBits.push(intensity);
+
+        const lift = titleCase(stringValue(recommendation.lift_focus, ""));
+        const liftText = lift && !/unavailable/i.test(lift) ? "Lift: " + lift : "Lift optional";
+
+        return (runBits.length ? "Run " + runBits.join(" • ") + ". " : "") + liftText + ".";
+      }
+
       function shortPaceText(value) {
-        return cleanPaceText(value);
+        return paceRangeOnly(value);
       }
 
       function shortLiftText(value) {
@@ -1021,25 +1151,40 @@
               entry.appendChild(name);
 
               if (activity.projected) {
+                if (/run/i.test(activity.name || "")) {
+                  const runline = document.createElement("div");
+                  runline.className = "calendar-runline";
+
+                  const mile = document.createElement("span");
+                  mile.className = "mile";
+                  mile.textContent = activity.distance_miles ? activity.distance_miles + " mi" : "Run";
+                  runline.appendChild(mile);
+
+                  const pace = document.createElement("span");
+                  pace.className = "sub";
+                  pace.textContent = paceRangeOnly(activity.pace_text || "Pace unavailable");
+                  runline.appendChild(pace);
+                  entry.appendChild(runline);
+                }
+
+                if (/lift/i.test(activity.name || "") && activity.lift_focus) {
+                  const liftline = document.createElement("div");
+                  liftline.className = "calendar-liftline";
+                  liftline.textContent = titleCase(activity.lift_focus);
+                  entry.appendChild(liftline);
+                }
+
                 const badges = document.createElement("div");
                 badges.className = "entry-badges";
-
-                const addBadge = (label, className) => {
-                  const badge = document.createElement("span");
-                  badge.className = "entry-badge" + (className ? " " + className : "");
-                  badge.textContent = label;
-                  badges.appendChild(badge);
-                };
-
-                if (activity.distance_miles) addBadge(activity.distance_miles + " mi");
-                if (activity.pace_text) addBadge(cleanPaceText(activity.pace_text));
-                if (activity.lift_focus) addBadge(titleCase(activity.lift_focus));
                 if (activity.intensity) {
+                  const badge = document.createElement("span");
                   const level = titleCase(activity.intensity);
                   const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
-                  addBadge(level, className);
+                  badge.className = "entry-badge " + className;
+                  badge.textContent = level;
+                  badges.appendChild(badge);
                 }
-                entry.appendChild(badges);
+                if (badges.children.length) entry.appendChild(badges);
               } else {
                 const meta = document.createElement("span");
                 meta.textContent = calendarEntryMeta(activity);
@@ -1078,6 +1223,7 @@
           document.title = "Adaptive Running Coach";
           text("#greeting", "Good " + (new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening") + ", " + stringValue(profile.name, "John") + ".");
           text("#goalLine", "Half Marathon on " + formatDisplayDate(profile.goal_race_date, true));
+          text("#goalSubtext", weeksUntilGoal(profile.goal_race_date));
           text("#todayChip", todayText);
           text("#calendarTitle", calendarDate.toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
 
@@ -1097,8 +1243,8 @@
               : "No recent run found"
           );
 
-          text("#workout", titleCase(recommendation.workout || FALLBACK_RECOMMENDATION.workout));
-          text("#coachSummary", stringValue(sections.overall, FALLBACK_RECOMMENDATION.explanation_sections.overall));
+          text("#workout", shortWorkoutTitle(recommendation));
+          text("#coachSummary", compactSummary(recommendation));
           text("#intensity", "Intensity: " + titleCase(recommendation.intensity || "Steady"));
           text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? "Time: " + numberValue(recommendation.duration_minutes, 0) + " min" : "Time: unavailable");
 
