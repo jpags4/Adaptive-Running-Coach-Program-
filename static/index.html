@@ -1,1 +1,1341 @@
-app.py:122:    start_day = anchor - timedelta(days=anchor.weekday())
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adaptive Running Coach</title>
+    <style>
+      :root {
+        --bg: #fcfbf8;
+        --panel: rgba(255, 255, 255, 0.96);
+        --panel-soft: #f7f7f4;
+        --ink: #171b18;
+        --muted: #727874;
+        --line: rgba(23, 27, 24, 0.1);
+        --green: #0aa76f;
+        --green-soft: rgba(10, 167, 111, 0.12);
+        --gold: #ffba08;
+        --gold-soft: rgba(255, 186, 8, 0.18);
+        --red: #ff5f7a;
+        --red-soft: rgba(255, 95, 122, 0.15);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        color: var(--ink);
+        background: linear-gradient(180deg, #fcfbf8 0%, #f8f6f2 100%);
+      }
+
+      main {
+        width: min(1640px, calc(100% - 36px));
+        margin: 0 auto;
+        padding: 26px 0 54px;
+      }
+
+      .topline {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 26px;
+        align-items: start;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .topline-main,
+      .topline-side,
+      .goal-line {
+        display: grid;
+        gap: 8px;
+      }
+
+      .topline-side,
+      .goal-line {
+        justify-items: end;
+        text-align: right;
+      }
+
+      .greeting {
+        margin: 0;
+        font-size: clamp(2.8rem, 5vw, 4.1rem);
+        font-weight: 600;
+        line-height: 0.96;
+        letter-spacing: -0.06em;
+      }
+
+      .date-line,
+      .goal-subtext {
+        color: var(--muted);
+        font-size: 0.98rem;
+      }
+
+      h1 {
+        margin: 22px 0 0;
+        color: #9da19e;
+        font-size: 0.9rem;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .goal-label,
+      .section-title {
+        color: var(--muted);
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .goal-text {
+        font-size: 1.05rem;
+        font-weight: 500;
+      }
+
+      .section {
+        margin-top: 24px;
+      }
+
+      .metrics-row {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 34px;
+        padding: 18px 0 10px;
+      }
+
+      .metric {
+        display: grid;
+        gap: 8px;
+      }
+
+      .metric-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-weight: 700;
+      }
+
+      .metric-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        color: #8e9490;
+        font-size: 1rem;
+      }
+
+      .metric-value {
+        font-size: 2rem;
+        font-weight: 500;
+        line-height: 1;
+        letter-spacing: -0.05em;
+      }
+
+      .metric-value.green { color: var(--green); }
+      .metric-value.gold { color: #d97a06; }
+
+      .metric-copy {
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.4;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 28px 30px;
+      }
+
+      .training-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 22px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: var(--green-soft);
+        color: #008b63;
+        font-size: 0.98rem;
+        font-weight: 600;
+      }
+
+      .training-grid {
+        display: grid;
+        grid-template-columns: 1fr 0.9fr;
+        gap: 28px;
+      }
+
+      .training-column {
+        display: grid;
+        gap: 22px;
+      }
+
+      .training-column + .training-column {
+        padding-left: 28px;
+        border-left: 1px solid var(--line);
+      }
+
+      .metric-block {
+        display: grid;
+        gap: 10px;
+      }
+
+      .block-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 0.84rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .block-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        border: 2px solid rgba(23, 27, 24, 0.22);
+        color: rgba(23, 27, 24, 0.45);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+      }
+
+      .distance-value {
+        font-size: clamp(3.3rem, 6vw, 5rem);
+        line-height: 0.92;
+        letter-spacing: -0.07em;
+        font-weight: 500;
+      }
+
+      .sub-metric {
+        display: grid;
+        gap: 4px;
+      }
+
+      .sub-metric strong {
+        font-size: 2rem;
+        font-weight: 500;
+        letter-spacing: -0.05em;
+      }
+
+      .sub-metric span {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .intensity-strong {
+        color: var(--green);
+      }
+
+      .lift-title {
+        font-size: 2.2rem;
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        font-weight: 500;
+      }
+
+      .lift-list {
+        display: grid;
+        gap: 14px;
+        margin-top: 24px;
+      }
+
+      .lift-item {
+        display: grid;
+        grid-template-columns: 14px 1fr;
+        gap: 10px;
+        align-items: start;
+      }
+
+      .lift-dot {
+        width: 8px;
+        height: 8px;
+        margin-top: 10px;
+        border-radius: 999px;
+        background: rgba(23, 27, 24, 0.28);
+      }
+
+      .lift-item strong {
+        display: block;
+        font-size: 0.96rem;
+        font-weight: 500;
+      }
+
+      .lift-item span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin-top: 3px;
+      }
+
+      .summary-box {
+        margin-top: 24px;
+        background: var(--panel-soft);
+        border-radius: 18px;
+        padding: 18px 20px;
+        color: #434944;
+        line-height: 1.55;
+        font-size: 1rem;
+      }
+
+      details {
+        margin-top: 18px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+
+      summary {
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 18px 20px;
+      }
+
+      summary::-webkit-details-marker { display: none; }
+
+      .summary-arrow {
+        color: #9ca29d;
+        font-size: 1rem;
+        transition: transform 160ms ease;
+      }
+
+      details[open] .summary-arrow {
+        transform: rotate(180deg);
+      }
+
+      .details-body {
+        border-top: 1px solid var(--line);
+        padding: 24px 20px 22px;
+        display: grid;
+        gap: 24px;
+      }
+
+      .reason-groups {
+        display: grid;
+        gap: 24px;
+      }
+
+      .reason-group {
+        display: grid;
+        gap: 12px;
+      }
+
+      .reason-group-title {
+        color: var(--muted);
+        font-size: 0.84rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .reason-item {
+        display: grid;
+        grid-template-columns: 30px 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+
+      .reason-marker {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        border: 2px solid var(--green);
+        color: var(--green);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.92rem;
+        font-weight: 700;
+      }
+
+      .reason-item.warn .reason-marker {
+        border-color: var(--red);
+        color: var(--red);
+      }
+
+      .reason-copy {
+        margin: 0;
+        font-size: 0.98rem;
+        line-height: 1.62;
+        color: #444a47;
+      }
+
+      .reason-copy strong.ok { color: #008b63; }
+      .reason-copy strong.warn { color: #d53f61; }
+
+      .brief-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .brief-item {
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: var(--panel-soft);
+        line-height: 1.55;
+      }
+
+      .brief-item.warn {
+        background: rgba(255, 244, 238, 0.96);
+        color: #7e3822;
+      }
+
+      .recap-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 28px;
+      }
+
+      .recap-stat strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 2.2rem;
+        line-height: 1;
+        font-weight: 500;
+        letter-spacing: -0.05em;
+      }
+
+      .recap-stat span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+      }
+
+      .recap-days {
+        display: grid;
+        gap: 10px;
+      }
+
+      .recap-day {
+        display: grid;
+        grid-template-columns: 18px 180px 1fr;
+        gap: 14px;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: var(--panel-soft);
+      }
+
+      .recap-day.active {
+        background: rgba(10, 167, 111, 0.12);
+      }
+
+      .recap-dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        background: rgba(23, 27, 24, 0.28);
+      }
+
+      .recap-day.active .recap-dot {
+        background: var(--green);
+      }
+
+      .recap-day strong {
+        font-size: 0.96rem;
+      }
+
+      .recap-day span {
+        justify-self: end;
+        text-align: right;
+        color: #555d58;
+      }
+
+      .calendar-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .calendar-meta {
+        display: grid;
+        gap: 6px;
+      }
+
+      .calendar-heading {
+        margin: 0;
+        font-size: 1.9rem;
+        letter-spacing: -0.04em;
+      }
+
+      .calendar-note {
+        margin: 0;
+        color: var(--muted);
+        max-width: 700px;
+        line-height: 1.55;
+      }
+
+      .calendar-legend {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+      }
+
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: #4f5652;
+        font-size: 0.95rem;
+      }
+
+      .legend-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 999px;
+      }
+
+      .legend-dot.easy { background: #17c98b; }
+      .legend-dot.moderate { background: var(--gold); }
+      .legend-dot.hard { background: var(--red); }
+
+      .weekday-row,
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .weekday-row {
+        margin: 18px 0 12px;
+      }
+
+      .weekday {
+        color: var(--muted);
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 700;
+      }
+
+      .calendar-day {
+        min-height: 190px;
+        padding: 14px 16px 14px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        display: grid;
+        align-content: start;
+        gap: 10px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .calendar-day::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 36px;
+        bottom: 14px;
+        width: 5px;
+        border-radius: 999px;
+        background: #d8d8d8;
+      }
+
+      .calendar-day.intensity-easy::before { background: #17c98b; }
+      .calendar-day.intensity-moderate::before { background: var(--gold); }
+      .calendar-day.intensity-hard::before { background: var(--red); }
+
+      .calendar-day.today {
+        border: 3px solid #1d1d1d;
+      }
+
+      .calendar-day.today::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: #1d1d1d;
+      }
+
+      .calendar-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 10px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .calendar-number {
+        font-size: 1.02rem;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .calendar-day.today .calendar-number,
+      .calendar-day.today .calendar-tag {
+        color: white;
+      }
+
+      .calendar-tag {
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .calendar-entry {
+        display: grid;
+        gap: 8px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(23, 27, 24, 0.08);
+      }
+
+      .calendar-entry strong {
+        font-size: 0.94rem;
+      }
+
+      .calendar-runline,
+      .calendar-liftline {
+        display: grid;
+        gap: 6px;
+      }
+
+      .calendar-runline .mile {
+        font-size: 0.98rem;
+        font-weight: 700;
+      }
+
+      .calendar-runline .sub,
+      .calendar-liftline {
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
+      .entry-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .entry-badge {
+        padding: 5px 9px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        line-height: 1;
+      }
+
+      .entry-badge.easy {
+        background: rgba(23, 201, 139, 0.14);
+        color: #0a8f66;
+      }
+
+      .entry-badge.moderate {
+        background: rgba(255, 186, 8, 0.2);
+        color: #bd7a00;
+      }
+
+      .entry-badge.hard {
+        background: rgba(255, 95, 122, 0.16);
+        color: #df4668;
+      }
+
+      .calendar-empty {
+        color: var(--muted);
+        font-style: italic;
+        margin-top: 20px;
+      }
+
+      .connection-footer {
+        display: grid;
+        gap: 14px;
+      }
+
+      .connection-lights,
+      .bottom-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+
+      .light-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+      }
+
+      .light-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #c6503f;
+        box-shadow: 0 0 0 5px rgba(198, 80, 63, 0.14);
+      }
+
+      .light-dot.live {
+        background: #25945e;
+        box-shadow: 0 0 0 5px rgba(37, 148, 94, 0.14);
+      }
+
+      .status-copy {
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .status-copy strong {
+        display: block;
+        color: var(--ink);
+        margin-bottom: 4px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--ink);
+        text-decoration: none;
+        font-size: 0.93rem;
+      }
+
+      .button.primary {
+        background: #ca5b35;
+        border-color: transparent;
+        color: white;
+      }
+
+      .button.secondary {
+        background: #fff4eb;
+        color: #8f391d;
+      }
+
+      @media (max-width: 1200px) {
+        .metrics-row,
+        .training-grid,
+        .recap-grid,
+        .weekday-row,
+        .calendar-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .training-column + .training-column {
+          border-left: 0;
+          padding-left: 0;
+          border-top: 1px solid var(--line);
+          padding-top: 22px;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .topline,
+        .calendar-head {
+          grid-template-columns: 1fr;
+          display: grid;
+        }
+
+        .topline-side,
+        .goal-line {
+          justify-items: start;
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="topline">
+        <div class="topline-main">
+          <p id="greeting" class="greeting">Good morning, John</p>
+          <div id="todayChip" class="date-line">Sunday, March 15th</div>
+          <h1>Adaptive Running Coach</h1>
+        </div>
+        <div class="topline-side">
+          <div class="goal-line">
+            <span class="goal-label">Race Goal</span>
+            <span id="goalLine" class="goal-text">Half Marathon · May 17, 2026</span>
+            <span id="goalSubtext" class="goal-subtext">6 weeks out</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="metrics-row">
+          <div class="metric">
+            <div class="metric-label"><span class="metric-icon">◔</span>Sleep</div>
+            <div id="sleep" class="metric-value">-</div>
+            <div class="metric-copy">Latest WHOOP sleep duration</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label"><span class="metric-icon">∿</span>Recovery</div>
+            <div id="recovery" class="metric-value green">-</div>
+            <div class="metric-copy">Latest WHOOP recovery score</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label"><span class="metric-icon">⌁</span>Yesterday's Strain</div>
+            <div id="strain" class="metric-value gold">-</div>
+            <div class="metric-copy">WHOOP strain from yesterday</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label"><span class="metric-icon">◉</span>Yesterday's Miles</div>
+            <div id="yesterdayMiles" class="metric-value">-</div>
+            <div id="yesterdayRunText" class="metric-copy">Most recent run</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label"><span class="metric-icon">↗</span>7-Day Load</div>
+            <div id="mileage" class="metric-value green">-</div>
+            <div id="loadStatus" class="metric-copy">Running load this week</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section card">
+        <div class="training-head">
+          <div class="section-title">Today's Training</div>
+          <span id="workoutBadge" class="pill">Recovery Run</span>
+        </div>
+
+        <div class="training-grid">
+          <div class="training-column">
+            <div class="metric-block">
+              <div class="block-label"><span class="block-icon">○</span>Distance</div>
+              <div id="runDistance" class="distance-value">-</div>
+            </div>
+
+            <div class="metric-block">
+              <div class="block-label"><span class="block-icon">◔</span>Pace</div>
+              <div class="sub-metric">
+                <strong id="runPrescription">-</strong>
+                <span id="runDetail">Distance target for today</span>
+              </div>
+            </div>
+
+            <div class="metric-block">
+              <div class="block-label"><span class="block-icon">◌</span>Intensity</div>
+              <div class="sub-metric">
+                <strong id="paceDetail" class="intensity-strong">-</strong>
+                <span id="duration">Time: unavailable</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="training-column">
+            <div class="metric-block">
+              <div class="block-label"><span class="block-icon">+</span>Strength</div>
+              <div class="lift-title" id="liftFocus">-</div>
+              <div id="liftGuidance" class="metric-copy">Focus for today's lift</div>
+            </div>
+
+            <div id="liftList" class="lift-list"></div>
+          </div>
+        </div>
+
+        <div id="coachSummary" class="summary-box">Building your run and lifting recommendation from training and recovery signals.</div>
+
+        <details class="plan-details" open>
+          <summary>
+            <strong>Detailed Reasoning</strong>
+            <span class="summary-arrow">&#9662;</span>
+          </summary>
+          <div class="details-body">
+            <div class="reason-groups">
+              <div class="reason-group">
+                <div class="reason-group-title">Recovery Analysis</div>
+                <div class="reason-item">
+                  <span class="reason-marker">&#10003;</span>
+                  <p id="reasonRecoveryPrimary" class="reason-copy"><strong class="ok">Signal:</strong> Loading.</p>
+                </div>
+                <div class="reason-item warn">
+                  <span class="reason-marker">!</span>
+                  <p id="reasonRecoverySecondary" class="reason-copy"><strong class="warn">Watch:</strong> Loading.</p>
+                </div>
+              </div>
+              <div class="reason-group">
+                <div class="reason-group-title">Training Load Context</div>
+                <div class="reason-item">
+                  <span class="reason-marker">&#10003;</span>
+                  <p id="reasonLoadPrimary" class="reason-copy"><strong class="ok">Signal:</strong> Loading.</p>
+                </div>
+                <div class="reason-item">
+                  <span class="reason-marker">&#10003;</span>
+                  <p id="reasonLoadSecondary" class="reason-copy"><strong class="ok">Signal:</strong> Loading.</p>
+                </div>
+              </div>
+              <div class="reason-group">
+                <div class="reason-group-title">Strength Rationale</div>
+                <div class="reason-item warn">
+                  <span class="reason-marker">!</span>
+                  <p id="reasonLiftPrimary" class="reason-copy"><strong class="warn">Watch:</strong> Loading.</p>
+                </div>
+                <div class="reason-item">
+                  <span class="reason-marker">&#10003;</span>
+                  <p id="reasonLiftSecondary" class="reason-copy"><strong class="ok">Signal:</strong> Loading.</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="section-title">Things To Watch</div>
+              <div id="warnings" class="brief-list"></div>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="section card">
+        <details class="recap-details">
+          <summary>
+            <strong>Weekly Recap</strong>
+            <span class="summary-arrow">&#9662;</span>
+          </summary>
+          <div class="details-body">
+            <div class="recap-grid">
+              <div class="recap-stat">
+                <div class="section-title">Total Mileage</div>
+                <strong id="recapMileage">-</strong>
+                <span id="recapMileageSub">-</span>
+              </div>
+              <div class="recap-stat">
+                <div class="section-title">Quality Sessions</div>
+                <strong id="recapQuality">-</strong>
+                <span id="recapQualitySub">-</span>
+              </div>
+              <div class="recap-stat">
+                <div class="section-title">Strength Work</div>
+                <strong id="recapStrength">-</strong>
+                <span id="recapStrengthSub">-</span>
+              </div>
+            </div>
+            <div id="recapDays" class="recap-days"></div>
+            <div id="recap" class="brief-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <section class="section">
+        <div class="calendar-head">
+          <div class="calendar-meta">
+            <div class="section-title">Training Calendar</div>
+            <h3 id="calendarTitle" class="calendar-heading">March Training Calendar</h3>
+            <p class="calendar-note">Past days show what you actually did. Future days are projections based on your current progress and will update as new data comes in.</p>
+          </div>
+          <div class="calendar-legend">
+            <span class="legend-item"><span class="legend-dot easy"></span>Easy</span>
+            <span class="legend-item"><span class="legend-dot moderate"></span>Moderate</span>
+            <span class="legend-item"><span class="legend-dot hard"></span>Hard</span>
+          </div>
+        </div>
+
+        <div class="weekday-row">
+          <div class="weekday">Monday</div>
+          <div class="weekday">Tuesday</div>
+          <div class="weekday">Wednesday</div>
+          <div class="weekday">Thursday</div>
+          <div class="weekday">Friday</div>
+          <div class="weekday">Saturday</div>
+          <div class="weekday">Sunday</div>
+        </div>
+        <div id="calendar" class="calendar-grid"></div>
+      </section>
+
+      <section class="section card">
+        <div class="section-title">Account Tools</div>
+        <div class="connection-footer">
+          <div class="connection-lights">
+            <span class="light-item"><span id="stravaLight" class="light-dot"></span><span id="stravaStatus">Strava not connected</span></span>
+            <span class="light-item"><span id="whoopLight" class="light-dot"></span><span id="whoopStatus">WHOOP not connected</span></span>
+          </div>
+          <div class="status-copy">
+            <strong id="connectionHeadline">Checking your connected services.</strong>
+            <span id="connectionDetail">Loading your latest Strava and WHOOP connection status.</span>
+          </div>
+          <div class="bottom-tools">
+            <a class="button primary" href="/setup">Open Setup</a>
+            <a class="button secondary" href="/connect/strava">Connect Strava</a>
+            <a class="button secondary" href="/connect/whoop">Connect WHOOP</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const FALLBACK_RECOMMENDATION = {
+        intensity: "Steady",
+        duration_minutes: 45,
+        run_distance_miles: 4,
+        run_pace_guidance: "Easy conversational pace",
+        lift_focus: "Optional",
+        lift_guidance: "Keep lifting light until the recommendation reloads.",
+        explanation_sections: {
+          overall: "The app could not fully build today's recommendation.",
+          run: "Run details did not load completely.",
+          pace: "Pace guidance did not load completely.",
+          lift: "Lifting guidance did not load completely.",
+          recovery: "Recovery reasoning did not load completely."
+        },
+        recap: ["Recent training details did not fully load."],
+        warnings: ["Refresh the page after a moment if this persists."]
+      };
+
+      function text(id, value) {
+        const node = document.querySelector(id);
+        if (node) node.textContent = value;
+      }
+
+      function stringValue(value, fallback) {
+        if (typeof value === "string" && value.trim()) return value.trim();
+        if (typeof value === "number" && Number.isFinite(value)) return String(value);
+        return fallback;
+      }
+
+      function numberValue(value, fallback) {
+        return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+      }
+
+      function titleCase(value) {
+        return stringValue(value, "")
+          .replace(/_/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .split(" ")
+          .filter(Boolean)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(" ");
+      }
+
+      function ordinal(value) {
+        const mod10 = value % 10;
+        const mod100 = value % 100;
+        if (mod10 === 1 && mod100 !== 11) return value + "st";
+        if (mod10 === 2 && mod100 !== 12) return value + "nd";
+        if (mod10 === 3 && mod100 !== 13) return value + "rd";
+        return value + "th";
+      }
+
+      function formatDisplayDate(dateString, includeYearWhenOld) {
+        if (!dateString) return "";
+        const date = new Date(dateString + "T12:00:00");
+        const now = new Date();
+        const diffDays = Math.abs((date - now) / 86400000);
+        const includeYear = includeYearWhenOld && diffDays > 7;
+        const weekday = date.toLocaleDateString(undefined, { weekday: "long" });
+        const month = date.toLocaleDateString(undefined, { month: "long" });
+        const day = ordinal(date.getDate());
+        return includeYear ? weekday + ", " + month + " " + day + ", " + date.getFullYear() : weekday + ", " + month + " " + day;
+      }
+
+      function formatPace(value) {
+        if (!value || value <= 0) return "n/a";
+        const whole = Math.floor(value);
+        const seconds = Math.round((value - whole) * 60).toString().padStart(2, "0");
+        return whole + ":" + seconds + "/mi";
+      }
+
+      function formatRecapDateText(textValue) {
+        return stringValue(textValue, "").replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, function(match) {
+          return formatDisplayDate(match, true);
+        });
+      }
+
+      function cleanPaceText(value) {
+        const text = stringValue(value, "Unavailable");
+        const rangeMatch = text.match(/\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\s*(?:min\/mi|\/mi)?/i);
+        if (rangeMatch) return rangeMatch[0].replace(/\s*min\/mi/i, "/mi").replace(/\s+/g, " ").trim();
+        const singleMatch = text.match(/\d{1,2}:\d{2}\s*(?:min\/mi|\/mi)/i);
+        if (singleMatch) return singleMatch[0].replace(/\s*min\/mi/i, "/mi").trim();
+        return text;
+      }
+
+      function paceRangeOnly(value) {
+        const cleaned = cleanPaceText(value);
+        const match = cleaned.match(/\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\/mi/i);
+        if (match) return match[0];
+        const single = cleaned.match(/\d{1,2}:\d{2}\/mi/i);
+        if (single) return single[0];
+        return cleaned;
+      }
+
+      function weeksUntilGoal(value) {
+        if (!value) return "";
+        const now = new Date();
+        const goal = new Date(value + "T12:00:00");
+        const diff = goal - now;
+        const weeks = Math.max(0, Math.ceil(diff / (7 * 86400000)));
+        return weeks === 1 ? "1 week out" : weeks + " weeks out";
+      }
+
+      function compactSummary(recommendation) {
+        const overall = stringValue((recommendation.explanation_sections || {}).overall, "");
+        if (overall) return overall;
+        const pace = paceRangeOnly(recommendation.run_pace_guidance);
+        return "Run " + numberValue(recommendation.run_distance_miles, 0).toFixed(1) + " miles at " + pace + ".";
+      }
+
+      function workoutBadgeText(recommendation) {
+        const workout = stringValue(recommendation.workout, "");
+        const words = workout.replace(/\([^)]*\)/g, "").split(/[\s+]+/).filter(Boolean);
+        const clean = words.slice(0, 3).join(" ");
+        return titleCase(clean || recommendation.intensity || "Training");
+      }
+
+      function renderBriefItems(container, items, emptyText, warn) {
+        if (!container) return;
+        container.innerHTML = "";
+        const values = Array.isArray(items) && items.length ? items : [emptyText];
+        values.forEach((item) => {
+          const node = document.createElement("div");
+          node.className = warn ? "brief-item warn" : "brief-item";
+          node.textContent = formatRecapDateText(item);
+          container.appendChild(node);
+        });
+      }
+
+      function setReasonLine(id, prefixClass, message) {
+        const node = document.querySelector(id);
+        if (!node) return;
+        node.innerHTML = "<strong class=\"" + prefixClass + "\">" + (prefixClass === "warn" ? "Watch: " : "Signal: ") + "</strong>" + message;
+      }
+
+      function qualityLabel(activity) {
+        const text = stringValue(activity.name, "") + " " + stringValue(activity.sport, "");
+        return /tempo|interval|threshold|workout|hill|long/i.test(text);
+      }
+
+      function renderLiftList(container, recommendation) {
+        if (!container) return;
+        container.innerHTML = "";
+        const focus = titleCase(stringValue(recommendation.lift_focus, ""));
+        const items = [];
+        if (focus && !/unavailable/i.test(focus)) {
+          items.push({ title: focus, detail: "15-20 minutes" });
+          items.push({ title: "Mobility", detail: "10 minutes" });
+        } else {
+          items.push({ title: "Optional", detail: "Keep it light and skip if your legs feel flat." });
+        }
+        items.slice(0, 2).forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "lift-item";
+          row.innerHTML = "<span class=\"lift-dot\"></span><div><strong>" + item.title + "</strong><span>" + item.detail + "</span></div>";
+          container.appendChild(row);
+        });
+      }
+
+      function renderRecapDays(container, days) {
+        if (!container) return;
+        container.innerHTML = "";
+        days.forEach((day) => {
+          if (!day.activities || !day.activities.length || day.is_projection) return;
+          const row = document.createElement("div");
+          row.className = "recap-day" + (day.is_today ? " active" : "");
+          const summary = day.activities.map((activity) => {
+            if (/run/i.test(activity.sport || activity.name || "")) {
+              return (activity.distance_miles ? activity.distance_miles + " mi " : "") + titleCase(activity.name || "Run");
+            }
+            if (activity.lift_focus) return titleCase(activity.lift_focus);
+            return titleCase(activity.name || activity.sport || "Activity");
+          }).join(" + ");
+          row.innerHTML = "<span class=\"recap-dot\"></span><strong>" +
+            new Date(day.day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long" }) +
+            "</strong><span>" + summary + "</span>";
+          container.appendChild(row);
+        });
+      }
+
+      function updateRecapStats(days) {
+        const actual = days.filter((day) => day.activities && day.activities.length && !day.is_projection);
+        let totalMileage = 0;
+        let runDays = 0;
+        let qualitySessions = 0;
+        let strengthSessions = 0;
+
+        actual.forEach((day) => {
+          day.activities.forEach((activity) => {
+            if (/run/i.test(activity.sport || activity.name || "")) {
+              if (activity.distance_miles) totalMileage += Number(activity.distance_miles) || 0;
+              runDays += 1;
+              if (qualityLabel(activity)) qualitySessions += 1;
+            }
+            if (/strength|lift/i.test(activity.sport || activity.name || "") || activity.lift_focus) {
+              strengthSessions += 1;
+            }
+          });
+        });
+
+        text("#recapMileage", totalMileage.toFixed(1) + " mi");
+        text("#recapMileageSub", runDays + " days of running");
+        text("#recapQuality", String(qualitySessions));
+        text("#recapQualitySub", qualitySessions ? "Harder sessions completed" : "No quality sessions logged");
+        text("#recapStrength", String(strengthSessions));
+        text("#recapStrengthSub", strengthSessions ? "Sessions completed" : "No strength sessions logged");
+      }
+
+      function renderCalendar(container, days) {
+        if (!container) return;
+        container.innerHTML = "";
+        const values = Array.isArray(days) ? days : [];
+
+        values.forEach((day) => {
+          const card = document.createElement("div");
+          card.className = "calendar-day";
+          if (day.is_today) card.classList.add("today");
+
+          const activities = Array.isArray(day.activities) ? day.activities : [];
+          const dominant = activities.find((activity) => activity.intensity) || {};
+          const intensity = titleCase(stringValue(dominant.intensity, ""));
+          if (/easy/i.test(intensity)) card.classList.add("intensity-easy");
+          if (/moderate|steady/i.test(intensity)) card.classList.add("intensity-moderate");
+          if (/hard/i.test(intensity)) card.classList.add("intensity-hard");
+
+          const date = new Date(day.day + "T12:00:00");
+          const top = document.createElement("div");
+          top.className = "calendar-top";
+          top.innerHTML = "<span class=\"calendar-number\">" +
+            date.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase() +
+            "<br>" + date.getDate() + "</span><span class=\"calendar-tag\">" + (day.is_today ? "" : "") + "</span>";
+          card.appendChild(top);
+
+          if (!activities.length) {
+            const empty = document.createElement("div");
+            empty.className = "calendar-empty";
+            empty.textContent = "Rest Day";
+            card.appendChild(empty);
+          } else {
+            activities.forEach((activity) => {
+              const entry = document.createElement("div");
+              entry.className = "calendar-entry";
+              const name = titleCase(activity.name || "Activity");
+              entry.innerHTML = "<strong>" + name + "</strong>";
+
+              if (activity.projected) {
+                if (/run/i.test(name)) {
+                  const run = document.createElement("div");
+                  run.className = "calendar-runline";
+                  run.innerHTML = "<span class=\"mile\">" + (activity.distance_miles ? activity.distance_miles + " mi" : "Run") + "</span><span class=\"sub\">" + paceRangeOnly(activity.pace_text || "") + "</span>";
+                  entry.appendChild(run);
+                }
+                if (/lift/i.test(name) && activity.lift_focus) {
+                  const lift = document.createElement("div");
+                  lift.className = "calendar-liftline";
+                  lift.textContent = "+ " + titleCase(activity.lift_focus);
+                  entry.appendChild(lift);
+                }
+                if (activity.intensity) {
+                  const badges = document.createElement("div");
+                  badges.className = "entry-badges";
+                  const badge = document.createElement("span");
+                  const level = titleCase(activity.intensity);
+                  const className = /easy/i.test(level) ? "easy" : /moderate|steady/i.test(level) ? "moderate" : "hard";
+                  badge.className = "entry-badge " + className;
+                  badge.textContent = level.toLowerCase();
+                  badges.appendChild(badge);
+                  entry.appendChild(badges);
+                }
+              } else {
+                const meta = document.createElement("div");
+                meta.className = "calendar-runline";
+                meta.innerHTML = "<span class=\"mile\">" + (activity.distance_miles ? activity.distance_miles + " mi" : name) + "</span><span class=\"sub\">" +
+                  (activity.average_pace_min_per_mile ? formatPace(activity.average_pace_min_per_mile) : (activity.duration_minutes ? activity.duration_minutes + " min" : "")) +
+                  "</span>";
+                entry.appendChild(meta);
+              }
+
+              card.appendChild(entry);
+            });
+          }
+          container.appendChild(card);
+        });
+      }
+
+      async function loadDashboard() {
+        try {
+          const response = await fetch("/api/dashboard");
+          if (!response.ok) throw new Error("Dashboard request failed with status " + response.status);
+          const data = await response.json();
+          const profile = data.profile || {};
+          const summary = data.summary || {};
+          const previousRun = summary.previous_run || {};
+          const recommendation = Object.assign({}, FALLBACK_RECOMMENDATION, data.recommendation || {});
+          recommendation.explanation_sections = Object.assign({}, FALLBACK_RECOMMENDATION.explanation_sections, recommendation.explanation_sections || {});
+          const recap = Array.isArray(recommendation.recap) ? recommendation.recap : FALLBACK_RECOMMENDATION.recap;
+          const warnings = Array.isArray(recommendation.warnings) ? recommendation.warnings : FALLBACK_RECOMMENDATION.warnings;
+          const sections = recommendation.explanation_sections || {};
+          const connections = (data.connections && data.connections.status) || {};
+          const stravaConnected = Boolean(connections.strava);
+          const whoopConnected = Boolean(connections.whoop);
+          const previousMiles = numberValue(previousRun.distance_miles, 0);
+          const loadMiles = numberValue(summary.recent_mileage, 0);
+
+          document.title = "Adaptive Running Coach";
+          text("#greeting", "Good " + (new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening") + ", " + stringValue(profile.name, "John"));
+          text("#todayChip", formatDisplayDate(data.today, false));
+          text("#goalLine", "Half Marathon · " + formatDisplayDate(profile.goal_race_date, true).replace(/^[A-Za-z]+,\s*/, ""));
+          text("#goalSubtext", weeksUntilGoal(profile.goal_race_date));
+          text("#sleep", numberValue(summary.latest_sleep_hours, 0).toFixed(1) + " hrs");
+          text("#recovery", numberValue(summary.latest_recovery, 0) + "%");
+          text("#strain", String(numberValue(summary.latest_strain, 0)));
+          text("#yesterdayMiles", previousRun.day ? previousMiles.toFixed(1) + " mi" : "No run");
+          text("#yesterdayRunText", previousRun.day ? formatDisplayDate(previousRun.day, true) + " · " + numberValue(previousRun.duration_minutes, 0) + " min" : "No recent run found");
+          text("#mileage", loadMiles >= 28 ? "High" : loadMiles >= 18 ? "Medium" : "Light");
+          text("#loadStatus", loadMiles.toFixed(1) + " miles in the last 7 days");
+          text("#workoutBadge", workoutBadgeText(recommendation));
+          text("#runDistance", numberValue(recommendation.run_distance_miles, 0).toFixed(1) + " mi");
+          text("#runPrescription", paceRangeOnly(recommendation.run_pace_guidance));
+          text("#runDetail", "Planned running volume for " + formatDisplayDate(data.today, false));
+          text("#paceDetail", titleCase(recommendation.intensity || "steady"));
+          text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
+          text("#liftFocus", titleCase(recommendation.lift_focus || "Optional"));
+          text("#liftGuidance", stringValue(recommendation.lift_guidance, "Keep the lift optional and light."));
+          text("#coachSummary", compactSummary(recommendation));
+          renderLiftList(document.querySelector("#liftList"), recommendation);
+
+          setReasonLine("#reasonRecoveryPrimary", "ok", stringValue(sections.recovery, FALLBACK_RECOMMENDATION.explanation_sections.recovery));
+          setReasonLine("#reasonRecoverySecondary", "warn", stringValue(warnings[0], "Recovery markers suggest keeping the day controlled."));
+          setReasonLine("#reasonLoadPrimary", "ok", stringValue(sections.overall, FALLBACK_RECOMMENDATION.explanation_sections.overall));
+          setReasonLine("#reasonLoadSecondary", "ok", stringValue(sections.run, FALLBACK_RECOMMENDATION.explanation_sections.run));
+          setReasonLine("#reasonLiftPrimary", "warn", stringValue(sections.lift, FALLBACK_RECOMMENDATION.explanation_sections.lift));
+          setReasonLine("#reasonLiftSecondary", "ok", stringValue(sections.pace, FALLBACK_RECOMMENDATION.explanation_sections.pace));
+
+          if (stravaConnected) document.querySelector("#stravaLight").classList.add("live");
+          if (whoopConnected) document.querySelector("#whoopLight").classList.add("live");
+          text("#stravaStatus", stravaConnected ? "Strava connected" : "Strava not connected");
+          text("#whoopStatus", whoopConnected ? "WHOOP connected" : "WHOOP not connected");
+          text("#connectionHeadline", stravaConnected && whoopConnected ? "Both fitness platforms are hooked up." : "One or more fitness platforms need attention.");
+          text("#connectionDetail", "Live data is loading from your connected services.");
+
+          renderBriefItems(document.querySelector("#warnings"), warnings, "No immediate caution flags appeared in the current data.", true);
+          renderBriefItems(document.querySelector("#recap"), recap, "No recent recap was generated.", false);
+          renderRecapDays(document.querySelector("#recapDays"), data.activity_calendar || []);
+          updateRecapStats(data.activity_calendar || []);
+          renderCalendar(document.querySelector("#calendar"), data.activity_calendar || []);
+          text("#calendarTitle", new Date(data.today + "T12:00:00").toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
+        } catch (error) {
+          text("#coachSummary", "The dashboard could not load your training data. Refresh in a moment and try again.");
+          renderBriefItems(document.querySelector("#warnings"), [String(error.message || error)], "Dashboard load failed.", true);
+        }
+      }
+
+      loadDashboard();
+    </script>
+  </body>
+</html>
