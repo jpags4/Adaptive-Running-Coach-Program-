@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
-from coach import coach_recommendation, recent_mileage
+from coach import recent_mileage
 from integrations import (
     OAuthError,
     build_strava_authorize_url,
@@ -29,6 +29,7 @@ from integrations import (
     whoop_redirect_uri,
 )
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
+from llm_coach import llm_recommendation
 from storage import init_storage, load_settings, load_states, load_tokens, save_settings, save_states, save_tokens, using_hosted_env
 
 
@@ -542,7 +543,7 @@ class CoachHandler(BaseHTTPRequestHandler):
             except Exception as exc:
                 live_preview = {"mode": "sample", "warning": str(exc)}
 
-            recommendation = coach_recommendation(profile, runs, metrics)
+            recommendation, recommendation_meta = llm_recommendation(profile, runs, metrics)
             payload = {
                 "profile": {
                     "name": profile.name,
@@ -560,6 +561,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                     "previous_run": previous_run_summary(runs),
                 },
                 "recommendation": recommendation.to_dict(),
+                "recommendation_meta": recommendation_meta,
                 "activity_feed": activity_feed,
                 "activity_calendar": calendar_days(activity_feed, metrics),
                 "connections": {

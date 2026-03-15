@@ -56,6 +56,7 @@ This project is now ready for that:
 - the app reads hosting secrets from environment variables
 - the app reads the public site URL from `APP_BASE_URL`
 - the app can persist tokens in a real database through `DATABASE_URL`
+- the app can use OpenAI reasoning for recommendations through `OPENAI_API_KEY`
 - the app listens on the hosting platform's port automatically
 - `render.yaml` is included for Render deployment
 - `runtime.txt` pins the Python version for hosting
@@ -67,6 +68,8 @@ The hosted app expects these values:
 
 - `APP_BASE_URL`
 - `DATABASE_URL`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
 - `STRAVA_CLIENT_ID`
 - `STRAVA_CLIENT_SECRET`
 - `WHOOP_CLIENT_ID`
@@ -92,7 +95,18 @@ You can see an example in `.env.example`.
 10. Update your Strava and WHOOP app dashboards to use:
    - `https://your-app.onrender.com/strava/callback`
    - `https://your-app.onrender.com/whoop/callback`
-11. Open the deployed app and click `Connect Strava` and `Connect WHOOP`.
+11. Add `OPENAI_API_KEY` if you want ChatGPT-powered recommendations.
+12. Optionally set `OPENAI_MODEL` to `gpt-5-mini` or another supported model.
+13. Open the deployed app and click `Connect Strava` and `Connect WHOOP`.
+
+## OpenAI-powered recommendations
+
+The app now supports two recommendation modes:
+
+- primary OpenAI reasoning from `llm_coach.py`
+- emergency deterministic fallback from `coach.py` only if the API key is missing or the OpenAI call fails
+
+If `OPENAI_API_KEY` is set, the app sends recent runs, recovery metrics, and training context directly to OpenAI and asks for a structured coaching recommendation. The older built-in logic is no longer used to shape the model's answer. It is only kept as a technical backup if the API key is missing or the OpenAI call fails.
 
 ### Important note about storage
 
