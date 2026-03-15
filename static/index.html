@@ -1127,8 +1127,7 @@
       function shortLiftFocus(value) {
         const text = titleCase(stringValue(value, "Optional"));
         const stripped = text.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
-        if (stripped.length <= 34) return stripped;
-        return stripped.slice(0, 31).trim() + "...";
+        return stripped;
       }
 
       function renderBriefItems(container, items, emptyText, warn) {
