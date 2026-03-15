@@ -302,6 +302,53 @@
         font-size: 0.84rem;
       }
 
+      .connection-footer {
+        display: grid;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .connection-lights {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+
+      .light-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .light-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #c6503f;
+        box-shadow: 0 0 0 5px rgba(198, 80, 63, 0.14);
+      }
+
+      .light-dot.live {
+        background: #25945e;
+        box-shadow: 0 0 0 5px rgba(37, 148, 94, 0.14);
+      }
+
+      .status-copy {
+        display: grid;
+        gap: 4px;
+      }
+
+      .status-copy strong {
+        font-size: 1rem;
+      }
+
+      .status-copy span {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
       @media (max-width: 1100px) {
         .metrics-grid,
         .recommendation-grid,
@@ -409,24 +456,58 @@
       </section>
 
       <section class="section">
-        <p class="section-title">Data Mode</p>
-        <div class="mini-card">
-          <strong id="dataMode">Checking current data source mode.</strong>
-          <span id="dataDetail">Loading connection detail.</span>
-        </div>
-      </section>
-
-      <section class="section">
         <p class="section-title">Account Tools</p>
-        <div class="bottom-tools" style="margin-top: 12px;">
-          <a class="button primary" href="/setup">Open setup</a>
-          <a class="button secondary" href="/connect/strava">Connect Strava</a>
-          <a class="button secondary" href="/connect/whoop">Connect WHOOP</a>
+        <div class="connection-footer" style="margin-top: 12px;">
+          <div class="connection-lights">
+            <span class="light-item"><span id="stravaLight" class="light-dot"></span><span id="stravaStatus">Strava not connected</span></span>
+            <span class="light-item"><span id="whoopLight" class="light-dot"></span><span id="whoopStatus">WHOOP not connected</span></span>
+          </div>
+          <div class="status-copy">
+            <strong id="connectionHeadline">Checking your connected services.</strong>
+            <span id="connectionDetail">Loading your latest Strava and WHOOP connection status.</span>
+          </div>
+          <div class="bottom-tools">
+            <a class="button primary" href="/setup">Open setup</a>
+            <a class="button secondary" href="/connect/strava">Connect Strava</a>
+            <a class="button secondary" href="/connect/whoop">Connect WHOOP</a>
+          </div>
         </div>
       </section>
     </main>
 
     <script>
+      const FALLBACK_RECOMMENDATION = {
+        workout: "Training recommendation unavailable",
+        intensity: "steady",
+        duration_minutes: 45,
+        run_distance_miles: 4,
+        run_pace_guidance: "easy conversational pace",
+        lift_focus: "Light mobility",
+        lift_guidance: "Keep lifting light until the recommendation reloads.",
+        explanation: ["The app could not fully build today's recommendation, so some fields are using safe fallback text."],
+        recap: ["Recent training details did not fully load."],
+        warnings: ["Refresh the page after a moment if this persists."]
+      };
+
+      function text(id, value) {
+        const node = document.querySelector(id);
+        if (node) node.textContent = value;
+      }
+
+      function stringValue(value, fallback) {
+        if (typeof value === "string" && value.trim()) return value.trim();
+        if (typeof value === "number" && Number.isFinite(value)) return String(value);
+        return fallback;
+      }
+
+      function numberValue(value, fallback) {
+        return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+      }
+
+      function listValue(value, fallback) {
+        return Array.isArray(value) ? value.filter(Boolean) : fallback;
+      }
+
       function greetingForNow(name) {
         const hour = new Date().getHours();
         const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
@@ -457,8 +538,9 @@
       }
 
       function addListItems(listEl, items, type, emptyText) {
+        if (!listEl) return;
         listEl.innerHTML = "";
-        const values = items.length ? items : [emptyText];
+        const values = Array.isArray(items) && items.length ? items : [emptyText];
         values.forEach((item) => {
           const li = document.createElement("li");
           li.className = "list-item " + type;
@@ -468,8 +550,9 @@
       }
 
       function renderActivities(container, activities) {
+        if (!container) return;
         container.innerHTML = "";
-        const values = activities.length ? activities : [{
+        const values = Array.isArray(activities) && activities.length ? activities : [{
           name: "No activity imported yet",
           day: "",
           sport: "Activity",
@@ -512,8 +595,10 @@
       }
 
       function renderCalendar(container, days) {
+        if (!container) return;
         container.innerHTML = "";
-        days.forEach((day) => {
+        const values = Array.isArray(days) && days.length ? days : [];
+        values.forEach((day) => {
           const card = document.createElement("div");
           card.className = "calendar-day";
 
@@ -557,55 +642,106 @@
 
           container.appendChild(card);
         });
+
+        if (!values.length) {
+          const card = document.createElement("div");
+          card.className = "calendar-day";
+          card.innerHTML = '<h3>Recent activity</h3><div class="calendar-date">No days loaded</div><div class="calendar-empty">Your recent activity calendar will appear here once the dashboard data finishes loading.</div>';
+          container.appendChild(card);
+        }
       }
 
       async function loadDashboard() {
-        const response = await fetch("/api/dashboard");
-        const data = await response.json();
-        const previousRun = data.summary.previous_run || {};
-        const isLive = data.data_mode.mode === "live";
+        try {
+          const response = await fetch("/api/dashboard");
+          if (!response.ok) {
+            throw new Error("Dashboard request failed with status " + response.status);
+          }
 
-        document.title = "Adaptive Running Coach";
-        document.querySelector("#todayChip").textContent = formatPrettyDate(data.today);
-        document.querySelector("#greeting").textContent = greetingForNow(data.profile.name || "John");
-        document.querySelector("#goalRace").textContent = formatRaceDate(data.profile.goal_race_date);
-        document.querySelector("#goalContext").textContent =
-          "Race date: " + formatRaceDate(data.profile.goal_race_date) + " | Long run: " + data.profile.preferred_long_run_day;
+          const data = await response.json();
+          const profile = data.profile || {};
+          const summary = data.summary || {};
+          const previousRun = summary.previous_run || {};
+          const recommendation = Object.assign({}, FALLBACK_RECOMMENDATION, data.recommendation || {});
+          const explanation = listValue(recommendation.explanation, FALLBACK_RECOMMENDATION.explanation);
+          const recap = listValue(recommendation.recap, FALLBACK_RECOMMENDATION.recap);
+          const warnings = listValue(recommendation.warnings, FALLBACK_RECOMMENDATION.warnings);
+          const dataMode = data.data_mode || {};
+          const isLive = dataMode.mode === "live";
+          const connections = (data.connections && data.connections.status) || {};
+          const stravaConnected = Boolean(connections.strava);
+          const whoopConnected = Boolean(connections.whoop);
 
-        document.querySelector("#workout").textContent = data.recommendation.workout;
-        document.querySelector("#coachSummary").textContent =
-          data.recommendation.explanation[0] || "This recommendation is based on the latest recovery and training signals.";
-        document.querySelector("#intensity").textContent = "Intensity: " + data.recommendation.intensity;
-        document.querySelector("#duration").textContent = "Duration: " + data.recommendation.duration_minutes + " min";
+          document.title = "Adaptive Running Coach";
+          text("#todayChip", formatPrettyDate(data.today));
+          text("#greeting", greetingForNow(stringValue(profile.name, "John")));
+          text("#goalRace", formatRaceDate(profile.goal_race_date));
+          text(
+            "#goalContext",
+            "Race date: " + formatRaceDate(profile.goal_race_date) + " | Long run: " + stringValue(profile.preferred_long_run_day, "Sunday")
+          );
 
-        document.querySelector("#sleep").textContent = data.summary.latest_sleep_hours + " hrs";
-        document.querySelector("#recovery").textContent = data.summary.latest_recovery + "%";
-        document.querySelector("#strain").textContent = data.summary.latest_strain;
-        document.querySelector("#mileage").textContent = data.summary.recent_mileage + " mi";
-        document.querySelector("#yesterdayMiles").textContent = (previousRun.distance_miles || 0) + " mi";
-        document.querySelector("#yesterdayRunText").textContent =
-          previousRun.day
-            ? "Most recent run on " + previousRun.day + " | " + (previousRun.duration_minutes || 0) + " min"
-            : "No recent run found";
+          text("#workout", stringValue(recommendation.workout, FALLBACK_RECOMMENDATION.workout));
+          text("#coachSummary", explanation[0] || "This recommendation is based on the latest recovery and training signals.");
+          text("#intensity", "Intensity: " + stringValue(recommendation.intensity, "steady"));
+          text("#duration", "Duration: " + numberValue(recommendation.duration_minutes, 45) + " min");
 
-        document.querySelector("#runDistance").textContent = data.recommendation.run_distance_miles + " miles";
-        document.querySelector("#runPrescription").textContent =
-          "Aim for roughly " + data.recommendation.run_pace_guidance + " with the effort feeling " + data.recommendation.intensity + ".";
-        document.querySelector("#liftFocus").textContent = data.recommendation.lift_focus;
-        document.querySelector("#liftGuidance").textContent = data.recommendation.lift_guidance;
+          text("#sleep", numberValue(summary.latest_sleep_hours, 0).toFixed(1) + " hrs");
+          text("#recovery", numberValue(summary.latest_recovery, 0) + "%");
+          text("#strain", String(numberValue(summary.latest_strain, 0)));
+          text("#mileage", numberValue(summary.recent_mileage, 0).toFixed(1) + " mi");
+          text(
+            "#yesterdayRunText",
+            previousRun.day
+              ? "Most recent run on " + previousRun.day + " | " + numberValue(previousRun.distance_miles, 0).toFixed(1) + " mi in " + numberValue(previousRun.duration_minutes, 0) + " min"
+              : "No recent run found"
+          );
 
-        document.querySelector("#dataMode").textContent = isLive
-          ? "Live Strava and WHOOP data are active."
-          : "Sample data is still active.";
-        document.querySelector("#dataDetail").textContent = isLive
-          ? "Loaded " + data.data_mode.strava_runs_found + " recent runs and " + data.data_mode.whoop_days_found + " WHOOP records."
-          : (data.data_mode.warning || "Connect both services to switch from sample signals to your real training feed.");
+          text("#runDistance", numberValue(recommendation.run_distance_miles, 4) + " miles");
+          text(
+            "#runPrescription",
+            "Aim for roughly " + stringValue(recommendation.run_pace_guidance, "easy conversational pace") + " with the effort feeling " + stringValue(recommendation.intensity, "steady") + "."
+          );
+          text("#liftFocus", stringValue(recommendation.lift_focus, "Light mobility"));
+          text("#liftGuidance", stringValue(recommendation.lift_guidance, "Keep lifting light today."));
 
-        addListItems(document.querySelector("#reasons"), data.recommendation.explanation, "good", "No explanation was generated for this recommendation.");
-        addListItems(document.querySelector("#recap"), data.recommendation.recap, "recap", "No recent recap was generated.");
-        addListItems(document.querySelector("#warnings"), data.recommendation.warnings, "warn", "No immediate caution flags appeared in the current data.");
-        renderActivities(document.querySelector("#activities"), data.activity_feed || []);
-        renderCalendar(document.querySelector("#calendar"), data.activity_calendar || []);
+          const stravaLight = document.querySelector("#stravaLight");
+          const whoopLight = document.querySelector("#whoopLight");
+          if (stravaLight) stravaLight.classList.toggle("live", stravaConnected);
+          if (whoopLight) whoopLight.classList.toggle("live", whoopConnected);
+          text("#stravaStatus", stravaConnected ? "Strava connected" : "Strava not connected");
+          text("#whoopStatus", whoopConnected ? "WHOOP connected" : "WHOOP not connected");
+          text(
+            "#connectionHeadline",
+            stravaConnected && whoopConnected
+              ? "Both fitness platforms are hooked up."
+              : "One or more fitness platforms need attention."
+          );
+          text(
+            "#connectionDetail",
+            isLive
+              ? "Live data is loading from your connected services."
+              : dataMode.mode === "mixed"
+                ? stringValue(dataMode.warning, "One connected service loaded successfully, but the other did not fully respond.")
+                : stringValue(dataMode.warning, "The app is using sample or fallback data right now.")
+          );
+
+          addListItems(document.querySelector("#reasons"), explanation, "good", "No explanation was generated for this recommendation.");
+          addListItems(document.querySelector("#recap"), recap, "recap", "No recent recap was generated.");
+          addListItems(document.querySelector("#warnings"), warnings, "warn", "No immediate caution flags appeared in the current data.");
+          renderActivities(document.querySelector("#activities"), data.activity_feed || []);
+          renderCalendar(document.querySelector("#calendar"), data.activity_calendar || []);
+        } catch (error) {
+          text("#workout", "Dashboard failed to load");
+          text("#coachSummary", "The page could not load your current recommendation. Refresh in a moment and try again.");
+          text("#connectionHeadline", "Connection status unavailable right now.");
+          text("#connectionDetail", error.message || "An unexpected dashboard error occurred.");
+          addListItems(document.querySelector("#reasons"), FALLBACK_RECOMMENDATION.explanation, "warn", "Dashboard loading failed.");
+          addListItems(document.querySelector("#recap"), FALLBACK_RECOMMENDATION.recap, "recap", "Dashboard loading failed.");
+          addListItems(document.querySelector("#warnings"), FALLBACK_RECOMMENDATION.warnings, "warn", "Dashboard loading failed.");
+          renderActivities(document.querySelector("#activities"), []);
+          renderCalendar(document.querySelector("#calendar"), []);
+        }
       }
 
       loadDashboard();

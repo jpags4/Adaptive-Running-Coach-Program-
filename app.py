@@ -23,8 +23,10 @@ from integrations import (
     profile_from_settings,
     safe_iso_today,
     snapshot_preview,
+    strava_runs_to_model,
     strava_redirect_uri,
     valid_access_token,
+    whoop_metrics_to_model,
     whoop_workout_preview,
     whoop_redirect_uri,
 )
@@ -495,7 +497,7 @@ class CoachHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/dashboard":
             connection_status = self._connected_status(settings, tokens)
-            profile = SAMPLE_PROFILE
+            profile = profile_from_settings(settings)
             runs = SAMPLE_RUNS
             metrics = SAMPLE_METRICS
             live_preview = {"mode": "sample"}
@@ -504,6 +506,7 @@ class CoachHandler(BaseHTTPRequestHandler):
             try:
                 live_strava = None
                 live_whoop = None
+                warnings: list[str] = []
 
                 if tokens.get("strava"):
                     refreshed = valid_access_token("strava", settings, tokens)
@@ -515,6 +518,8 @@ class CoachHandler(BaseHTTPRequestHandler):
                             allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")),
                             user_agent=settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
                         )
+                    else:
+                        warnings.append("Strava token could not be refreshed.")
 
                 if tokens.get("whoop"):
                     refreshed = valid_access_token("whoop", settings, tokens)
@@ -526,6 +531,8 @@ class CoachHandler(BaseHTTPRequestHandler):
                             allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")),
                             user_agent=settings.get("app_user_agent", "AdaptiveRunningCoach/0.1"),
                         )
+                    else:
+                        warnings.append("WHOOP token could not be refreshed.")
 
                 if live_strava and live_whoop:
                     merged = merge_live_data(live_strava, live_whoop, settings)
@@ -539,6 +546,26 @@ class CoachHandler(BaseHTTPRequestHandler):
                             "mode": "live",
                             "strava_runs_found": len(runs),
                             "whoop_days_found": len(metrics),
+                        }
+                else:
+                    if live_strava:
+                        runs = strava_runs_to_model(live_strava.get("activities", [])) or runs
+                        activity_feed = strava_activity_preview(live_strava.get("activities", []))
+                    if live_whoop:
+                        metrics = whoop_metrics_to_model(live_whoop) or metrics
+                        whoop_activities = whoop_workout_preview(live_whoop)
+                        if live_strava:
+                            activity_feed = activity_feed + whoop_activities
+                        elif whoop_activities:
+                            activity_feed = whoop_activities
+
+                    if live_strava or live_whoop:
+                        activity_feed = sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True)[:10]
+                        live_preview = {
+                            "mode": "mixed",
+                            "strava_runs_found": len(runs) if live_strava else 0,
+                            "whoop_days_found": len(metrics) if live_whoop else 0,
+                            "warning": " ".join(warnings) if warnings else "One provider loaded live data while the other fell back.",
                         }
             except Exception as exc:
                 live_preview = {"mode": "sample", "warning": str(exc)}
