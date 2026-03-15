@@ -87,6 +87,7 @@ def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, lis
                     "duration_minutes": max(20, recommendation.duration_minutes),
                     "average_pace_min_per_mile": 0,
                     "pace_text": recommendation.run_pace_guidance,
+                    "intensity": recommendation.intensity,
                     "projected": True,
                 }
             ]
@@ -101,6 +102,7 @@ def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, lis
                     "duration_minutes": 35,
                     "average_pace_min_per_mile": 0,
                     "lift_focus": recommendation.lift_focus,
+                    "intensity": recommendation.intensity,
                     "projected": True,
                 }
             ]

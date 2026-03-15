@@ -115,6 +115,10 @@
         gap: 12px;
       }
 
+      .metric-actions {
+        margin-top: 12px;
+      }
+
       .metric {
         padding: 16px 18px;
         border-radius: 20px;
@@ -188,7 +192,7 @@
 
       .primary-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: 1.45fr 0.85fr;
         gap: 14px;
         margin-top: 22px;
       }
@@ -229,8 +233,7 @@
         align-items: center;
         justify-content: center;
         border-radius: 999px;
-        font-size: 0.72rem;
-        font-weight: 700;
+        font-size: 1rem;
         background: var(--accent-soft);
         color: #8a381d;
       }
@@ -264,6 +267,35 @@
         color: var(--muted);
         line-height: 1.45;
         font-size: 0.9rem;
+      }
+
+      .run-quick-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .quick-stat {
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid var(--line);
+      }
+
+      .quick-stat-label {
+        display: block;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+
+      .quick-stat-value {
+        display: block;
+        margin-top: 6px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        line-height: 1.2;
       }
 
       details.plan-details {
@@ -533,6 +565,48 @@
         margin-bottom: 4px;
       }
 
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(25, 33, 31, 0.48);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 50;
+      }
+
+      .modal-overlay.open {
+        display: flex;
+      }
+
+      .modal-card {
+        width: min(720px, 100%);
+        max-height: 80vh;
+        overflow: auto;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        padding: 22px;
+      }
+
+      .modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .modal-close {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.82);
+        border-radius: 999px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
       .button {
         display: inline-flex;
         align-items: center;
@@ -603,6 +677,9 @@
             <span id="yesterdayRunText">Most recent run and seven-day mileage</span>
           </div>
         </div>
+        <div class="metric-actions">
+          <button id="openRecap" class="button secondary" type="button">📈 Weekly Recap</button>
+        </div>
       </section>
 
       <section class="section plan-card">
@@ -617,26 +694,27 @@
         <div class="primary-grid">
           <div class="primary-card">
             <div class="primary-head">
-              <span class="primary-icon">RUN</span>
-              <span class="primary-label">How Much You Run Today</span>
+              <span class="primary-icon">🏃</span>
+              <span class="primary-label">Run</span>
             </div>
             <strong id="runDistance" class="primary-value">-</strong>
-            <span id="runDetail" class="primary-sub">Today's distance target</span>
-          </div>
-
-          <div class="primary-card pace">
-            <div class="primary-head">
-              <span class="primary-icon pace">PAC</span>
-              <span class="primary-label">Pace And Intensity</span>
+            <span id="runDetail" class="primary-sub">Distance target for today</span>
+            <div class="run-quick-grid">
+              <div class="quick-stat">
+                <span class="quick-stat-label">Pace</span>
+                <strong id="runPrescription" class="quick-stat-value">-</strong>
+              </div>
+              <div class="quick-stat">
+                <span class="quick-stat-label">Intensity</span>
+                <strong id="paceDetail" class="quick-stat-value">-</strong>
+              </div>
             </div>
-            <strong id="runPrescription" class="primary-value">-</strong>
-            <span id="paceDetail" class="primary-sub">Your target effort band</span>
           </div>
 
           <div class="primary-card lift">
             <div class="primary-head">
-              <span class="primary-icon lift">LFT</span>
-              <span class="primary-label">Can You Lift Today?</span>
+              <span class="primary-icon lift">🏋️</span>
+              <span class="primary-label">Lift</span>
             </div>
             <strong id="liftFocus" class="primary-value">-</strong>
             <span id="liftGuidance" class="primary-sub">Focus for today's lift</span>
@@ -651,30 +729,25 @@
           <div class="details-body">
             <div class="reason-grid">
               <div class="reason-card">
-                <div class="reason-head"><span class="reason-icon">DAY</span><span class="reason-title">Overall</span></div>
+                <div class="reason-head"><span class="reason-icon">🧭</span><span class="reason-title">Overall</span></div>
                 <p id="reasonOverall">Loading overall reasoning.</p>
               </div>
               <div class="reason-card">
-                <div class="reason-head"><span class="reason-icon">RUN</span><span class="reason-title">Run Distance</span></div>
+                <div class="reason-head"><span class="reason-icon">🏃</span><span class="reason-title">Run Distance</span></div>
                 <p id="reasonRun">Loading run reasoning.</p>
               </div>
               <div class="reason-card">
-                <div class="reason-head"><span class="reason-icon gold">PAC</span><span class="reason-title">Pace</span></div>
+                <div class="reason-head"><span class="reason-icon gold">⏱</span><span class="reason-title">Pace</span></div>
                 <p id="reasonPace">Loading pace reasoning.</p>
               </div>
               <div class="reason-card">
-                <div class="reason-head"><span class="reason-icon forest">LFT</span><span class="reason-title">Lifting</span></div>
+                <div class="reason-head"><span class="reason-icon forest">🏋️</span><span class="reason-title">Lifting</span></div>
                 <p id="reasonLift">Loading lifting reasoning.</p>
               </div>
               <div class="reason-card">
-                <div class="reason-head"><span class="reason-icon forest">REC</span><span class="reason-title">Recovery</span></div>
+                <div class="reason-head"><span class="reason-icon forest">❤️</span><span class="reason-title">Recovery</span></div>
                 <p id="reasonRecovery">Loading recovery reasoning.</p>
               </div>
-            </div>
-
-            <div>
-              <p class="section-title">Recent Recap</p>
-              <div id="recap" class="brief-list"></div>
             </div>
 
             <div>
@@ -719,6 +792,19 @@
           </div>
         </div>
       </section>
+
+      <div id="recapModal" class="modal-overlay">
+        <div class="modal-card">
+          <div class="modal-head">
+            <div>
+              <p class="section-title">Weekly Recap</p>
+              <h3 style="margin:0;">Recent Training Summary</h3>
+            </div>
+            <button id="closeRecap" class="modal-close" type="button">Close</button>
+          </div>
+          <div id="recap" class="brief-list"></div>
+        </div>
+      </div>
     </main>
 
     <script>
@@ -821,11 +907,19 @@
 
       function calendarEntryMeta(activity) {
         const bits = [];
-        if (activity.projected) bits.push("Projected");
+        if (activity.projected && activity.distance_miles) {
+          bits.push(activity.distance_miles + " mi");
+          if (activity.pace_text) bits.push(shortPaceText(activity.pace_text));
+          if (activity.intensity) bits.push(titleCase(activity.intensity));
+          return bits.join(" | ");
+        }
+        if (activity.projected && activity.lift_focus) {
+          bits.push(titleCase(activity.lift_focus));
+          if (activity.intensity) bits.push(titleCase(activity.intensity));
+          return bits.join(" | ");
+        }
         if (activity.distance_miles) bits.push(activity.distance_miles + " mi");
         if (activity.duration_minutes) bits.push(activity.duration_minutes + " min");
-        if (activity.pace_text) bits.push(activity.pace_text);
-        if (activity.lift_focus) bits.push(titleCase(activity.lift_focus));
         if (activity.average_pace_min_per_mile) bits.push(formatPace(activity.average_pace_min_per_mile));
         if (activity.strain) bits.push("Strain " + activity.strain);
         return bits.join(" | ") || "No metrics";
@@ -959,7 +1053,7 @@
           text("#runDistance", runMiles > 0 ? runMiles + " Miles" : "Unavailable");
           text("#runDetail", runMiles > 0 ? "Distance target for today" : "Run target unavailable until the model responds.");
           text("#runPrescription", shortPaceText(recommendation.run_pace_guidance));
-          text("#paceDetail", "Intensity: " + titleCase(recommendation.intensity || "steady"));
+          text("#paceDetail", titleCase(recommendation.intensity || "steady"));
           text("#liftFocus", titleCase(recommendation.lift_focus || "Unavailable"));
           text("#liftGuidance", shortLiftText((recommendation.lift_focus || "Strength guidance unavailable").split(/[,.]/)[0]));
 
@@ -1002,6 +1096,25 @@
           renderBriefItems(document.querySelector("#warnings"), FALLBACK_RECOMMENDATION.warnings, "Dashboard loading failed.", true);
           renderCalendar(document.querySelector("#calendar"), []);
         }
+      }
+
+      const recapModal = document.querySelector("#recapModal");
+      const openRecap = document.querySelector("#openRecap");
+      const closeRecap = document.querySelector("#closeRecap");
+      if (openRecap && recapModal) {
+        openRecap.addEventListener("click", function() {
+          recapModal.classList.add("open");
+        });
+      }
+      if (closeRecap && recapModal) {
+        closeRecap.addEventListener("click", function() {
+          recapModal.classList.remove("open");
+        });
+      }
+      if (recapModal) {
+        recapModal.addEventListener("click", function(event) {
+          if (event.target === recapModal) recapModal.classList.remove("open");
+        });
       }
 
       loadDashboard();
