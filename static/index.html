@@ -837,7 +837,7 @@
       <section class="section card">
         <div class="training-head">
           <div class="section-title">Today's Training</div>
-          <span id="workoutBadge" class="pill">Recovery Run</span>
+          <span id="workoutBadge" class="pill">Generating Plan</span>
         </div>
 
         <div class="training-grid">
@@ -1221,8 +1221,8 @@
         const text = (stringValue(activity.name, "") + " " + stringValue(activity.sport, "")).toLowerCase();
         const explicit = stringValue(activity.intensity, "").toLowerCase();
         if (/hard|tempo|interval|threshold|race/.test(explicit) || /hard|tempo|interval|threshold|race/.test(text)) return "hard";
-        if (/moderate|steady/.test(explicit)) return "moderate";
         if (/easy|recovery|conversational/.test(explicit) || /easy|recovery/.test(text)) return "easy";
+        if (/moderate|steady|endurance/.test(explicit)) return "moderate";
         if (explicit) return explicit;
         const pace = numberValue(activity.average_pace_min_per_mile, 0);
         const distance = numberValue(activity.distance_miles, 0);
@@ -1232,9 +1232,18 @@
         return "easy";
       }
 
+      function recommendationIntensity(recommendation) {
+        const text = stringValue(recommendation.intensity, "").toLowerCase();
+        if (/hard|tempo|interval|threshold|race/.test(text)) return "hard";
+        if (/easy|recovery|conversational/.test(text)) return "easy";
+        if (/moderate|steady|endurance/.test(text)) return "moderate";
+        return "easy";
+      }
+
       function todayPlanActivities(recommendation, today) {
         const miles = numberValue(recommendation.run_distance_miles, 0);
         if (!miles) return [];
+        const todayIntensity = recommendationIntensity(recommendation);
         return [
           {
             name: "Run",
@@ -1244,7 +1253,7 @@
             duration_minutes: maxInt(numberValue(recommendation.duration_minutes, 0), 20),
             average_pace_min_per_mile: 0,
             pace_text: recommendation.run_pace_guidance,
-            intensity: inferIntensity({ intensity: recommendation.intensity }),
+            intensity: todayIntensity,
             projected: true
           },
           {
@@ -1253,7 +1262,7 @@
             day: today,
             duration_minutes: 35,
             lift_focus: recommendation.lift_focus,
-            intensity: inferIntensity({ intensity: recommendation.intensity }),
+            intensity: todayIntensity,
             projected: true
           }
         ];
@@ -1323,7 +1332,7 @@
           if (day.is_today) card.classList.add("today");
 
           let activities = dedupeActivities(Array.isArray(day.activities) ? day.activities : []);
-          if (day.is_today && !activities.length) {
+          if (day.is_today) {
             activities = todayPlanActivities(recommendation || {}, today || day.day);
           }
           const dominant = activities[0] || {};
@@ -1412,6 +1421,7 @@
       async function loadDashboard() {
         try {
           document.querySelector("#loadingBanner")?.classList.remove("hidden");
+          text("#workoutBadge", "Generating Plan");
           const response = await fetch("/api/dashboard");
           if (!response.ok) throw new Error("Dashboard request failed with status " + response.status);
           const data = await response.json();
