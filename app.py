@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar as calendar_lib
 import json
 import os
 from html import escape
@@ -68,13 +69,60 @@ def sample_activity_preview(runs: list) -> list[dict]:
     ]
 
 
-def calendar_days(activity_feed: list[dict], metrics: list, days: int = 7) -> list[dict]:
-    if metrics:
-        latest_day = max(item.day for item in metrics)
-        anchor = datetime.strptime(latest_day, "%Y-%m-%d").date()
-    else:
-        anchor = datetime.utcnow().date()
+def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, list[dict]]:
+    if not recommendation or recommendation.run_distance_miles <= 0:
+        return {}
 
+    projections: dict[str, list[dict]] = {}
+    projection_date = anchor + timedelta(days=1)
+    cycle = 0
+    while projection_date <= end_day and cycle < 10:
+        if cycle % 3 == 0:
+            projections[projection_date.isoformat()] = [
+                {
+                    "source": "Projection",
+                    "name": recommendation.workout,
+                    "day": projection_date.isoformat(),
+                    "sport": "Projected Run",
+                    "distance_miles": round(max(2.5, recommendation.run_distance_miles - 0.3), 1),
+                    "duration_minutes": max(20, recommendation.duration_minutes),
+                    "average_pace_min_per_mile": 0,
+                    "projected": True,
+                }
+            ]
+        elif cycle % 3 == 1:
+            projections[projection_date.isoformat()] = [
+                {
+                    "source": "Projection",
+                    "name": recommendation.lift_focus,
+                    "day": projection_date.isoformat(),
+                    "sport": "Projected Strength",
+                    "distance_miles": 0,
+                    "duration_minutes": 35,
+                    "average_pace_min_per_mile": 0,
+                    "projected": True,
+                }
+            ]
+        else:
+            projections[projection_date.isoformat()] = [
+                {
+                    "source": "Projection",
+                    "name": "Recovery / Mobility",
+                    "day": projection_date.isoformat(),
+                    "sport": "Projected Recovery",
+                    "distance_miles": 0,
+                    "duration_minutes": 20,
+                    "average_pace_min_per_mile": 0,
+                    "projected": True,
+                }
+            ]
+        projection_date += timedelta(days=1)
+        cycle += 1
+    return projections
+
+
+def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None, today: str = "") -> list[dict]:
+    anchor = datetime.strptime(today, "%Y-%m-%d").date() if today else datetime.utcnow().date()
     feed_by_day: dict[str, list[dict]] = {}
     for item in activity_feed:
         day = item.get("day", "")
@@ -82,19 +130,42 @@ def calendar_days(activity_feed: list[dict], metrics: list, days: int = 7) -> li
             continue
         feed_by_day.setdefault(day, []).append(item)
 
+    month_start = anchor.replace(day=1)
+    month_end = anchor.replace(day=calendar_lib.monthrange(anchor.year, anchor.month)[1])
+    projected_by_day = projected_calendar_entries(anchor, recommendation, month_end)
+
     cards: list[dict] = []
-    for offset in range(days):
-        day = (anchor - timedelta(days=offset)).isoformat()
+    leading_blanks = (month_start.weekday() + 1) % 7
+    for _ in range(leading_blanks):
+        cards.append({"day": "", "activities": [], "is_today": False, "is_current_month": False, "is_projection": False})
+
+    current_day = month_start
+    while current_day <= month_end:
+        iso_day = current_day.isoformat()
+        activities = feed_by_day.get(iso_day, [])
+        projected = False
+        if not activities and current_day > anchor:
+            activities = projected_by_day.get(iso_day, [])
+            projected = bool(activities)
+
         cards.append(
             {
-                "day": day,
+                "day": iso_day,
                 "activities": sorted(
-                    feed_by_day.get(day, []),
-                    key=lambda item: (item.get("source", ""), item.get("duration_minutes", 0)),
+                    activities,
+                    key=lambda item: (item.get("projected", False), item.get("duration_minutes", 0)),
                     reverse=True,
                 ),
+                "is_today": iso_day == anchor.isoformat(),
+                "is_current_month": True,
+                "is_projection": projected,
             }
         )
+        current_day += timedelta(days=1)
+
+    while len(cards) % 7:
+        cards.append({"day": "", "activities": [], "is_today": False, "is_current_month": False, "is_projection": False})
+
     return cards
 
 
@@ -570,7 +641,8 @@ class CoachHandler(BaseHTTPRequestHandler):
             except Exception as exc:
                 live_preview = {"mode": "sample", "warning": str(exc)}
 
-            recommendation, recommendation_meta = llm_recommendation(profile, runs, metrics)
+            today_iso = safe_iso_today()
+            recommendation, recommendation_meta = llm_recommendation(profile, runs, metrics, today=datetime.strptime(today_iso, "%Y-%m-%d").date())
             payload = {
                 "profile": {
                     "name": profile.name,
@@ -590,7 +662,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                 "recommendation": recommendation.to_dict(),
                 "recommendation_meta": recommendation_meta,
                 "activity_feed": activity_feed,
-                "activity_calendar": calendar_days(activity_feed, metrics),
+                "activity_calendar": calendar_days(activity_feed, metrics, recommendation=recommendation, today=today_iso),
                 "connections": {
                     "status": connection_status,
                     "setup_complete": {
@@ -602,7 +674,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                     "whoop_callback_url": whoop_redirect_uri(settings.get("public_base_url", "")) if settings.get("public_base_url") else "",
                 },
                 "data_mode": live_preview,
-                "today": safe_iso_today(),
+                "today": today_iso,
             }
             self._send_json(payload)
             return
