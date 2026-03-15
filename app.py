@@ -141,6 +141,38 @@ def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, lis
     return projections
 
 
+def _today_plan_entries(anchor, recommendation) -> list[dict]:
+    if not recommendation or recommendation.run_distance_miles <= 0:
+        return []
+
+    return [
+        {
+            "source": "Projection",
+            "name": "Run",
+            "day": anchor.isoformat(),
+            "sport": "Projected Run",
+            "distance_miles": round(max(0.0, recommendation.run_distance_miles), 1),
+            "duration_minutes": max(20, recommendation.duration_minutes),
+            "average_pace_min_per_mile": 0,
+            "pace_text": recommendation.run_pace_guidance,
+            "intensity": recommendation.intensity,
+            "projected": True,
+        },
+        {
+            "source": "Projection",
+            "name": "Lift",
+            "day": anchor.isoformat(),
+            "sport": "Projected Strength",
+            "distance_miles": 0,
+            "duration_minutes": 35,
+            "average_pace_min_per_mile": 0,
+            "lift_focus": recommendation.lift_focus,
+            "intensity": "easy" if str(recommendation.intensity).lower() == "easy" else "moderate",
+            "projected": True,
+        },
+    ]
+
+
 def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None, today: str = "") -> list[dict]:
     anchor = datetime.strptime(today, "%Y-%m-%d").date() if today else datetime.utcnow().date()
     feed_by_day: dict[str, list[dict]] = {}
@@ -160,7 +192,10 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
         iso_day = current_day.isoformat()
         activities = feed_by_day.get(iso_day, [])
         projected = False
-        if not activities and current_day > anchor:
+        if not activities and current_day == anchor:
+            activities = _today_plan_entries(anchor, recommendation)
+            projected = bool(activities)
+        elif not activities and current_day > anchor:
             activities = projected_by_day.get(iso_day, [])
             projected = bool(activities)
 
