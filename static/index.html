@@ -184,11 +184,22 @@
       .training-column {
         display: grid;
         gap: 22px;
+        padding: 24px;
+        border-radius: 24px;
       }
 
       .training-column + .training-column {
-        padding-left: 28px;
         border-left: 1px solid var(--line);
+      }
+
+      .run-panel {
+        background: linear-gradient(180deg, rgba(225, 245, 235, 0.92) 0%, rgba(255, 255, 255, 0.98) 62%);
+        border: 1px solid rgba(10, 167, 111, 0.12);
+      }
+
+      .strength-panel {
+        background: linear-gradient(180deg, rgba(255, 245, 228, 0.95) 0%, rgba(255, 255, 255, 0.98) 62%);
+        border: 1px solid rgba(217, 122, 6, 0.12);
       }
 
       .metric-block {
@@ -285,15 +296,8 @@
 
       .lift-item strong {
         display: block;
-        font-size: 0.96rem;
-        font-weight: 500;
-      }
-
-      .lift-item span {
-        display: block;
-        color: var(--muted);
-        font-size: 0.95rem;
-        margin-top: 3px;
+        font-size: 1rem;
+        font-weight: 600;
       }
 
       .lift-details {
@@ -325,13 +329,12 @@
       }
 
       .summary-box {
-        margin-top: 24px;
-        background: rgba(10, 167, 111, 0.08);
-        border: 1px solid rgba(10, 167, 111, 0.1);
+        background: linear-gradient(135deg, rgba(10, 167, 111, 0.1), rgba(10, 167, 111, 0.04));
+        border: 1px solid rgba(10, 167, 111, 0.12);
         border-radius: 18px;
         padding: 18px 20px;
-        color: #434944;
-        line-height: 1.55;
+        color: #2f3a35;
+        line-height: 1.6;
         font-size: 1rem;
       }
 
@@ -374,12 +377,16 @@
 
       .reason-groups {
         display: grid;
-        gap: 24px;
+        gap: 18px;
       }
 
       .reason-group {
         display: grid;
         gap: 12px;
+        padding: 18px;
+        border-radius: 18px;
+        background: var(--panel-soft);
+        border: 1px solid rgba(23, 27, 24, 0.06);
       }
 
       .reason-group-title {
@@ -428,6 +435,20 @@
       .brief-list {
         display: grid;
         gap: 10px;
+      }
+
+      .watch-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .watch-card {
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: rgba(255, 244, 238, 0.96);
+        border: 1px solid rgba(213, 63, 97, 0.1);
+        color: #7e3822;
+        line-height: 1.55;
       }
 
       .brief-item {
@@ -802,7 +823,6 @@
 
         .training-column + .training-column {
           border-left: 0;
-          padding-left: 0;
           border-top: 1px solid var(--line);
           padding-top: 22px;
         }
@@ -877,7 +897,7 @@
         </div>
 
         <div class="training-grid">
-          <div class="training-column">
+          <div class="training-column run-panel">
             <div class="metric-block">
               <div class="block-label"><span class="block-icon">○</span>Distance</div>
               <div id="runDistance" class="distance-value">-</div>
@@ -900,7 +920,7 @@
             </div>
           </div>
 
-          <div class="training-column">
+          <div class="training-column strength-panel">
             <div class="metric-block">
               <div class="block-label"><span class="block-icon">+</span>Strength</div>
               <div class="lift-title" id="liftFocus">-</div>
@@ -918,15 +938,15 @@
           </div>
         </div>
 
-        <div id="coachSummary" class="summary-box">Building your run and lifting recommendation from training and recovery signals.</div>
         <div id="loadingBanner" class="loading-banner">Generating today's plan...</div>
 
-        <details class="plan-details" open>
+        <details class="plan-details">
           <summary>
-            <strong>Detailed Reasoning</strong>
+            <strong>Why This Plan</strong>
             <span class="summary-arrow">&#9662;</span>
           </summary>
           <div class="details-body">
+            <div id="coachSummary" class="summary-box">Building your run and lifting recommendation from training and recovery signals.</div>
             <div class="reason-groups">
               <div class="reason-group">
                 <div class="reason-group-title">Recovery Analysis</div>
@@ -965,7 +985,7 @@
 
             <div>
               <div class="section-title">Things To Watch</div>
-              <div id="warnings" class="brief-list"></div>
+              <div id="warnings" class="watch-list"></div>
             </div>
           </div>
         </details>
@@ -1184,7 +1204,7 @@
         const values = Array.isArray(items) && items.length ? items : [emptyText];
         values.forEach((item) => {
           const node = document.createElement("div");
-          node.className = warn ? "brief-item warn" : "brief-item";
+          node.className = warn ? "watch-card" : "brief-item";
           node.textContent = formatRecapDateText(item);
           container.appendChild(node);
         });
@@ -1201,6 +1221,24 @@
         return /tempo|interval|threshold|workout|hill|long/i.test(text);
       }
 
+      function escapeHtml(value) {
+        return stringValue(value, "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function normalizeLiftDose(detail) {
+        const text = stringValue(detail, "")
+          .replace(/\bsets?\s*x\s*/i, "x")
+          .replace(/\s+/g, " ")
+          .trim();
+        const match = text.match(/(\d+\s*x\s*\d+(?:[–-]\d+)?(?:\s*(?:per leg|per side))?)/i);
+        return match ? match[1].replace(/\s+/g, "") : "";
+      }
+
       function extractLiftExercises(recommendation) {
         const raw = stringValue(recommendation.lift_guidance, "");
         const items = [];
@@ -1209,22 +1247,25 @@
         numbered.forEach((segment) => {
           const cleaned = segment.replace(/^\d+\)\s*/, "").replace(/\.$/, "").trim();
           const parts = cleaned.split(/\s+[—-]\s+/);
+          const title = titleCase((parts[0] || cleaned).replace(/:$/, "").trim());
+          const dose = normalizeLiftDose(parts[1] || cleaned);
+          if (!title || /warm-?up/i.test(title)) return;
           items.push({
-            title: titleCase(parts[0] || cleaned),
-            detail: (parts[1] || "").trim()
+            title: title,
+            dose: dose
           });
         });
 
         if (items.length) return items;
 
-        const sentences = raw
-          .split(/[.?!]\s+/)
+        const commaItems = raw
+          .split(/[,;]+/)
           .map((item) => item.trim())
-          .filter(Boolean);
+          .filter((item) => item && !/warm-?up|finish with|rest /i.test(item));
 
-        return sentences.slice(0, 4).map((sentence) => ({
-          title: titleCase(sentence.replace(/\s*[—-].*$/, "").trim()),
-          detail: ""
+        return commaItems.slice(0, 4).map((item) => ({
+          title: titleCase(item.replace(/\s*[—-].*$/, "").replace(/:$/, "").trim()),
+          dose: ""
         }));
       }
 
@@ -1235,12 +1276,14 @@
         const items = extractLiftExercises(recommendation);
         const values = items.length
           ? items
-          : [{ title: "Optional recovery lift", detail: "Skip it if your legs feel unusually heavy." }];
+          : [{ title: "Optional recovery lift", dose: "" }];
 
         values.slice(0, 4).forEach((item) => {
           const row = document.createElement("div");
           row.className = "lift-item";
-          row.innerHTML = "<span class=\"lift-dot\"></span><div><strong>" + item.title + "</strong>" + (item.detail ? "<span>" + item.detail + "</span>" : "") + "</div>";
+          row.innerHTML = "<span class=\"lift-dot\"></span><div><strong>" +
+            escapeHtml(item.title + (item.dose ? " " + item.dose : "")) +
+            "</strong></div>";
           container.appendChild(row);
         });
       }
@@ -1331,11 +1374,34 @@
         return Math.max(minimum, Math.round(value || 0));
       }
 
-      function renderRecapDays(container, days) {
+      function parseIsoDate(value) {
+        return new Date(value + "T12:00:00");
+      }
+
+      function groupRecentActivities(activities, today) {
+        const todayDate = today ? parseIsoDate(today) : new Date();
+        const cutoff = new Date(todayDate);
+        cutoff.setDate(todayDate.getDate() - 6);
+        const grouped = new Map();
+
+        dedupeActivities(Array.isArray(activities) ? activities : []).forEach((activity) => {
+          const day = stringValue(activity.day, "");
+          if (!day || activity.projected) return;
+          const date = parseIsoDate(day);
+          if (date < cutoff || date > todayDate) return;
+          if (!grouped.has(day)) grouped.set(day, []);
+          grouped.get(day).push(activity);
+        });
+
+        return Array.from(grouped.entries())
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([day, dayActivities]) => ({ day: day, activities: dayActivities, is_today: day === today }));
+      }
+
+      function renderRecapDays(container, activities, today) {
         if (!container) return;
         container.innerHTML = "";
-        days.forEach((day) => {
-          if (!day.activities || !day.activities.length || day.is_projection) return;
+        groupRecentActivities(activities, today).forEach((day) => {
           const row = document.createElement("div");
           row.className = "recap-day" + (day.is_today ? " active" : "");
           const summary = day.activities.map((activity) => {
@@ -1352,8 +1418,8 @@
         });
       }
 
-      function updateRecapStats(days) {
-        const actual = days.filter((day) => day.activities && day.activities.length && !day.is_projection);
+      function updateRecapStats(activities, today) {
+        const actual = groupRecentActivities(activities, today);
         let totalMileage = 0;
         let runDays = 0;
         let qualitySessions = 0;
@@ -1373,11 +1439,11 @@
         });
 
         text("#recapMileage", totalMileage.toFixed(1) + " mi");
-        text("#recapMileageSub", runDays + " days of running");
+        text("#recapMileageSub", runDays + " running days in the last 7");
         text("#recapQuality", String(qualitySessions));
-        text("#recapQualitySub", qualitySessions ? "Harder sessions completed" : "No quality sessions logged");
+        text("#recapQualitySub", qualitySessions ? "Quality sessions in the last 7" : "No quality sessions in the last 7");
         text("#recapStrength", String(strengthSessions));
-        text("#recapStrengthSub", strengthSessions ? "Sessions completed" : "No strength sessions logged");
+        text("#recapStrengthSub", strengthSessions ? "Strength sessions in the last 7" : "No strength sessions in the last 7");
       }
 
       function renderCalendar(container, days, recommendation, today) {
@@ -1537,8 +1603,8 @@
 
           renderBriefItems(document.querySelector("#warnings"), warnings, "No immediate caution flags appeared in the current data.", true);
           renderBriefItems(document.querySelector("#recap"), recap, "No recent recap was generated.", false);
-          renderRecapDays(document.querySelector("#recapDays"), data.activity_calendar || []);
-          updateRecapStats(data.activity_calendar || []);
+          renderRecapDays(document.querySelector("#recapDays"), data.activity_feed || [], data.today);
+          updateRecapStats(data.activity_feed || [], data.today);
           renderCalendar(document.querySelector("#calendar"), data.activity_calendar || [], recommendation, data.today);
           text("#calendarTitle", new Date(data.today + "T12:00:00").toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
           document.querySelector("#loadingBanner")?.classList.add("hidden");
