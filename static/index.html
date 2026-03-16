@@ -171,10 +171,10 @@
 
       .training-title {
         color: var(--ink);
-        font-size: 1.2rem;
+        font-size: 1rem;
         font-weight: 800;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
+        letter-spacing: 0;
+        text-transform: none;
       }
 
       .checkin-panel {
@@ -184,12 +184,32 @@
       }
 
       .checkin-panel summary {
-        padding: 0;
+        padding: 18px 20px;
       }
 
       .checkin-panel .details-body {
-        border-top: 0;
-        padding: 14px 0 0;
+        border-top: 1px solid var(--line);
+        padding: 18px 20px 0;
+      }
+
+      .section-headline {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .section-headline-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        border: 1px solid rgba(23, 27, 24, 0.12);
+        background: var(--panel-soft);
+        color: var(--muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.88rem;
+        font-weight: 700;
       }
 
       .checkin-grid {
@@ -403,7 +423,7 @@
       .lift-item strong {
         display: block;
         font-size: 1rem;
-        font-weight: 600;
+        font-weight: 400;
       }
 
       .summary-box {
@@ -594,6 +614,18 @@
         height: 11px;
         border-radius: 999px;
         background: rgba(23, 27, 24, 0.28);
+      }
+
+      .recap-dot.easy {
+        background: #17c98b;
+      }
+
+      .recap-dot.moderate {
+        background: var(--gold);
+      }
+
+      .recap-dot.hard {
+        background: var(--red);
       }
 
       .recap-day.active .recap-dot {
@@ -985,7 +1017,7 @@
       <section class="section recap-shell">
         <details class="recap-details">
           <summary>
-            <strong>Weekly Recap</strong>
+            <span class="section-headline"><span class="section-headline-icon">W</span><strong>Weekly Recap</strong></span>
             <span class="summary-arrow">&#9662;</span>
           </summary>
           <div class="details-body">
@@ -1009,7 +1041,7 @@
       <section class="section card">
         <details id="checkinPanel" class="checkin-panel" open>
           <summary>
-            <strong class="training-title">Daily Check-In</strong>
+            <span class="section-headline"><span class="section-headline-icon">D</span><strong class="training-title">Daily Check-In</strong></span>
             <span class="summary-arrow">&#9662;</span>
           </summary>
           <div class="details-body">
@@ -1356,10 +1388,27 @@
       function normalizeLiftDose(detail) {
         const text = stringValue(detail, "")
           .replace(/\bsets?\s*x\s*/i, "x")
+          .replace(/\bset\b/gi, "")
+          .replace(/\breps?\b/gi, "")
           .replace(/\s+/g, " ")
           .trim();
-        const match = text.match(/(\d+\s*x\s*\d+(?:[–-]\d+)?(?:\s*(?:per leg|per side))?)/i);
+        const match = text.match(/(\d+\s*x\s*\d+(?:[–-]\d+)?(?:\s*(?:per leg|per side))?|\d+\s*x\s*\d+\s*s)/i);
         return match ? match[1].replace(/\s+/g, "") : "";
+      }
+
+      function cleanLiftTitle(value) {
+        return titleCase(
+          stringValue(value, "")
+            .replace(/\([^)]*\)/g, "")
+            .replace(/\b\d+\s*x\s*\d+(?:[–-]\d+)?(?:\s*(?:per leg|per side))?\b/gi, "")
+            .replace(/\b\d+\s*x\s*\d+\s*s\b/gi, "")
+            .replace(/\bsets?\b/gi, "")
+            .replace(/\breps?\b/gi, "")
+            .replace(/\bmoderate\b|\blight\b|\bbodyweight\b/gi, "")
+            .replace(/\s+/g, " ")
+            .replace(/^[^A-Za-z]+/, "")
+            .trim()
+        );
       }
 
       function extractLiftExercises(recommendation) {
@@ -1373,12 +1422,9 @@
 
         if (commaSeparated.length >= 3) {
           return commaSeparated.slice(0, 4).map((item) => ({
-            title: titleCase(item.replace(/\.$/, "").trim()),
+            title: cleanLiftTitle(item.replace(/\.$/, "").trim()),
             dose: normalizeLiftDose(item),
-          })).map((item) => ({
-            title: item.dose ? item.title.replace(new RegExp(item.dose.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim() : item.title,
-            dose: item.dose,
-          }));
+          })).filter((item) => item.title);
         }
 
         const sentences = raw
@@ -1396,17 +1442,7 @@
           if (!dose) return;
           if (/warm-?up|finish with|rest |minutes total|rounds of/i.test(cleaned)) return;
 
-          let title = cleaned
-            .replace(/\([^)]*\)/g, "")
-            .replace(/\b\d+\s*x\s*\d+(?:[–-]\d+)?(?:\s*(?:per leg|per side))?\b/gi, "")
-            .replace(/\bsets?\b/gi, "")
-            .replace(/\breps?\b/gi, "")
-            .replace(/\bmoderate\b|\blight\b|\bbodyweight\b/gi, "")
-            .replace(/\s+/g, " ")
-            .replace(/^[^A-Za-z]+/, "")
-            .trim();
-
-          title = titleCase(title);
+          let title = cleanLiftTitle(cleaned);
           if (!title) return;
           items.push({ title: title, dose: dose });
         });
@@ -1494,6 +1530,16 @@
         return "easy";
       }
 
+      function dominantDayIntensity(activities) {
+        let level = "easy";
+        (activities || []).forEach((activity) => {
+          const intensity = inferIntensity(activity);
+          if (/hard/i.test(intensity)) level = "hard";
+          else if (level !== "hard" && /moderate|steady/i.test(intensity)) level = "moderate";
+        });
+        return level;
+      }
+
       function todayPlanActivities(recommendation, today) {
         const miles = numberValue(recommendation.run_distance_miles, 0);
         if (!miles) return [];
@@ -1556,6 +1602,7 @@
         groupRecentActivities(activities, today).forEach((day) => {
           const row = document.createElement("div");
           row.className = "recap-day" + (day.is_today ? " active" : "");
+          const dayIntensity = dominantDayIntensity(day.activities);
           const summary = day.activities.map((activity) => {
             if (canonicalActivityKey(activity) === "run") {
               return (activity.distance_miles ? activity.distance_miles + " mi " : "") + titleCase(activity.name || "Run");
@@ -1563,7 +1610,7 @@
             if (activity.lift_focus) return titleCase(activity.lift_focus);
             return prettyActivityLabel(activity);
           }).join(" + ");
-          row.innerHTML = "<span class=\"recap-dot\"></span><strong>" +
+          row.innerHTML = "<span class=\"recap-dot " + dayIntensity + "\"></span><strong>" +
             new Date(day.day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long" }) +
             "</strong><span>" + summary + "</span>";
           container.appendChild(row);
