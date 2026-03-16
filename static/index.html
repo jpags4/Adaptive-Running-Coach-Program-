@@ -471,10 +471,11 @@
         background: rgba(23, 27, 24, 0.28);
       }
 
-      .lift-item strong {
+      .lift-item span {
         display: block;
         font-size: 1rem;
         font-weight: 400;
+        line-height: 1.4;
       }
 
       .summary-box {
@@ -1442,86 +1443,155 @@
           .replace(/'/g, "&#39;");
       }
 
-      function normalizeLiftDose(detail) {
+      function normalizeLiftDose(detail, fallbackDose) {
         const text = stringValue(detail, "")
-          .replace(/\bsets?\s*x\s*/i, "x")
+          .replace(/\([^)]*\)/g, " ")
+          .replace(/\bsets?\s*x\s*/gi, "x")
           .replace(/\bset\b/gi, "")
           .replace(/\breps?\b/gi, "")
           .replace(/\s+/g, " ")
           .trim();
-        const match = text.match(/(\d+\s*x\s*\d+(?:[–-]\d+)?(?:\s*(?:per leg|per side))?|\d+\s*x\s*\d+\s*s)/i);
-        return match ? match[1].replace(/\s+/g, "") : "";
+        const directMatch = text.match(/(\d+)\s*x\s*(\d+(?:[–-]\d+)?|\d+(?:[–-]\d+)?s)/i);
+        if (directMatch) {
+          return directMatch[1] + "x" + directMatch[2].replace(/\s+/g, "");
+        }
+
+        const timeMatch = text.match(/(\d+)\s*x\s*(\d+(?:[–-]\d+)?)\s*s/i);
+        if (timeMatch) {
+          return timeMatch[1] + "x" + timeMatch[2] + "s";
+        }
+
+        return stringValue(fallbackDose, "");
       }
+
+      function detectRoundCount(text) {
+        const match = stringValue(text, "").match(/(\d+)\s+rounds?/i);
+        return match ? Number(match[1]) : 0;
+      }
+
+      const LIFT_EXERCISE_PATTERNS = [
+        /bulgarian split squats?/i,
+        /romanian deadlifts?/i,
+        /single-leg romanian deadlifts?/i,
+        /single-leg rdls?/i,
+        /single-leg balance/i,
+        /glute bridges?/i,
+        /hip thrusts?/i,
+        /step-ups?/i,
+        /step-downs?/i,
+        /goblet squats?/i,
+        /split squats?/i,
+        /lunges?/i,
+        /calf raises?/i,
+        /pallof press/i,
+        /side planks?/i,
+        /front planks?/i,
+        /planks?/i,
+        /dead bugs?/i,
+        /bird dogs?/i,
+        /box sit-to-stands?/i,
+      ];
 
       function cleanLiftTitle(value) {
         return titleCase(
           stringValue(value, "")
             .replace(/\([^)]*\)/g, "")
-            .replace(/\b\d+\s*x\s*\d+(?:[–-]\d+)?(?:\s*(?:per leg|per side))?\b/gi, "")
-            .replace(/\b\d+\s*x\s*\d+\s*s\b/gi, "")
-            .replace(/\bsets?\b/gi, "")
-            .replace(/\breps?\b/gi, "")
-            .replace(/\bmoderate\b|\blight\b|\bbodyweight\b/gi, "")
+            .replace(/\b\d+\s*x\s*(?:\d+(?:[–-]\d+)?|\d+(?:[–-]\d+)?s)\b/gi, "")
+            .replace(/\b\d+(?:[–-]\d+)?(?=\s+[A-Za-z])/g, "")
+            .replace(/\bsets?\b|\breps?\b/gi, "")
+            .replace(/\bper leg\b|\beach leg\b|\bper side\b|\beach side\b/gi, "")
+            .replace(/\bmoderate\b|\blight\b|\bbodyweight\b|\bcontrolled\b|\btempo\b|\bweight\b|\bload\b/gi, "")
+            .replace(/\bminute\b|\bminutes\b|\bafter the run\b|\blater in the day\b|\bthen\b|\brounds?\b|\bcircuit\b/gi, "")
+            .replace(/\bfinish with\b|\bkeep rests?\b.*$/gi, "")
+            .replace(/\bglute activation\b|\bcore stability\b|\bcore\b:/gi, "")
+            .replace(/[():]/g, " ")
             .replace(/\s+/g, " ")
             .replace(/^[^A-Za-z]+/, "")
+            .replace(/[–-]+$/g, "")
             .trim()
         );
       }
 
+      function extractExerciseName(detail) {
+        const text = stringValue(detail, "").replace(/\([^)]*\)/g, " ");
+        for (const pattern of LIFT_EXERCISE_PATTERNS) {
+          const match = text.match(pattern);
+          if (match) return titleCase(match[0]);
+        }
+        return cleanLiftTitle(text);
+      }
+
+      function globalLiftDose(text) {
+        const raw = stringValue(text, "");
+        const rounds = detectRoundCount(raw);
+        const repMatch = raw.match(/\b\d+\s+rounds?\s*:?\s*(\d+(?:[–-]\d+)?)(?:\s+|$)/i);
+        if (rounds && repMatch) return rounds + "x" + repMatch[1];
+        return "";
+      }
+
+      function splitLiftSegments(text) {
+        const raw = stringValue(text, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+        const numbered = raw
+          .split(/\s*(?=\d+[).]\s*)/)
+          .map((item) => item.trim())
+          .filter((item) => /^\d+[).]/.test(item))
+          .map((item) => item.replace(/^\d+[).]\s*/, "").trim());
+        if (numbered.length) return numbered;
+
+        const afterColon = /rounds?\s*:|exercises\s*:|session\s*:|circuit\s*:/i.test(raw)
+          ? raw.split(/.*?(?:rounds?\s*:|exercises\s*:|session\s*:|circuit\s*:)/i).slice(-1)[0]
+          : raw;
+
+        return afterColon
+          .split(/\s*[;,]\s*|\s+(?=and\s+[A-Z][a-z])/)
+          .map((item) => item.replace(/^and\s+/i, "").trim())
+          .filter(Boolean);
+      }
+
+      function parseLiftExercise(segment, fallbackDose) {
+        const raw = stringValue(segment, "")
+          .replace(/\([^)]*\)/g, " ")
+          .replace(/\bfinish with\b/gi, "")
+          .replace(/\bminutes?\b.*?(?=(?:bulgarian|single-leg|romanian|glute|step|calf|plank|pallof|goblet|split squat|lunge|dead bug|bird dog))/i, "")
+          .replace(/\bthen\s+\d+\s+rounds?\s*:?\s*/i, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        if (!raw || /warm-?up|rests?|later in the day|after the run|stop any exercise/i.test(raw)) {
+          return null;
+        }
+
+        const leadingRepMatch = raw.match(/^(\d+(?:[–-]\d+)?)(?:\s+|$)(.*)$/i);
+        const dose = normalizeLiftDose(raw, fallbackDose || "");
+        let title = extractExerciseName(raw);
+
+        if ((!title || /^\d/.test(title)) && leadingRepMatch) {
+          title = extractExerciseName(leadingRepMatch[2]);
+        }
+
+        if (!title) return null;
+
+        return {
+          title: title.replace(/[()]/g, "").trim(),
+          dose: dose
+        };
+      }
+
       function extractLiftExercises(recommendation) {
         const raw = stringValue(recommendation.lift_guidance, "");
+        const fallbackDose = globalLiftDose(raw);
+        const segments = splitLiftSegments(raw);
         const items = [];
-        const numberedParts = raw
-          .split(/\s*(?=\d+\)\s*)/)
-          .map((item) => item.trim())
-          .filter((item) => /^\d+\)/.test(item));
+        const seen = new Set();
 
-        if (numberedParts.length) {
-          numberedParts.forEach((part) => {
-            const cleaned = part.replace(/^\d+\)\s*/, "").replace(/[.;]\s*$/, "").trim();
-            if (!cleaned || /warm-?up|finish with|minutes after|later in the day/i.test(cleaned)) return;
+        segments.forEach((segment) => {
+          const item = parseLiftExercise(segment, fallbackDose);
+          if (!item || !item.title || !item.dose) return;
 
-            const main = cleaned.split(/\s*[;,.](?=\s*[A-Z0-9])/)[0].trim();
-            const dose = normalizeLiftDose(main);
-            const title = cleanLiftTitle(main);
-            if (!title) return;
-            items.push({ title: title, dose: dose });
-          });
-
-          if (items.length) return items.slice(0, 4);
-        }
-
-        const colonSplit = raw.includes(":") ? raw.split(":").slice(1).join(":") : raw;
-        const commaSeparated = colonSplit
-          .split(",")
-          .map((item) => item.trim())
-          .filter((item) => item && !/minutes after|later in the day|warm-?up|focus on/i.test(item));
-
-        if (commaSeparated.length >= 3) {
-          return commaSeparated.slice(0, 4).map((item) => ({
-            title: cleanLiftTitle(item.replace(/\.$/, "").trim()),
-            dose: normalizeLiftDose(item),
-          })).filter((item) => item.title);
-        }
-
-        const sentences = raw
-          .replace(/\n/g, " ")
-          .split(/(?<=\.)\s+/)
-          .map((item) => item.trim())
-          .filter(Boolean);
-
-        sentences.forEach((sentence) => {
-          const cleaned = sentence
-            .replace(/^\d+\)\s*/, "")
-            .replace(/\.$/, "")
-            .trim();
-          const dose = normalizeLiftDose(cleaned);
-          if (!dose) return;
-          if (/warm-?up|finish with|rest |minutes total|rounds of/i.test(cleaned)) return;
-
-          let title = cleanLiftTitle(cleaned);
-          if (!title) return;
-          items.push({ title: title, dose: dose });
+          const key = item.title.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key);
+          items.push(item);
         });
 
         return items.slice(0, 4);
@@ -1539,9 +1609,9 @@
         values.slice(0, 4).forEach((item) => {
           const row = document.createElement("div");
           row.className = "lift-item";
-          row.innerHTML = "<span class=\"lift-dot\"></span><div><strong>" +
+          row.innerHTML = "<span class=\"lift-dot\"></span><div><span>" +
             escapeHtml(item.title + (item.dose ? " " + item.dose : "")) +
-            "</strong></div>";
+            "</span></div>";
           container.appendChild(row);
         });
       }
