@@ -253,3 +253,11 @@ def load_states() -> dict[str, str]:
 
 def save_states(states: dict[str, str]) -> None:
     _set_namespace_values("oauth_states", states)
+
+
+def load_weekly_plans() -> dict[str, Any]:
+    return _get_namespace_values("weekly_plans")
+
+
+def save_weekly_plans(plans: dict[str, Any]) -> None:
+    _set_namespace_values("weekly_plans", plans)

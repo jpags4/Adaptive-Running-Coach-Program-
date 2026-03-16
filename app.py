@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from html import escape
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
-from coach import recent_mileage
+from coach import Recommendation, average_easy_pace, coach_recommendation, pace_window, recent_mileage
 from integrations import (
     OAuthError,
     build_strava_authorize_url,
@@ -32,7 +33,18 @@ from integrations import (
 )
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 from llm_coach import llm_recommendation
-from storage import init_storage, load_settings, load_states, load_tokens, save_settings, save_states, save_tokens, using_hosted_env
+from storage import (
+    init_storage,
+    load_settings,
+    load_states,
+    load_tokens,
+    load_weekly_plans,
+    save_settings,
+    save_states,
+    save_tokens,
+    save_weekly_plans,
+    using_hosted_env,
+)
 
 
 ROOT = Path(__file__).parent
@@ -113,15 +125,55 @@ def _preferred_long_run_index(value: str) -> int:
     return WEEKDAY_NAMES.index(normalized) if normalized in WEEKDAY_NAMES else 6
 
 
+def _parse_pace_bounds(text: str) -> tuple[float, float] | None:
+    value = str(text or "").strip()
+    range_match = re.search(r"(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})\s*(?:min/mi|/mi)", value, re.IGNORECASE)
+    if range_match:
+        low = int(range_match.group(1)) + int(range_match.group(2)) / 60
+        high = int(range_match.group(3)) + int(range_match.group(4)) / 60
+        return low, high
+
+    single_match = re.search(r"(\d{1,2}):(\d{2})\s*(?:min/mi|/mi)", value, re.IGNORECASE)
+    if single_match:
+        pace = int(single_match.group(1)) + int(single_match.group(2)) / 60
+        return pace, pace
+
+    return None
+
+
+def _format_pace_value(value: float) -> str:
+    total_seconds = max(270, int(round(value * 60)))
+    minutes = total_seconds // 60
+    seconds = total_seconds % 60
+    return f"{minutes}:{seconds:02d}"
+
+
+def _shift_pace_bounds(bounds: tuple[float, float], faster: float = 0.0, slower: float = 0.0) -> str:
+    low, high = bounds
+    shifted_low = max(4.5, low - faster)
+    shifted_high = max(shifted_low, high + slower - faster)
+    return f"{_format_pace_value(shifted_low)}-{_format_pace_value(shifted_high)}/mi"
+
+
 def _pace_text_for_type(workout_type: str, recommendation) -> str:
     base = str(recommendation.run_pace_guidance or "").strip()
+    bounds = _parse_pace_bounds(base)
+    if bounds:
+        if workout_type == "quality":
+            return _shift_pace_bounds(bounds, faster=0.7, slower=-0.2)
+        if workout_type == "steady":
+            return _shift_pace_bounds(bounds, faster=0.3, slower=-0.05)
+        if workout_type == "long":
+            return _shift_pace_bounds(bounds, faster=-0.1, slower=0.2)
+        return _shift_pace_bounds(bounds)
+
     if workout_type == "quality":
-        return "Intervals or tempo effort, mostly Zones 3-4."
+        return "8:30-8:55/mi"
     if workout_type == "steady":
-        return "Steady aerobic effort, mostly Zones 2-3."
+        return "8:55-9:20/mi"
     if workout_type == "long":
-        return "Long easy run, relaxed and mostly Zone 2."
-    return base or "Easy conversational effort."
+        return "9:25-9:55/mi"
+    return base or "9:15-9:45/mi"
 
 
 def _lift_focus_for_day(weekday: int, long_run_day: int) -> str:
@@ -257,38 +309,94 @@ def projected_calendar_entries(anchor, recommendation, end_day, profile) -> dict
 
 
 def _today_plan_entries(anchor, recommendation) -> list[dict]:
-    if not recommendation or recommendation.run_distance_miles <= 0:
+    if not recommendation:
         return []
 
-    return [
-        {
-            "source": "Projection",
-            "name": "Run",
-            "day": anchor.isoformat(),
-            "sport": "Projected Run",
-            "distance_miles": round(max(0.0, recommendation.run_distance_miles), 1),
-            "duration_minutes": max(20, recommendation.duration_minutes),
-            "average_pace_min_per_mile": 0,
-            "pace_text": recommendation.run_pace_guidance,
-            "intensity": recommendation.intensity,
-            "projected": True,
-        },
-        {
-            "source": "Projection",
-            "name": "Lift",
-            "day": anchor.isoformat(),
-            "sport": "Projected Strength",
-            "distance_miles": 0,
-            "duration_minutes": 35,
-            "average_pace_min_per_mile": 0,
-            "lift_focus": recommendation.lift_focus,
-            "intensity": "easy" if str(recommendation.intensity).lower() == "easy" else "moderate",
-            "projected": True,
-        },
-    ]
+    activities: list[dict] = []
+    if recommendation.run_distance_miles > 0:
+        activities.append(
+            {
+                "source": "Projection",
+                "name": "Run",
+                "day": anchor.isoformat(),
+                "sport": "Projected Run",
+                "distance_miles": round(max(0.0, recommendation.run_distance_miles), 1),
+                "duration_minutes": max(20, recommendation.duration_minutes),
+                "average_pace_min_per_mile": 0,
+                "pace_text": recommendation.run_pace_guidance,
+                "intensity": recommendation.intensity,
+                "projected": True,
+            }
+        )
+
+    if str(recommendation.lift_focus or "").strip().lower() not in {"no lifting", "today is a lifting off-day"}:
+        activities.append(
+            {
+                "source": "Projection",
+                "name": "Lift",
+                "day": anchor.isoformat(),
+                "sport": "Projected Strength",
+                "distance_miles": 0,
+                "duration_minutes": 35,
+                "average_pace_min_per_mile": 0,
+                "lift_focus": recommendation.lift_focus,
+                "intensity": "easy" if str(recommendation.intensity).lower() == "easy" else "moderate",
+                "projected": True,
+            }
+        )
+
+    return activities
 
 
-def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None, today: str = "", profile=None) -> list[dict]:
+def _week_plan_key(day_value) -> str:
+    week_start = day_value - timedelta(days=day_value.weekday())
+    return week_start.isoformat()
+
+
+def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict]]:
+    baseline_recommendation = coach_recommendation(profile, runs, metrics, today=anchor)
+    if baseline_recommendation.run_distance_miles <= 0:
+        easy_pace = average_easy_pace(runs)
+        baseline_recommendation = Recommendation(
+            date=anchor.isoformat(),
+            workout="Baseline aerobic run",
+            intensity="easy",
+            duration_minutes=48,
+            run_distance_miles=round(max(4.0, min(6.0, float(getattr(profile, "weekly_mileage_target", 28) or 28) * 0.18)), 1),
+            run_pace_guidance=pace_window(easy_pace, slower=0.7),
+            lift_focus="Single-Leg Strength + Core",
+            lift_guidance="Baseline weekly structure only.",
+            recap=[],
+            explanation=["Baseline week structure generated so the calendar remains stable even if today becomes a recovery day."],
+            explanation_sections={
+                "overall": "Baseline week structure generated so the calendar remains stable even if today becomes a recovery day.",
+                "run": "The baseline run distance seeds the weekly structure before daily adjustments are applied.",
+                "pace": "The baseline pace uses your recent easy running so future days keep a practical pace band.",
+                "lift": "Lift slots stay in the weekly structure, but daily guardrails can still remove them.",
+                "recovery": "Daily recovery can still override today's training without erasing the rest of the week.",
+            },
+            warnings=[],
+            confidence="medium",
+        )
+    end_day = (anchor - timedelta(days=anchor.weekday())) + timedelta(days=13)
+    plan = projected_calendar_entries(anchor, baseline_recommendation, end_day, profile)
+    return plan
+
+
+def _load_or_create_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict]]:
+    plans = load_weekly_plans()
+    key = _week_plan_key(anchor)
+    plan = plans.get(key)
+    if isinstance(plan, dict) and plan:
+        return plan
+
+    plan = _generate_weekly_plan(anchor, profile, runs, metrics)
+    plans[key] = plan
+    save_weekly_plans(plans)
+    return plan
+
+
+def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None, today: str = "", profile=None, weekly_plan=None) -> list[dict]:
     anchor = datetime.strptime(today, "%Y-%m-%d").date() if today else datetime.utcnow().date()
     feed_by_day: dict[str, list[dict]] = {}
     for item in activity_feed:
@@ -299,7 +407,7 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
 
     start_day = anchor - timedelta(days=anchor.weekday())
     end_day = start_day + timedelta(days=13)
-    projected_by_day = projected_calendar_entries(anchor, recommendation, end_day, profile)
+    projected_by_day = weekly_plan or {}
 
     cards: list[dict] = []
     current_day = start_day
@@ -411,6 +519,8 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         live_preview = {"mode": "sample", "warning": str(exc)}
 
     today_iso = safe_iso_today()
+    today_date = datetime.strptime(today_iso, "%Y-%m-%d").date()
+    weekly_plan = _load_or_create_weekly_plan(today_date, profile, runs, metrics)
     recommendation = None
     recommendation_meta = {"source": None, "model": None, "reason": None}
     if include_recommendation:
@@ -418,7 +528,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             profile,
             runs,
             metrics,
-            today=datetime.strptime(today_iso, "%Y-%m-%d").date(),
+            today=today_date,
             subjective_feedback=subjective_feedback,
         )
 
@@ -440,8 +550,16 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         },
         "recommendation": recommendation.to_dict() if recommendation else None,
         "recommendation_meta": recommendation_meta,
+        "weekly_plan_key": _week_plan_key(today_date),
         "activity_feed": activity_feed,
-        "activity_calendar": calendar_days(activity_feed, metrics, recommendation=recommendation, today=today_iso, profile=profile),
+        "activity_calendar": calendar_days(
+            activity_feed,
+            metrics,
+            recommendation=recommendation,
+            today=today_iso,
+            profile=profile,
+            weekly_plan=weekly_plan,
+        ),
         "connections": {
             "status": connection_status,
             "setup_complete": {

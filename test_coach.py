@@ -2,7 +2,7 @@ import unittest
 from datetime import date
 from unittest import mock
 
-from app import projected_calendar_entries
+from app import _generate_weekly_plan, projected_calendar_entries
 from coach import Recommendation, coach_recommendation
 from integrations import build_strava_authorize_url, build_whoop_authorize_url
 from llm_coach import _apply_guardrails, llm_recommendation
@@ -164,6 +164,35 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertTrue(run_pace_texts)
         self.assertTrue(all("/mi" in text for text in run_pace_texts))
+
+    def test_weekly_plan_structure_survives_rest_day_recommendation(self) -> None:
+        low_readiness_metrics = SAMPLE_METRICS[:-1] + [
+            type(SAMPLE_METRICS[-1])(
+                day="2026-03-14",
+                recovery_score=22,
+                sleep_hours=4.8,
+                resting_hr=58,
+                hrv_ms=52,
+                strain=14.0,
+            )
+        ]
+
+        plan = _generate_weekly_plan(
+            anchor=date(2026, 3, 14),
+            profile=SAMPLE_PROFILE,
+            runs=SAMPLE_RUNS,
+            metrics=low_readiness_metrics,
+        )
+
+        future_runs = [
+            activity
+            for iso_day, activities in plan.items()
+            if iso_day > "2026-03-14"
+            for activity in activities
+            if activity.get("name") == "Run"
+        ]
+
+        self.assertTrue(future_runs)
 
     def test_guardrails_turn_sick_day_into_rest(self) -> None:
         recommendation = Recommendation(

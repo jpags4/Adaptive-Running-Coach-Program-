@@ -475,6 +475,14 @@
         line-height: 1.4;
       }
 
+      .lift-offday span {
+        display: block;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.4;
+        color: var(--ink);
+      }
+
       .summary-box {
         background: linear-gradient(135deg, rgba(124, 92, 255, 0.08), rgba(124, 92, 255, 0.03));
         border: 1px solid rgba(124, 92, 255, 0.12);
@@ -1166,7 +1174,7 @@
             <div class="metric-block">
               <div class="block-label"><span class="block-icon">+</span>Strength</div>
               <div class="lift-title" id="liftFocus">-</div>
-              <div class="lift-subhead">Suggested exercises</div>
+              <div id="liftSubhead" class="lift-subhead">Suggested exercises</div>
             </div>
 
             <div id="liftList" class="lift-list"></div>
@@ -1576,7 +1584,7 @@
 
       function extractLiftExercises(recommendation) {
         const raw = stringValue(recommendation.lift_guidance, "");
-        if (/lifting off-day|no lifting|rest day/i.test(raw) || /lifting off-day|no lifting/i.test(stringValue(recommendation.lift_focus, ""))) {
+        if (/lifting off-day|no lifting|rest day|take the day off/i.test(raw) || /lifting off-day|no lifting/i.test(stringValue(recommendation.lift_focus, ""))) {
           return [];
         }
         const fallbackDose = globalLiftDose(raw);
@@ -1601,23 +1609,32 @@
         if (!container) return;
         container.innerHTML = "";
 
-        const offDayText = /lifting off-day|no lifting|rest day/i.test(stringValue(recommendation.lift_guidance, "")) ||
+        const subhead = document.querySelector("#liftSubhead");
+        const offDayText = /lifting off-day|no lifting|rest day|take the day off/i.test(stringValue(recommendation.lift_guidance, "")) ||
           /lifting off-day|no lifting/i.test(stringValue(recommendation.lift_focus, ""));
         const items = extractLiftExercises(recommendation);
         const values = offDayText
-          ? [{ title: "Today is a lifting off-day", dose: "" }]
+          ? [{ title: "No lift, take the day off.", dose: "" }]
           : items.length
           ? items
           : [{ title: "Optional recovery lift", dose: "" }];
 
+        if (subhead) subhead.classList.toggle("hidden", offDayText);
+
         values.slice(0, 4).forEach((item) => {
           const row = document.createElement("div");
-          row.className = "lift-item";
-          row.innerHTML = "<span class=\"lift-dot\"></span><div><span>" +
-            escapeHtml(item.title + (item.dose ? " " + item.dose : "")) +
-            "</span></div>";
+          row.className = offDayText ? "lift-offday" : "lift-item";
+          row.innerHTML = offDayText
+            ? "<div><span>" + escapeHtml(item.title) + "</span></div>"
+            : "<span class=\"lift-dot\"></span><div><span>" +
+              escapeHtml(item.title + (item.dose ? " " + item.dose : "")) +
+              "</span></div>";
           container.appendChild(row);
         });
+      }
+
+      function isRunOffDay(recommendation) {
+        return numberValue(recommendation.run_distance_miles, 0) <= 0 || /rest day|running off-day/i.test(stringValue(recommendation.run_pace_guidance, ""));
       }
 
       function canonicalActivityKey(activity) {
@@ -1941,12 +1958,22 @@
         const warnings = Array.isArray(recommendation.warnings) ? recommendation.warnings : FALLBACK_RECOMMENDATION.warnings;
         const sections = recommendation.explanation_sections || {};
 
-        text("#runDistance", numberValue(recommendation.run_distance_miles, 0).toFixed(1) + " mi");
-        text("#runPrescription", paceRangeOnly(recommendation.run_pace_guidance));
-        text("#runDetail", "Planned running volume for " + formatDisplayDate(data.today, false));
-        text("#paceDetail", titleCase(stringValue(recommendation.intensity, "steady").replace(/\s*\([^)]*\)/g, "").split(/[;,.]/)[0]));
-        text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
-        text("#liftFocus", shortLiftFocus(recommendation.lift_focus || "Optional"));
+        if (isRunOffDay(recommendation)) {
+          text("#runDistance", "Running off-day");
+          text("#runPrescription", "Running off-day");
+          text("#runDetail", "No running scheduled for " + formatDisplayDate(data.today, false));
+          text("#paceDetail", "Rest");
+          text("#duration", "No run today");
+        } else {
+          text("#runDistance", numberValue(recommendation.run_distance_miles, 0).toFixed(1) + " mi");
+          text("#runPrescription", paceRangeOnly(recommendation.run_pace_guidance));
+          text("#runDetail", "Planned running volume for " + formatDisplayDate(data.today, false));
+          text("#paceDetail", titleCase(stringValue(recommendation.intensity, "steady").replace(/\s*\([^)]*\)/g, "").split(/[;,.]/)[0]));
+          text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
+        }
+        text("#liftFocus", /lifting off-day|no lifting|take the day off/i.test(stringValue(recommendation.lift_guidance, "") + " " + stringValue(recommendation.lift_focus, ""))
+          ? "No lift, take the day off."
+          : shortLiftFocus(recommendation.lift_focus || "Optional"));
         html("#coachSummary", formatReasonBody(compactSummary(recommendation)));
         renderLiftList(document.querySelector("#liftList"), recommendation);
         setReasonLine("#reasonRecoveryPrimary", "ok", stringValue(sections.recovery, FALLBACK_RECOMMENDATION.explanation_sections.recovery));
