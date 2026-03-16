@@ -238,25 +238,24 @@
       .section-headline-icon.checklist::before {
         content: "";
         width: 12px;
-        height: 2px;
-        background: currentColor;
+        height: 14px;
+        border: 2px solid currentColor;
+        border-radius: 3px;
         position: absolute;
-        top: 9px;
-        left: 11px;
-        box-shadow: 0 6px 0 currentColor;
+        top: 6px;
+        left: 8px;
       }
 
       .section-headline-icon.checklist::after {
         content: "";
         width: 8px;
-        height: 8px;
+        height: 4px;
         border-left: 2px solid currentColor;
         border-bottom: 2px solid currentColor;
         position: absolute;
-        left: 7px;
-        top: 7px;
+        left: 11px;
+        top: 11px;
         transform: rotate(-45deg);
-        box-shadow: 0 6px 0 -1px var(--panel-soft), 0 6px 0 0 currentColor;
       }
 
       .checkin-grid {
@@ -1100,6 +1099,7 @@
                   <option value="normal" selected>Normal</option>
                   <option value="heavy">Heavy legs</option>
                   <option value="sore">Sore</option>
+                  <option value="sick">Sick</option>
                 </select>
               </div>
               <div class="checkin-field">
