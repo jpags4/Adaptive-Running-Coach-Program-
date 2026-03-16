@@ -1,30 +1,53 @@
 # Adaptive Half Marathon Coach
 
-This is a lightweight MVP for an app that adjusts a half marathon training plan from two signal sources:
+Adaptive Half Marathon Coach is a browser-based training app that combines recent running history, WHOOP recovery data, and a short daily check-in to generate a more personalized half marathon recommendation.
 
-- Strava-style training history for recent workouts and load
-- Whoop-style recovery metrics for readiness, sleep, and physiological stress
+The app currently supports:
 
-The current version can do two modes:
+- sample mode with built-in example data
+- live mode after connecting your own Strava and WHOOP accounts
+- a daily check-in before recommendation generation
+- projected training calendar updates after today's recommendation is created
+- local development and hosted deployment workflows
 
-- sample mode, using built-in example data
-- live mode, once you connect your own Strava and WHOOP accounts
+## What It Does Today
 
-## What it does
+- pulls recent run history and recovery data into a dashboard
+- shows health metrics and a rolling weekly recap before generating a plan
+- asks for subjective inputs like physical feel, mental state, and optional notes
+- generates a daily run and strength recommendation with reasoning and watchouts
+- projects the upcoming training calendar after the daily recommendation is generated
 
-- Calculates simple training load indicators from recent runs
-- Evaluates recovery, sleep, strain, and resting heart rate trends
-- Chooses a daily workout recommendation with reasoning and caution flags
-- Shows the result in a local browser dashboard
+## How The App Evolved
 
-## Project structure
+This project has moved through a few phases, and I want to preserve that history rather than overwrite it:
 
-- `app.py`: minimal HTTP server and JSON endpoint
-- `coach.py`: recommendation engine and training heuristics
+- earliest version:
+  - focused on a lightweight MVP that adjusted training from Strava-style load and WHOOP-style readiness
+  - relied more on built-in coaching logic and heuristic rules
+  - emphasized a simple dashboard that immediately showed a recommendation
+- middle phase:
+  - added hosted deployment support through Render
+  - added environment-variable-based configuration
+  - added token persistence and a path toward Postgres-backed storage
+  - shifted recommendation generation toward OpenAI
+- current phase:
+  - uses OpenAI as the main recommendation engine
+  - asks for a daily qualitative check-in before generating the plan
+  - separates fast-loading health data from slower recommendation generation
+  - keeps the dashboard visible first, then reveals the plan and projected calendar after recommendation generation
+
+## Project Structure
+
+- `app.py`: HTTP server, setup routes, dashboard data, and recommendation endpoint
+- `llm_coach.py`: OpenAI-powered recommendation generation
+- `coach.py`: older coaching heuristics and shared recommendation models
+- `integrations.py`: Strava and WHOOP integration helpers
+- `storage.py`: local and hosted storage helpers
 - `sample_data.py`: sample athlete profile, runs, and recovery metrics
 - `static/index.html`: dashboard UI
 
-## Run it
+## Run It
 
 ```bash
 python3 app.py
@@ -32,7 +55,7 @@ python3 app.py
 
 Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-## Beginner-friendly setup
+## Beginner-Friendly Setup
 
 1. Start the app with `python3 app.py`.
 2. Open the app in your browser.
@@ -40,31 +63,65 @@ Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 4. Paste in:
    - your Strava client ID and client secret
    - your WHOOP client ID and client secret
-   - your ngrok public URL
+   - your public app URL
 5. Save the setup form.
 6. Click `Connect Strava`.
 7. Click `Connect WHOOP`.
+8. Return to the dashboard, review your health data, complete the daily check-in, and generate your recommendation.
 
-The app stores those values in `data/settings.local.json` on your own computer. That file is ignored by git so your secrets stay local.
+The app stores local setup values on your own machine, and hosted deployments can instead read from environment variables.
 
-## Hosted backend plan
+## Current Recommendation Flow
 
-If your school or work network interferes with API traffic, the better setup is to run the backend on the internet instead of on your laptop.
+The dashboard is intentionally split into two stages:
 
-This project is now ready for that:
+1. Fast data load:
+   - health metrics
+   - weekly recap
+   - connected account status
+2. On-demand recommendation generation:
+   - physical check-in
+   - mental check-in
+   - optional notes
+   - OpenAI-generated run and lift recommendation
 
-- the app reads hosting secrets from environment variables
-- the app reads the public site URL from `APP_BASE_URL`
-- the app can persist tokens in a real database through `DATABASE_URL`
-- the app can use OpenAI reasoning for recommendations through `OPENAI_API_KEY`
-- the app listens on the hosting platform's port automatically
-- `render.yaml` is included for Render deployment
-- `runtime.txt` pins the Python version for hosting
-- `requirements.txt` is included so hosting platforms recognize the app layout cleanly
+This change was made so users are not staring at half-loaded recommendation panels while the model is still thinking.
 
-### Hosting environment variables
+## OpenAI-Powered Recommendations
 
-The hosted app expects these values:
+The current app relies on OpenAI as the primary recommendation engine through `llm_coach.py`.
+
+If `OPENAI_API_KEY` is set, the app sends:
+
+- recent runs
+- recent recovery metrics
+- athlete profile context
+- daily subjective check-in inputs
+
+to OpenAI and asks for a structured coaching recommendation.
+
+Important context:
+
+- older built-in coaching logic is still part of the codebase and documents the original approach
+- the current app no longer silently falls back to that older path for the main recommendation experience
+- if the OpenAI request fails, the app reports that the recommendation is unavailable
+
+## Hosted Deployment
+
+If your school or work network interferes with API traffic, hosting the backend is usually the better setup.
+
+This project supports hosted deployment with:
+
+- environment-based configuration
+- `APP_BASE_URL` for public callback routing
+- `DATABASE_URL` for persistent token storage
+- `OPENAI_API_KEY` and `OPENAI_MODEL` for recommendation generation
+- `render.yaml` for Render deployment
+- `runtime.txt` and `requirements.txt` for Python hosting support
+
+### Hosting Environment Variables
+
+The hosted app expects:
 
 - `APP_BASE_URL`
 - `DATABASE_URL`
@@ -81,40 +138,32 @@ The hosted app expects these values:
 
 You can see an example in `.env.example`.
 
-### Render steps
+### Render Steps
 
-1. Create a GitHub repository and push this project to it.
+1. Push this project to GitHub.
 2. Create a Render account and connect your GitHub account.
 3. Create a new Web Service from this repo.
 4. Let Render use the included `render.yaml`.
 5. Create a Render Postgres database named `adaptive-running-coach-db`.
-6. In Render, fill in the environment variables above.
-7. Make sure `DATABASE_URL` is connected to that Postgres database.
-8. After deploy, copy your Render URL, for example `https://your-app.onrender.com`.
-9. Set `APP_BASE_URL` in Render to that exact URL.
+6. Fill in the environment variables above.
+7. Connect `DATABASE_URL` to that Postgres database.
+8. Copy your deployed Render URL, for example `https://your-app.onrender.com`.
+9. Set `APP_BASE_URL` to that exact URL.
 10. Update your Strava and WHOOP app dashboards to use:
    - `https://your-app.onrender.com/strava/callback`
    - `https://your-app.onrender.com/whoop/callback`
-11. Add `OPENAI_API_KEY` if you want ChatGPT-powered recommendations.
-12. Optionally set `OPENAI_MODEL` to `gpt-5-mini` or another supported model.
-13. Open the deployed app and click `Connect Strava` and `Connect WHOOP`.
+11. Open the deployed app and reconnect Strava and WHOOP if needed.
 
-## OpenAI-powered recommendations
+## Storage Notes
 
-The app now relies on OpenAI as the recommendation engine through `llm_coach.py`.
+Without `DATABASE_URL`, the app falls back to local storage in the app folder.
 
-If `OPENAI_API_KEY` is set, the app sends recent runs, recovery metrics, and training context directly to OpenAI and asks for a structured coaching recommendation. The older built-in logic is no longer used for the app's recommendation path. If the OpenAI request fails, the app now reports that the recommendation is unavailable instead of silently reverting to the older coaching rules.
-
-### Important note about storage
-
-Without `DATABASE_URL`, the app falls back to local storage in the app folder. That is okay for early local development, but not reliable for a hosted app.
-
-That means:
+That is okay for local development, but not ideal for a hosted app because:
 
 - tokens may disappear after redeploys or restarts
-- you may need to reconnect Strava and WHOOP occasionally
+- you may need to reconnect Strava and WHOOP
 
-With a real Postgres database connected, the app can keep your OAuth tokens between reloads, restarts, and deploys.
+With a real Postgres database connected, the app can keep OAuth tokens between reloads, restarts, and deploys.
 
 ## Callback URLs
 
@@ -125,23 +174,23 @@ Use your app's public URL for both providers:
 
 For local development, that public URL can be an ngrok URL. For hosting, it will be your Render URL.
 
-## Product roadmap
+## Product Direction
 
-1. Add OAuth and data syncing for Strava and Whoop.
-2. Store athlete profile, plan history, and recommendation outcomes in a database.
-3. Split the engine into two layers:
-   - deterministic safety rules for injury risk, recovery, and plan progression
-   - an LLM layer that explains the recommendation in coach-like language
-4. Add feedback loops:
-   - athlete-reported soreness, motivation, and schedule constraints
-   - compliance tracking and automatic plan adjustments
-5. Add a calendar view and a longer-horizon weekly planning mode.
+Planned or partially emerging directions include:
 
-## Notes on the coaching logic
+1. better long-horizon weekly planning
+2. stronger database-backed history and recommendation tracking
+3. feedback loops for soreness, motivation, and schedule constraints
+4. clearer progression rules around mileage increases and hard/easy balance
+5. a safer hybrid between deterministic training constraints and LLM explanation
 
-For a real product, I would keep the final recommendation grounded in explicit rules even if an LLM is used for explanation. That gives you a safer system for health-adjacent guidance:
+## Coaching Philosophy
 
-- hard-stop or downshift rules when recovery is poor or resting heart rate is elevated
-- mileage progression constraints
-- taper and race-specific periodization
-- training load balancing across easy, workout, and long-run days
+The original idea behind this project still matters:
+
+- use objective signals like recovery, sleep, strain, and training load
+- avoid blindly forcing mileage when the body is not ready
+- keep hard/easy balance and race specificity in view
+- treat health-adjacent recommendations more carefully than generic workout content
+
+For a more mature version of the product, I would still want the final system grounded in explicit safety and progression rules, even if an LLM handles the coaching language and personalization layer.
