@@ -177,6 +177,21 @@
         text-transform: uppercase;
       }
 
+      .checkin-panel {
+        margin-top: 0;
+        border: 0;
+        background: transparent;
+      }
+
+      .checkin-panel summary {
+        padding: 0;
+      }
+
+      .checkin-panel .details-body {
+        border-top: 0;
+        padding: 14px 0 0;
+      }
+
       .checkin-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -992,36 +1007,42 @@
       </section>
 
       <section class="section card">
-        <div class="training-title">Daily Check-In</div>
-        <div class="generate-note">Your WHOOP and Strava data load first. Then answer these quick prompts so the recommendation can reflect how you actually feel today.</div>
-        <div class="checkin-grid">
-          <div class="checkin-field">
-            <label for="physicalFeeling">How are you feeling physically?</label>
-            <select id="physicalFeeling">
-              <option value="fresh">Fresh</option>
-              <option value="normal" selected>Normal</option>
-              <option value="heavy">Heavy legs</option>
-              <option value="sore">Sore</option>
-            </select>
+        <details id="checkinPanel" class="checkin-panel" open>
+          <summary>
+            <strong class="training-title">Daily Check-In</strong>
+            <span class="summary-arrow">&#9662;</span>
+          </summary>
+          <div class="details-body">
+            <div class="checkin-grid">
+              <div class="checkin-field">
+                <label for="physicalFeeling">How are you feeling physically?</label>
+                <select id="physicalFeeling">
+                  <option value="fresh">Fresh</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="heavy">Heavy legs</option>
+                  <option value="sore">Sore</option>
+                </select>
+              </div>
+              <div class="checkin-field">
+                <label for="mentalFeeling">How are you doing mentally?</label>
+                <select id="mentalFeeling">
+                  <option value="great">Great</option>
+                  <option value="steady" selected>Steady</option>
+                  <option value="stressed">Stressed</option>
+                  <option value="drained">Drained</option>
+                </select>
+              </div>
+              <div class="checkin-field">
+                <label for="checkinNotes">Anything else to mention?</label>
+                <textarea id="checkinNotes" placeholder="Optional notes like poor sleep, soreness, schedule limits, or motivation"></textarea>
+              </div>
+            </div>
+            <div class="checkin-actions">
+              <button id="generateButton" class="generate-button" type="button">Generate Recommendation</button>
+              <div id="generateStatus" class="generate-note">Complete the check-in, then generate today's plan.</div>
+            </div>
           </div>
-          <div class="checkin-field">
-            <label for="mentalFeeling">How are you doing mentally?</label>
-            <select id="mentalFeeling">
-              <option value="great">Great</option>
-              <option value="steady" selected>Steady</option>
-              <option value="stressed">Stressed</option>
-              <option value="drained">Drained</option>
-            </select>
-          </div>
-          <div class="checkin-field">
-            <label for="checkinNotes">Anything else to mention?</label>
-            <textarea id="checkinNotes" placeholder="Optional notes like poor sleep, soreness, schedule limits, or motivation"></textarea>
-          </div>
-        </div>
-        <div class="checkin-actions">
-          <button id="generateButton" class="generate-button" type="button">Generate Recommendation</button>
-          <div id="generateStatus" class="generate-note">The recommendation section stays hidden until you generate today's plan.</div>
-        </div>
+        </details>
       </section>
 
       <section id="trainingSection" class="section card hidden">
@@ -1344,6 +1365,22 @@
       function extractLiftExercises(recommendation) {
         const raw = stringValue(recommendation.lift_guidance, "");
         const items = [];
+        const colonSplit = raw.includes(":") ? raw.split(":").slice(1).join(":") : raw;
+        const commaSeparated = colonSplit
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => item && !/minutes after|later in the day|warm-?up|focus on/i.test(item));
+
+        if (commaSeparated.length >= 3) {
+          return commaSeparated.slice(0, 4).map((item) => ({
+            title: titleCase(item.replace(/\.$/, "").trim()),
+            dose: normalizeLiftDose(item),
+          })).map((item) => ({
+            title: item.dose ? item.title.replace(new RegExp(item.dose.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim() : item.title,
+            dose: item.dose,
+          }));
+        }
+
         const sentences = raw
           .replace(/\n/g, " ")
           .split(/(?<=\.)\s+/)
@@ -1745,6 +1782,7 @@
           window.__dashboardData = data;
           applyRecommendation(data);
           text("#generateStatus", "Today's recommendation is ready.");
+          document.querySelector("#checkinPanel")?.removeAttribute("open");
         } catch (error) {
           text("#generateStatus", "The recommendation could not be generated right now. Please try again.");
         } finally {
