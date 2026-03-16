@@ -194,7 +194,7 @@
 
       .checkin-panel .details-body {
         border-top: 1px solid var(--line);
-        padding: 18px 20px 0;
+        padding: 18px 20px 14px;
       }
 
       .section-headline {
@@ -204,11 +204,8 @@
       }
 
       .section-headline-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 10px;
-        border: 1px solid rgba(23, 27, 24, 0.12);
-        background: var(--panel-soft);
+        width: 24px;
+        height: 24px;
         color: var(--muted);
         display: inline-flex;
         align-items: center;
@@ -223,7 +220,7 @@
         border: 2px solid currentColor;
         border-radius: 3px;
         position: absolute;
-        top: 8px;
+        top: 5px;
       }
 
       .section-headline-icon.calendar::after {
@@ -232,7 +229,7 @@
         height: 2px;
         background: currentColor;
         position: absolute;
-        top: 12px;
+        top: 9px;
       }
 
       .section-headline-icon.checklist::before {
@@ -242,8 +239,8 @@
         border: 2px solid currentColor;
         border-radius: 3px;
         position: absolute;
-        top: 6px;
-        left: 8px;
+        top: 4px;
+        left: 6px;
       }
 
       .section-headline-icon.checklist::after {
@@ -253,8 +250,8 @@
         border-left: 2px solid currentColor;
         border-bottom: 2px solid currentColor;
         position: absolute;
-        left: 11px;
-        top: 11px;
+        left: 9px;
+        top: 9px;
         transform: rotate(-45deg);
       }
 
@@ -305,7 +302,7 @@
         align-items: center;
         flex-wrap: wrap;
         gap: 14px;
-        margin-top: 18px;
+        margin-top: 14px;
         max-width: 100%;
       }
 
@@ -1579,6 +1576,9 @@
 
       function extractLiftExercises(recommendation) {
         const raw = stringValue(recommendation.lift_guidance, "");
+        if (/lifting off-day|no lifting|rest day/i.test(raw) || /lifting off-day|no lifting/i.test(stringValue(recommendation.lift_focus, ""))) {
+          return [];
+        }
         const fallbackDose = globalLiftDose(raw);
         const segments = splitLiftSegments(raw);
         const items = [];
@@ -1601,8 +1601,12 @@
         if (!container) return;
         container.innerHTML = "";
 
+        const offDayText = /lifting off-day|no lifting|rest day/i.test(stringValue(recommendation.lift_guidance, "")) ||
+          /lifting off-day|no lifting/i.test(stringValue(recommendation.lift_focus, ""));
         const items = extractLiftExercises(recommendation);
-        const values = items.length
+        const values = offDayText
+          ? [{ title: "Today is a lifting off-day", dose: "" }]
+          : items.length
           ? items
           : [{ title: "Optional recovery lift", dose: "" }];
 

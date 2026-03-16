@@ -5,7 +5,7 @@ from unittest import mock
 from app import projected_calendar_entries
 from coach import Recommendation, coach_recommendation
 from integrations import build_strava_authorize_url, build_whoop_authorize_url
-from llm_coach import llm_recommendation
+from llm_coach import _apply_guardrails, llm_recommendation
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 
 
@@ -130,6 +130,181 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertAlmostEqual(recommendation.run_distance_miles + current_week_future, 30.0, delta=0.6)
         self.assertAlmostEqual(next_week, 33.0, delta=0.6)
+
+    def test_projected_calendar_uses_pace_text_for_all_run_days(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-16",
+            workout="Easy aerobic run",
+            intensity="easy",
+            duration_minutes=48,
+            run_distance_miles=5.0,
+            run_pace_guidance="9:15-9:45/mi",
+            lift_focus="Single-Leg Strength + Glutes",
+            lift_guidance="1) Bulgarian split squats - 3 x 8. 2) Glute bridges - 3 x 10.",
+            recap=[],
+            explanation=[],
+            explanation_sections={},
+            warnings=[],
+            confidence="high",
+        )
+
+        projections = projected_calendar_entries(
+            anchor=date(2026, 3, 16),
+            recommendation=recommendation,
+            end_day=date(2026, 3, 22),
+            profile=SAMPLE_PROFILE,
+        )
+
+        run_pace_texts = [
+            activity.get("pace_text", "")
+            for day_activities in projections.values()
+            for activity in day_activities
+            if activity.get("name") == "Run"
+        ]
+
+        self.assertTrue(run_pace_texts)
+        self.assertTrue(all("/mi" in text for text in run_pace_texts))
+
+    def test_guardrails_turn_sick_day_into_rest(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-16",
+            workout="Tempo session",
+            intensity="hard",
+            duration_minutes=60,
+            run_distance_miles=6.5,
+            run_pace_guidance="8:05-8:25/mi",
+            lift_focus="Posterior Chain",
+            lift_guidance="Romanian deadlifts 3x8",
+            recap=[],
+            explanation=[],
+            explanation_sections={
+                "overall": "",
+                "run": "",
+                "pace": "",
+                "lift": "",
+                "recovery": "",
+            },
+            warnings=[],
+            confidence="medium",
+        )
+
+        guarded = _apply_guardrails(
+            recommendation,
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            subjective_feedback={"physical_feeling": "sick", "mental_feeling": "steady"},
+        )
+
+        self.assertEqual(guarded.workout, "Rest and recovery")
+        self.assertEqual(guarded.run_distance_miles, 0.0)
+        self.assertEqual(guarded.lift_focus, "No lifting")
+
+    def test_guardrails_turn_illness_notes_into_rest(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-16",
+            workout="Easy aerobic run",
+            intensity="easy",
+            duration_minutes=40,
+            run_distance_miles=4.0,
+            run_pace_guidance="9:15-9:45/mi",
+            lift_focus="Single-Leg Strength",
+            lift_guidance="Bulgarian split squats 3x8",
+            recap=[],
+            explanation=[],
+            explanation_sections={
+                "overall": "",
+                "run": "",
+                "pace": "",
+                "lift": "",
+                "recovery": "",
+            },
+            warnings=[],
+            confidence="medium",
+        )
+
+        guarded = _apply_guardrails(
+            recommendation,
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            subjective_feedback={
+                "physical_feeling": "normal",
+                "mental_feeling": "steady",
+                "notes": "I have a headache and feel unwell today.",
+            },
+        )
+
+        self.assertEqual(guarded.workout, "Rest and recovery")
+        self.assertEqual(guarded.run_distance_miles, 0.0)
+
+    def test_guardrails_cap_excessive_distance_progression(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-16",
+            workout="Steady endurance run",
+            intensity="moderate",
+            duration_minutes=85,
+            run_distance_miles=10.0,
+            run_pace_guidance="8:55-9:20/mi",
+            lift_focus="Posterior Chain",
+            lift_guidance="Romanian deadlifts 3x8",
+            recap=[],
+            explanation=[],
+            explanation_sections={
+                "overall": "",
+                "run": "",
+                "pace": "",
+                "lift": "",
+                "recovery": "",
+            },
+            warnings=[],
+            confidence="medium",
+        )
+
+        guarded = _apply_guardrails(
+            recommendation,
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            subjective_feedback={"physical_feeling": "normal", "mental_feeling": "steady"},
+        )
+
+        self.assertLessEqual(guarded.run_distance_miles, 9.8)
+        self.assertTrue(any("Progression guardrail" in item for item in guarded.warnings))
+
+    def test_guardrails_allow_run_only_day_with_lifting_off_day_message(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-16",
+            workout="Steady endurance run",
+            intensity="moderate",
+            duration_minutes=55,
+            run_distance_miles=6.0,
+            run_pace_guidance="8:55-9:20/mi",
+            lift_focus="Posterior Chain",
+            lift_guidance="Romanian deadlifts 3x8",
+            recap=[],
+            explanation=[],
+            explanation_sections={
+                "overall": "",
+                "run": "",
+                "pace": "",
+                "lift": "",
+                "recovery": "",
+            },
+            warnings=[],
+            confidence="medium",
+        )
+
+        guarded = _apply_guardrails(
+            recommendation,
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            subjective_feedback={"physical_feeling": "normal", "mental_feeling": "steady"},
+        )
+
+        self.assertEqual(guarded.lift_focus, "Today is a lifting off-day")
+        self.assertEqual(guarded.lift_guidance, "Today is a lifting off-day.")
 
 
 if __name__ == "__main__":
