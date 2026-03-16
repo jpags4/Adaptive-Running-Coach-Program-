@@ -138,53 +138,49 @@ def _lift_focus_for_day(weekday: int, long_run_day: int) -> str:
     return ""
 
 
-def _projected_day_template(projection_date, profile, recommendation) -> list[dict]:
-    weekday = projection_date.weekday()
-    long_run_day = _preferred_long_run_index(getattr(profile, "preferred_long_run_day", "Sunday"))
-    weekly_target = max(float(getattr(profile, "weekly_mileage_target", 0) or 0), 18.0)
+def _run_blueprints(long_run_day: int, recommendation) -> dict[int, dict]:
     quality_day = (long_run_day - 5) % 7
     steady_day = (long_run_day - 3) % 7
     easy_day = (quality_day - 1) % 7
-    recovery_day = (quality_day + 1) % 7
-    reset_day = (long_run_day - 1) % 7
     aerobic_day = (steady_day + 1) % 7
-
-    if weekday in {recovery_day, reset_day}:
-        return []
 
     run_blueprints = {
         easy_day: {
-            "distance": weekly_target * 0.18,
+            "weight": 0.18,
             "duration": 42,
             "intensity": "easy",
             "pace_text": _pace_text_for_type("easy", recommendation),
         },
         quality_day: {
-            "distance": weekly_target * 0.20,
+            "weight": 0.20,
             "duration": 50,
             "intensity": "hard",
             "pace_text": _pace_text_for_type("quality", recommendation),
         },
         steady_day: {
-            "distance": weekly_target * 0.22,
+            "weight": 0.22,
             "duration": 48,
             "intensity": "moderate",
             "pace_text": _pace_text_for_type("steady", recommendation),
         },
         aerobic_day: {
-            "distance": weekly_target * 0.16,
+            "weight": 0.16,
             "duration": 40,
             "intensity": "easy",
             "pace_text": _pace_text_for_type("easy", recommendation),
         },
         long_run_day: {
-            "distance": weekly_target * 0.24,
+            "weight": 0.24,
             "duration": 70,
             "intensity": "moderate",
             "pace_text": _pace_text_for_type("long", recommendation),
         },
     }
-    blueprint = run_blueprints.get(weekday)
+    return run_blueprints
+
+
+def _projected_day_template(projection_date, long_run_day: int, blueprint: dict | None, distance_miles: float) -> list[dict]:
+    weekday = projection_date.weekday()
     if not blueprint:
         return []
 
@@ -194,7 +190,7 @@ def _projected_day_template(projection_date, profile, recommendation) -> list[di
             "name": "Run",
             "day": projection_date.isoformat(),
             "sport": "Projected Run",
-            "distance_miles": round(max(2.5, blueprint["distance"]), 1),
+            "distance_miles": round(max(2.5, distance_miles), 1),
             "duration_minutes": max(20, int(blueprint["duration"])),
             "average_pace_min_per_mile": 0,
             "pace_text": blueprint["pace_text"],
@@ -228,10 +224,35 @@ def projected_calendar_entries(anchor, recommendation, end_day, profile) -> dict
         return {}
 
     projections: dict[str, list[dict]] = {}
+    long_run_day = _preferred_long_run_index(getattr(profile, "preferred_long_run_day", "Sunday"))
+    run_blueprints = _run_blueprints(long_run_day, recommendation)
+    current_week_start = anchor - timedelta(days=anchor.weekday())
+    base_weekly_target = max(30.0, float(getattr(profile, "weekly_mileage_target", 0) or 0))
     projection_date = anchor + timedelta(days=1)
+
     while projection_date <= end_day:
-        projections[projection_date.isoformat()] = _projected_day_template(projection_date, profile, recommendation)
-        projection_date += timedelta(days=1)
+        week_start = projection_date - timedelta(days=projection_date.weekday())
+        week_end = min(end_day, week_start + timedelta(days=6))
+        week_offset = max(0, (week_start - current_week_start).days // 7)
+        target_week_miles = round(base_weekly_target * (1.1 ** week_offset), 1)
+
+        week_days = [
+            day
+            for day in (week_start + timedelta(days=offset) for offset in range((week_end - week_start).days + 1))
+            if day > anchor
+        ]
+        eligible_days = [day for day in week_days if day.weekday() in run_blueprints]
+        total_weight = sum(run_blueprints[day.weekday()]["weight"] for day in eligible_days) or 1.0
+        remaining_miles = max(0.0, target_week_miles - (recommendation.run_distance_miles if week_offset == 0 else 0.0))
+
+        for day in week_days:
+            blueprint = run_blueprints.get(day.weekday())
+            distance_miles = 0.0
+            if blueprint:
+                distance_miles = remaining_miles * (blueprint["weight"] / total_weight)
+            projections[day.isoformat()] = _projected_day_template(day, long_run_day, blueprint, distance_miles)
+
+        projection_date = week_end + timedelta(days=1)
     return projections
 
 

@@ -165,8 +165,16 @@
         margin-bottom: 22px;
       }
 
+      .training-title {
+        color: var(--ink);
+        font-size: 1.2rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
       .pill {
-        display: inline-flex;
+        display: none;
         align-items: center;
         justify-content: center;
         padding: 10px 18px;
@@ -315,13 +323,13 @@
       }
 
       .summary-box {
-        background: linear-gradient(135deg, rgba(10, 167, 111, 0.1), rgba(10, 167, 111, 0.04));
-        border: 1px solid rgba(10, 167, 111, 0.12);
+        background: linear-gradient(135deg, rgba(124, 92, 255, 0.08), rgba(124, 92, 255, 0.03));
+        border: 1px solid rgba(124, 92, 255, 0.12);
         border-radius: 18px;
         padding: 18px 20px;
-        color: #2f3a35;
+        color: #2f3150;
         line-height: 1.6;
-        font-size: 1rem;
+        font-size: 1.02rem;
       }
 
       details {
@@ -376,10 +384,10 @@
       }
 
       .reason-group-title {
-        color: var(--muted);
-        font-size: 0.84rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
+        color: var(--ink);
+        font-size: 1.02rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
         text-transform: uppercase;
       }
 
@@ -435,6 +443,14 @@
         border: 1px solid rgba(213, 63, 97, 0.1);
         color: #7e3822;
         line-height: 1.55;
+      }
+
+      .recap-shell {
+        margin-top: 24px;
+      }
+
+      .recap-shell details {
+        margin-top: 0;
       }
 
       .brief-item {
@@ -531,7 +547,7 @@
       .calendar-note {
         margin: 0;
         color: var(--muted);
-        max-width: 700px;
+        max-width: none;
         line-height: 1.55;
       }
 
@@ -876,7 +892,7 @@
         </div>
       </section>
 
-      <section class="section card">
+      <section class="section recap-shell">
         <details class="recap-details">
           <summary>
             <strong>Weekly Recap</strong>
@@ -908,7 +924,7 @@
 
       <section class="section card">
         <div class="training-head">
-          <div class="section-title">Today's Training</div>
+          <div class="training-title">Today's Training</div>
           <span id="workoutBadge" class="pill">Generating Plan</span>
         </div>
 
@@ -991,11 +1007,6 @@
                 </div>
               </div>
             </div>
-
-            <div>
-              <div class="section-title">Things To Watch</div>
-              <div id="warnings" class="watch-list"></div>
-            </div>
           </div>
         </details>
       </section>
@@ -1005,7 +1016,7 @@
           <div class="calendar-meta">
             <div class="section-title">Training Calendar</div>
             <h3 id="calendarTitle" class="calendar-heading">March Training Calendar</h3>
-            <p class="calendar-note">Future days are projections based on your current progress and will update as new data comes in.</p>
+            <p class="calendar-note">Future days are projections based on your current progress and will update as new data comes in</p>
           </div>
           <div class="calendar-legend">
             <span class="legend-item"><span class="legend-dot easy"></span>Easy</span>
@@ -1068,6 +1079,11 @@
       function text(id, value) {
         const node = document.querySelector(id);
         if (node) node.textContent = value;
+      }
+
+      function html(id, value) {
+        const node = document.querySelector(id);
+        if (node) node.innerHTML = value;
       }
 
       function stringValue(value, fallback) {
@@ -1189,10 +1205,20 @@
         });
       }
 
+      function formatReasonBody(message) {
+        const text = stringValue(message, "");
+        if (!text) return "";
+        const firstStop = text.search(/[.!?]/);
+        if (firstStop === -1) return "<strong>" + escapeHtml(text) + "</strong>";
+        const lead = text.slice(0, firstStop + 1);
+        const rest = text.slice(firstStop + 1).trim();
+        return "<strong>" + escapeHtml(lead) + "</strong>" + (rest ? " " + escapeHtml(rest) : "");
+      }
+
       function setReasonLine(id, prefixClass, message) {
         const node = document.querySelector(id);
         if (!node) return;
-        node.innerHTML = "<strong class=\"" + prefixClass + "\">" + (prefixClass === "warn" ? "Watch: " : "Signal: ") + "</strong>" + message;
+        node.innerHTML = "<strong class=\"" + prefixClass + "\">" + (prefixClass === "warn" ? "Watch: " : "Signal: ") + "</strong>" + formatReasonBody(message);
       }
 
       function qualityLabel(activity) {
@@ -1565,21 +1591,20 @@
           text("#yesterdayRunText", previousRun.day ? formatDisplayDate(previousRun.day, true) + " · " + numberValue(previousRun.duration_minutes, 0) + " min" : "No recent run found");
           text("#mileage", loadMiles >= 28 ? "High" : loadMiles >= 18 ? "Medium" : "Light");
           text("#loadStatus", loadMiles.toFixed(1) + " miles in the last 7 days");
-          text("#workoutBadge", workoutBadgeText(recommendation));
           text("#runDistance", numberValue(recommendation.run_distance_miles, 0).toFixed(1) + " mi");
           text("#runPrescription", paceRangeOnly(recommendation.run_pace_guidance));
           text("#runDetail", "Planned running volume for " + formatDisplayDate(data.today, false));
           text("#paceDetail", titleCase(stringValue(recommendation.intensity, "steady").replace(/\s*\([^)]*\)/g, "").split(/[;,.]/)[0]));
           text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
           text("#liftFocus", shortLiftFocus(recommendation.lift_focus || "Optional"));
-          text("#coachSummary", compactSummary(recommendation));
+          html("#coachSummary", formatReasonBody(compactSummary(recommendation)));
           renderLiftList(document.querySelector("#liftList"), recommendation);
 
           setReasonLine("#reasonRecoveryPrimary", "ok", stringValue(sections.recovery, FALLBACK_RECOMMENDATION.explanation_sections.recovery));
           setReasonLine("#reasonRecoverySecondary", "warn", stringValue(warnings[0], "Recovery markers suggest keeping the day controlled."));
           setReasonLine("#reasonLoadPrimary", "ok", stringValue(sections.overall, FALLBACK_RECOMMENDATION.explanation_sections.overall));
-          setReasonLine("#reasonLoadSecondary", "ok", stringValue(sections.run, FALLBACK_RECOMMENDATION.explanation_sections.run));
-          setReasonLine("#reasonLiftPrimary", "warn", stringValue(sections.lift, FALLBACK_RECOMMENDATION.explanation_sections.lift));
+          setReasonLine("#reasonLoadSecondary", "warn", stringValue(warnings[1], sections.run || FALLBACK_RECOMMENDATION.explanation_sections.run));
+          setReasonLine("#reasonLiftPrimary", "warn", stringValue(warnings[2], sections.lift || FALLBACK_RECOMMENDATION.explanation_sections.lift));
           setReasonLine("#reasonLiftSecondary", "ok", stringValue(sections.pace, FALLBACK_RECOMMENDATION.explanation_sections.pace));
 
           if (stravaConnected) document.querySelector("#stravaLight").classList.add("live");
@@ -1589,7 +1614,6 @@
           text("#connectionHeadline", stravaConnected && whoopConnected ? "Both fitness platforms are hooked up." : "One or more fitness platforms need attention.");
           text("#connectionDetail", "Live data is loading from your connected services.");
 
-          renderBriefItems(document.querySelector("#warnings"), warnings, "No immediate caution flags appeared in the current data.", true);
           renderBriefItems(document.querySelector("#recap"), recap, "No recent recap was generated.", false);
           renderRecapDays(document.querySelector("#recapDays"), data.activity_feed || [], data.today);
           updateRecapStats(data.activity_feed || [], data.today);
@@ -1597,8 +1621,7 @@
           text("#calendarTitle", new Date(data.today + "T12:00:00").toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
           document.querySelector("#loadingBanner")?.classList.add("hidden");
         } catch (error) {
-          text("#coachSummary", "The dashboard could not load your training data. Refresh in a moment and try again.");
-          renderBriefItems(document.querySelector("#warnings"), [String(error.message || error)], "Dashboard load failed.", true);
+          html("#coachSummary", formatReasonBody("The dashboard could not load your training data. Refresh in a moment and try again."));
           renderCalendar(document.querySelector("#calendar"), [], FALLBACK_RECOMMENDATION, "");
           document.querySelector("#loadingBanner")?.classList.add("hidden");
         }

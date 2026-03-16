@@ -3,7 +3,7 @@ from datetime import date
 from unittest import mock
 
 from app import projected_calendar_entries
-from coach import coach_recommendation
+from coach import Recommendation, coach_recommendation
 from integrations import build_strava_authorize_url, build_whoop_authorize_url
 from llm_coach import llm_recommendation
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
@@ -90,6 +90,46 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertEqual(run["intensity"], "moderate")
         self.assertGreater(run["distance_miles"], 6.0)
+
+    def test_projected_calendar_builds_roughly_ten_percent_each_week(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-16",
+            workout="Easy aerobic run",
+            intensity="easy",
+            duration_minutes=48,
+            run_distance_miles=5.0,
+            run_pace_guidance="9:15-9:45/mi",
+            lift_focus="Single-Leg Strength + Glutes",
+            lift_guidance="1) Bulgarian split squats - 3 x 8. 2) Glute bridges - 3 x 10.",
+            recap=[],
+            explanation=[],
+            explanation_sections={},
+            warnings=[],
+            confidence="high",
+        )
+
+        projections = projected_calendar_entries(
+            anchor=date(2026, 3, 16),
+            recommendation=recommendation,
+            end_day=date(2026, 3, 29),
+            profile=SAMPLE_PROFILE,
+        )
+
+        current_week_future = sum(
+            activity.get("distance_miles", 0)
+            for day in range(17, 23)
+            for activity in projections[date(2026, 3, day).isoformat()]
+            if activity.get("name") == "Run"
+        )
+        next_week = sum(
+            activity.get("distance_miles", 0)
+            for day in range(23, 30)
+            for activity in projections[date(2026, 3, day).isoformat()]
+            if activity.get("name") == "Run"
+        )
+
+        self.assertAlmostEqual(recommendation.run_distance_miles + current_week_future, 30.0, delta=0.6)
+        self.assertAlmostEqual(next_week, 33.0, delta=0.6)
 
 
 if __name__ == "__main__":
