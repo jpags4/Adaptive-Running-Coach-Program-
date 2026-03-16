@@ -254,10 +254,18 @@
         max-width: 540px;
       }
 
+      .lift-subhead {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
       .lift-list {
         display: grid;
-        gap: 14px;
-        margin-top: 24px;
+        gap: 10px;
+        margin-top: 8px;
       }
 
       .lift-item {
@@ -286,6 +294,34 @@
         color: var(--muted);
         font-size: 0.95rem;
         margin-top: 3px;
+      }
+
+      .lift-details {
+        margin-top: 18px;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      .lift-details summary {
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--ink);
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+
+      .lift-details summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .lift-details-copy {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.5;
       }
 
       .summary-box {
@@ -868,10 +904,17 @@
             <div class="metric-block">
               <div class="block-label"><span class="block-icon">+</span>Strength</div>
               <div class="lift-title" id="liftFocus">-</div>
-              <div id="liftGuidance" class="metric-copy">Focus for today's lift</div>
+              <div class="lift-subhead">Suggested exercises</div>
             </div>
 
             <div id="liftList" class="lift-list"></div>
+            <details class="lift-details">
+              <summary>
+                <span>Why this lift today</span>
+                <span class="summary-arrow">&#9662;</span>
+              </summary>
+              <div id="liftReason" class="lift-details-copy">Loading lift rationale.</div>
+            </details>
           </div>
         </div>
 
@@ -1126,7 +1169,12 @@
 
       function shortLiftFocus(value) {
         const text = titleCase(stringValue(value, "Optional"));
-        const stripped = text.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
+        const stripped = text
+          .split(":")
+          .slice(-1)[0]
+          .replace(/\([^)]*\)/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
         return stripped;
       }
 
@@ -1153,35 +1201,46 @@
         return /tempo|interval|threshold|workout|hill|long/i.test(text);
       }
 
+      function extractLiftExercises(recommendation) {
+        const raw = stringValue(recommendation.lift_guidance, "");
+        const items = [];
+        const numbered = raw.match(/\d+\)\s*[^.]+(?:\.)?/g) || [];
+
+        numbered.forEach((segment) => {
+          const cleaned = segment.replace(/^\d+\)\s*/, "").replace(/\.$/, "").trim();
+          const parts = cleaned.split(/\s+[—-]\s+/);
+          items.push({
+            title: titleCase(parts[0] || cleaned),
+            detail: (parts[1] || "").trim()
+          });
+        });
+
+        if (items.length) return items;
+
+        const sentences = raw
+          .split(/[.?!]\s+/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+
+        return sentences.slice(0, 4).map((sentence) => ({
+          title: titleCase(sentence.replace(/\s*[—-].*$/, "").trim()),
+          detail: ""
+        }));
+      }
+
       function renderLiftList(container, recommendation) {
         if (!container) return;
         container.innerHTML = "";
 
-        const focus = titleCase(stringValue(recommendation.lift_focus, ""));
-        const raw = stringValue(recommendation.lift_guidance, "");
-        const items = [];
-        const numbered = raw.match(/\d+\)\s*[^;]+/g) || [];
+        const items = extractLiftExercises(recommendation);
+        const values = items.length
+          ? items
+          : [{ title: "Optional recovery lift", detail: "Skip it if your legs feel unusually heavy." }];
 
-        numbered.forEach((segment) => {
-          const cleaned = segment.replace(/^\d+\)\s*/, "").trim();
-          const parts = cleaned.split(/\s+[—-]\s+/);
-          items.push({
-            title: titleCase(parts[0] || cleaned),
-            detail: (parts[1] || "").trim() || "Controlled reps with light to moderate load."
-          });
-        });
-
-        if (!items.length && focus && !/unavailable/i.test(focus)) {
-          items.push({ title: focus, detail: "Keep the session controlled and moderate." });
-        }
-        if (!items.length) {
-          items.push({ title: "Optional", detail: "Skip it if your legs feel unusually heavy." });
-        }
-
-        items.slice(0, 2).forEach((item) => {
+        values.slice(0, 4).forEach((item) => {
           const row = document.createElement("div");
           row.className = "lift-item";
-          row.innerHTML = "<span class=\"lift-dot\"></span><div><strong>" + item.title + "</strong><span>" + item.detail + "</span></div>";
+          row.innerHTML = "<span class=\"lift-dot\"></span><div><strong>" + item.title + "</strong>" + (item.detail ? "<span>" + item.detail + "</span>" : "") + "</div>";
           container.appendChild(row);
         });
       }
@@ -1458,7 +1517,7 @@
           text("#paceDetail", titleCase(stringValue(recommendation.intensity, "steady").replace(/\s*\([^)]*\)/g, "").split(/[;,.]/)[0]));
           text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
           text("#liftFocus", shortLiftFocus(recommendation.lift_focus || "Optional"));
-          text("#liftGuidance", stringValue(recommendation.lift_guidance, "Keep the lift optional and light."));
+          text("#liftReason", stringValue(sections.lift, FALLBACK_RECOMMENDATION.explanation_sections.lift));
           text("#coachSummary", compactSummary(recommendation));
           renderLiftList(document.querySelector("#liftList"), recommendation);
 

@@ -228,11 +228,14 @@ def llm_recommendation(
         "today": today_str,
         "coach_preferences": [
             "The recommendation engine should rely on the language model as the source of reasoning rather than earlier hand-written coach logic.",
+            "Use a readiness -> load -> specifics reasoning flow: first decide how hard today should be, then account for recent accumulated strain, then shape the actual run and lift details.",
             "Every recommendation should explain why the run distance is what it is, why the pace is what it is, why the lifting recommendation is what it is, and how recovery metrics changed the plan.",
             "Leg durability is often a bigger limiter than cardio, especially on hilly terrain.",
             "The athlete wants recommendations that feel individualized and grounded in recent activity, not rigid mileage templates.",
             "Poor sleep, emotional stress, hills, and lingering soreness should meaningfully shape the recommendation.",
             "When the athlete is ready for a bigger day, say so clearly instead of defaulting conservative.",
+            "Across a normal half marathon week, the athlete wants meaningful variance between easy runs, quality work, and a long run instead of nearly identical daily mileage.",
+            "Weekly structure should usually include at least two low-strain or rest days and no more than three lifting days unless the data strongly justifies otherwise.",
         ],
     }
 

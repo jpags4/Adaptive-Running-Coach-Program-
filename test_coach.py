@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 from unittest import mock
 
+from app import projected_calendar_entries
 from coach import coach_recommendation
 from integrations import build_strava_authorize_url, build_whoop_authorize_url
 from llm_coach import llm_recommendation
@@ -46,6 +47,49 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(recommendation.workout, "Recommendation unavailable")
         self.assertIn("OPENAI_API_KEY not set", recommendation.warnings)
         self.assertIn("overall", recommendation.explanation_sections)
+
+    def test_projected_calendar_has_two_rest_days_and_three_lifts_per_week(self) -> None:
+        recommendation = coach_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            today=date(2026, 3, 14),
+        )
+
+        projections = projected_calendar_entries(
+            anchor=date(2026, 3, 15),
+            recommendation=recommendation,
+            end_day=date(2026, 3, 22),
+            profile=SAMPLE_PROFILE,
+        )
+
+        week = [projections[date(2026, 3, day).isoformat()] for day in range(16, 23)]
+        rest_days = sum(1 for activities in week if not activities)
+        lift_days = sum(1 for activities in week if any(activity.get("name") == "Lift" for activity in activities))
+
+        self.assertEqual(rest_days, 2)
+        self.assertEqual(lift_days, 3)
+
+    def test_projected_calendar_keeps_long_run_on_preferred_day(self) -> None:
+        recommendation = coach_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            today=date(2026, 3, 14),
+        )
+
+        projections = projected_calendar_entries(
+            anchor=date(2026, 3, 15),
+            recommendation=recommendation,
+            end_day=date(2026, 3, 22),
+            profile=SAMPLE_PROFILE,
+        )
+
+        sunday_plan = projections[date(2026, 3, 22).isoformat()]
+        run = next(activity for activity in sunday_plan if activity.get("name") == "Run")
+
+        self.assertEqual(run["intensity"], "moderate")
+        self.assertGreater(run["distance_miles"], 6.0)
 
 
 if __name__ == "__main__":

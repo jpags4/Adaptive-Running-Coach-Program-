@@ -37,6 +37,15 @@ from storage import init_storage, load_settings, load_states, load_tokens, save_
 
 ROOT = Path(__file__).parent
 STATIC_DIR = ROOT / "static"
+WEEKDAY_NAMES = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+]
 
 
 def previous_run_summary(runs: list) -> dict:
@@ -99,45 +108,130 @@ def _filter_calendar_activities(activity_feed: list[dict]) -> list[dict]:
     return filtered
 
 
-def projected_calendar_entries(anchor, recommendation, end_day) -> dict[str, list[dict]]:
-    if not recommendation or recommendation.run_distance_miles <= 0:
-        return {}
+def _preferred_long_run_index(value: str) -> int:
+    normalized = str(value or "").strip().lower()
+    return WEEKDAY_NAMES.index(normalized) if normalized in WEEKDAY_NAMES else 6
 
-    projections: dict[str, list[dict]] = {}
-    projection_date = anchor + timedelta(days=1)
-    cycle = 0
-    while projection_date <= end_day and cycle < 10:
-        adjusted_distance = round(max(2.5, recommendation.run_distance_miles - (0.2 if cycle % 3 else 0.0)), 1)
-        run_intensity = recommendation.intensity if cycle % 3 != 2 else "easy"
-        lift_intensity = "moderate" if cycle % 3 == 0 else "easy"
-        projections[projection_date.isoformat()] = [
-            {
-                "source": "Projection",
-                "name": "Run",
-                "day": projection_date.isoformat(),
-                "sport": "Projected Run",
-                "distance_miles": adjusted_distance,
-                "duration_minutes": max(20, recommendation.duration_minutes),
-                "average_pace_min_per_mile": 0,
-                "pace_text": recommendation.run_pace_guidance,
-                "intensity": run_intensity,
-                "projected": True,
-            },
+
+def _pace_text_for_type(workout_type: str, recommendation) -> str:
+    base = str(recommendation.run_pace_guidance or "").strip()
+    if workout_type == "quality":
+        return "Intervals or tempo effort, mostly Zones 3-4."
+    if workout_type == "steady":
+        return "Steady aerobic effort, mostly Zones 2-3."
+    if workout_type == "long":
+        return "Long easy run, relaxed and mostly Zone 2."
+    return base or "Easy conversational effort."
+
+
+def _lift_focus_for_day(weekday: int, long_run_day: int) -> str:
+    quality_day = (long_run_day - 5) % 7
+    steady_day = (long_run_day - 3) % 7
+    easy_day = (quality_day - 1) % 7
+
+    if weekday == easy_day:
+        return "Single-Leg Strength + Glutes"
+    if weekday == steady_day:
+        return "Upper Body + Core"
+    if weekday == long_run_day:
+        return "Posterior Chain + Core"
+    return ""
+
+
+def _projected_day_template(projection_date, profile, recommendation) -> list[dict]:
+    weekday = projection_date.weekday()
+    long_run_day = _preferred_long_run_index(getattr(profile, "preferred_long_run_day", "Sunday"))
+    weekly_target = max(float(getattr(profile, "weekly_mileage_target", 0) or 0), 18.0)
+    quality_day = (long_run_day - 5) % 7
+    steady_day = (long_run_day - 3) % 7
+    easy_day = (quality_day - 1) % 7
+    recovery_day = (quality_day + 1) % 7
+    reset_day = (long_run_day - 1) % 7
+    aerobic_day = (steady_day + 1) % 7
+
+    if weekday in {recovery_day, reset_day}:
+        return []
+
+    run_blueprints = {
+        easy_day: {
+            "distance": weekly_target * 0.18,
+            "duration": 42,
+            "intensity": "easy",
+            "pace_text": _pace_text_for_type("easy", recommendation),
+        },
+        quality_day: {
+            "distance": weekly_target * 0.20,
+            "duration": 50,
+            "intensity": "hard",
+            "pace_text": _pace_text_for_type("quality", recommendation),
+        },
+        steady_day: {
+            "distance": weekly_target * 0.22,
+            "duration": 48,
+            "intensity": "moderate",
+            "pace_text": _pace_text_for_type("steady", recommendation),
+        },
+        aerobic_day: {
+            "distance": weekly_target * 0.16,
+            "duration": 40,
+            "intensity": "easy",
+            "pace_text": _pace_text_for_type("easy", recommendation),
+        },
+        long_run_day: {
+            "distance": weekly_target * 0.24,
+            "duration": 70,
+            "intensity": "moderate",
+            "pace_text": _pace_text_for_type("long", recommendation),
+        },
+    }
+    blueprint = run_blueprints.get(weekday)
+    if not blueprint:
+        return []
+
+    activities = [
+        {
+            "source": "Projection",
+            "name": "Run",
+            "day": projection_date.isoformat(),
+            "sport": "Projected Run",
+            "distance_miles": round(max(2.5, blueprint["distance"]), 1),
+            "duration_minutes": max(20, int(blueprint["duration"])),
+            "average_pace_min_per_mile": 0,
+            "pace_text": blueprint["pace_text"],
+            "intensity": blueprint["intensity"],
+            "projected": True,
+        }
+    ]
+
+    lift_focus = _lift_focus_for_day(weekday, long_run_day)
+    if lift_focus:
+        activities.append(
             {
                 "source": "Projection",
                 "name": "Lift",
                 "day": projection_date.isoformat(),
                 "sport": "Projected Strength",
                 "distance_miles": 0,
-                "duration_minutes": 35,
+                "duration_minutes": 30,
                 "average_pace_min_per_mile": 0,
-                "lift_focus": recommendation.lift_focus,
-                "intensity": lift_intensity,
+                "lift_focus": lift_focus,
+                "intensity": "easy" if blueprint["intensity"] == "easy" else "moderate",
                 "projected": True,
-            },
-        ]
+            }
+        )
+
+    return activities
+
+
+def projected_calendar_entries(anchor, recommendation, end_day, profile) -> dict[str, list[dict]]:
+    if not recommendation or recommendation.run_distance_miles <= 0:
+        return {}
+
+    projections: dict[str, list[dict]] = {}
+    projection_date = anchor + timedelta(days=1)
+    while projection_date <= end_day:
+        projections[projection_date.isoformat()] = _projected_day_template(projection_date, profile, recommendation)
         projection_date += timedelta(days=1)
-        cycle += 1
     return projections
 
 
@@ -173,7 +267,7 @@ def _today_plan_entries(anchor, recommendation) -> list[dict]:
     ]
 
 
-def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None, today: str = "") -> list[dict]:
+def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None, today: str = "", profile=None) -> list[dict]:
     anchor = datetime.strptime(today, "%Y-%m-%d").date() if today else datetime.utcnow().date()
     feed_by_day: dict[str, list[dict]] = {}
     for item in activity_feed:
@@ -184,7 +278,7 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
 
     start_day = anchor - timedelta(days=anchor.weekday())
     end_day = start_day + timedelta(days=13)
-    projected_by_day = projected_calendar_entries(anchor, recommendation, end_day)
+    projected_by_day = projected_calendar_entries(anchor, recommendation, end_day, profile)
 
     cards: list[dict] = []
     current_day = start_day
@@ -710,7 +804,13 @@ class CoachHandler(BaseHTTPRequestHandler):
                 "recommendation": recommendation.to_dict(),
                 "recommendation_meta": recommendation_meta,
                 "activity_feed": activity_feed,
-                "activity_calendar": calendar_days(activity_feed, metrics, recommendation=recommendation, today=today_iso),
+                "activity_calendar": calendar_days(
+                    activity_feed,
+                    metrics,
+                    recommendation=recommendation,
+                    today=today_iso,
+                    profile=profile,
+                ),
                 "connections": {
                     "status": connection_status,
                     "setup_complete": {
