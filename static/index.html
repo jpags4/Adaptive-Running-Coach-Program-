@@ -183,6 +183,11 @@
         background: transparent;
       }
 
+      .checkin-shell {
+        padding: 0;
+        overflow: hidden;
+      }
+
       .checkin-panel summary {
         padding: 18px 20px;
       }
@@ -201,15 +206,57 @@
       .section-headline-icon {
         width: 28px;
         height: 28px;
-        border-radius: 999px;
+        border-radius: 10px;
         border: 1px solid rgba(23, 27, 24, 0.12);
         background: var(--panel-soft);
         color: var(--muted);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.88rem;
-        font-weight: 700;
+        position: relative;
+      }
+
+      .section-headline-icon.calendar::before {
+        content: "";
+        width: 14px;
+        height: 12px;
+        border: 2px solid currentColor;
+        border-radius: 3px;
+        position: absolute;
+        top: 8px;
+      }
+
+      .section-headline-icon.calendar::after {
+        content: "";
+        width: 10px;
+        height: 2px;
+        background: currentColor;
+        position: absolute;
+        top: 12px;
+      }
+
+      .section-headline-icon.checklist::before {
+        content: "";
+        width: 12px;
+        height: 2px;
+        background: currentColor;
+        position: absolute;
+        top: 9px;
+        left: 11px;
+        box-shadow: 0 6px 0 currentColor;
+      }
+
+      .section-headline-icon.checklist::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-left: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+        position: absolute;
+        left: 7px;
+        top: 7px;
+        transform: rotate(-45deg);
+        box-shadow: 0 6px 0 -1px var(--panel-soft), 0 6px 0 0 currentColor;
       }
 
       .checkin-grid {
@@ -1017,7 +1064,7 @@
       <section class="section recap-shell">
         <details class="recap-details">
           <summary>
-            <span class="section-headline"><span class="section-headline-icon">W</span><strong>Weekly Recap</strong></span>
+            <span class="section-headline"><span class="section-headline-icon calendar"></span><strong>Weekly Recap</strong></span>
             <span class="summary-arrow">&#9662;</span>
           </summary>
           <div class="details-body">
@@ -1038,10 +1085,10 @@
         </details>
       </section>
 
-      <section class="section card">
+      <section class="section card checkin-shell">
         <details id="checkinPanel" class="checkin-panel" open>
           <summary>
-            <span class="section-headline"><span class="section-headline-icon">D</span><strong class="training-title">Daily Check-In</strong></span>
+            <span class="section-headline"><span class="section-headline-icon checklist"></span><strong class="training-title">Daily Check-In</strong></span>
             <span class="summary-arrow">&#9662;</span>
           </summary>
           <div class="details-body">
