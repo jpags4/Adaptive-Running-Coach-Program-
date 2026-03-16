@@ -189,6 +189,7 @@ def llm_recommendation(
     runs: list[Run],
     metrics: list[RecoveryMetrics],
     today: date | None = None,
+    subjective_feedback: dict | None = None,
 ) -> tuple[Recommendation, dict]:
     if not openai_enabled():
         return _model_unavailable_recommendation(
@@ -226,6 +227,7 @@ def llm_recommendation(
         "recent_recovery_metrics": _recent_metrics_payload(metrics),
         "latest_run_summary": _latest_run_summary(runs),
         "today": today_str,
+        "subjective_feedback": subjective_feedback or {},
         "coach_preferences": [
             "The recommendation engine should rely on the language model as the source of reasoning rather than earlier hand-written coach logic.",
             "Use a readiness -> load -> specifics reasoning flow: first decide how hard today should be, then account for recent accumulated strain, then shape the actual run and lift details.",
@@ -236,6 +238,7 @@ def llm_recommendation(
             "When the athlete is ready for a bigger day, say so clearly instead of defaulting conservative.",
             "Across a normal half marathon week, the athlete wants meaningful variance between easy runs, quality work, and a long run instead of nearly identical daily mileage.",
             "Weekly structure should usually include at least two low-strain or rest days and no more than three lifting days unless the data strongly justifies otherwise.",
+            "If subjective feedback is provided, weight it meaningfully. Physical soreness, heavy legs, low motivation, or emotional stress should reduce risk and ambition even when biometric data looks decent.",
         ],
     }
 
@@ -246,6 +249,7 @@ def llm_recommendation(
         "Return a specific run plan, rough pace guidance, and lifting plan for today. "
         "Reason carefully from recent training, recent pace history, WHOOP recovery metrics, sleep, strain, and likely leg durability. "
         "The athlete often has more cardio fitness than leg durability, and hills create extra muscular load. "
+        "If subjective feedback is present, treat it as real signal rather than optional color. "
         "Recommendations should be concrete and personalized, not generic. "
         "Explain the logic behind each major piece of the day in plain English. "
         "Your explanation_sections object must separately explain: "

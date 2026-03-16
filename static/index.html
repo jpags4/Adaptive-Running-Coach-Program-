@@ -158,6 +158,10 @@
         padding: 28px 30px;
       }
 
+      .hidden {
+        display: none !important;
+      }
+
       .training-head {
         display: flex;
         align-items: center;
@@ -171,6 +175,65 @@
         font-weight: 800;
         letter-spacing: 0.02em;
         text-transform: uppercase;
+      }
+
+      .checkin-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .checkin-field {
+        display: grid;
+        gap: 8px;
+      }
+
+      .checkin-field label {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .checkin-field select,
+      .checkin-field textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px 14px;
+        font: inherit;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.95);
+      }
+
+      .checkin-field textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+
+      .checkin-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .generate-button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font: inherit;
+        font-weight: 700;
+        background: var(--violet);
+        color: white;
+        cursor: pointer;
+      }
+
+      .generate-note {
+        color: var(--muted);
+        line-height: 1.5;
       }
 
       .pill {
@@ -816,6 +879,7 @@
 
       @media (max-width: 1200px) {
         .metrics-row,
+        .checkin-grid,
         .training-grid,
         .recap-grid,
         .weekday-row,
@@ -923,6 +987,39 @@
       </section>
 
       <section class="section card">
+        <div class="training-title">Daily Check-In</div>
+        <div class="generate-note">Your WHOOP and Strava data load first. Then answer these quick prompts so the recommendation can reflect how you actually feel today.</div>
+        <div class="checkin-grid">
+          <div class="checkin-field">
+            <label for="physicalFeeling">How are you feeling physically?</label>
+            <select id="physicalFeeling">
+              <option value="fresh">Fresh</option>
+              <option value="normal" selected>Normal</option>
+              <option value="heavy">Heavy legs</option>
+              <option value="sore">Sore</option>
+            </select>
+          </div>
+          <div class="checkin-field">
+            <label for="mentalFeeling">How are you doing mentally?</label>
+            <select id="mentalFeeling">
+              <option value="great">Great</option>
+              <option value="steady" selected>Steady</option>
+              <option value="stressed">Stressed</option>
+              <option value="drained">Drained</option>
+            </select>
+          </div>
+          <div class="checkin-field">
+            <label for="checkinNotes">Anything else to mention?</label>
+            <textarea id="checkinNotes" placeholder="Optional notes like poor sleep, soreness, schedule limits, or motivation"></textarea>
+          </div>
+        </div>
+        <div class="checkin-actions">
+          <button id="generateButton" class="generate-button" type="button">Generate Recommendation</button>
+          <div id="generateStatus" class="generate-note">The recommendation section stays hidden until you generate today's plan.</div>
+        </div>
+      </section>
+
+      <section id="trainingSection" class="section card hidden">
         <div class="training-head">
           <div class="training-title">Today's Training</div>
           <span id="workoutBadge" class="pill">Generating Plan</span>
@@ -1311,6 +1408,13 @@
         return raw;
       }
 
+      function prettyActivityLabel(activity) {
+        const key = canonicalActivityKey(activity);
+        if (key === "strength") return "Weight Training";
+        if (key === "run") return titleCase(activity.name || "Run");
+        return titleCase(activity.name || activity.sport || "Activity");
+      }
+
       function normalizeActivityName(name) {
         return stringValue(name, "")
           .toLowerCase()
@@ -1420,11 +1524,11 @@
           const row = document.createElement("div");
           row.className = "recap-day" + (day.is_today ? " active" : "");
           const summary = day.activities.map((activity) => {
-            if (/run/i.test(activity.sport || activity.name || "")) {
+            if (canonicalActivityKey(activity) === "run") {
               return (activity.distance_miles ? activity.distance_miles + " mi " : "") + titleCase(activity.name || "Run");
             }
             if (activity.lift_focus) return titleCase(activity.lift_focus);
-            return titleCase(activity.name || activity.sport || "Activity");
+            return prettyActivityLabel(activity);
           }).join(" + ");
           row.innerHTML = "<span class=\"recap-dot\"></span><strong>" +
             new Date(day.day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long" }) +
@@ -1447,7 +1551,7 @@
               runDays += 1;
               if (qualityLabel(activity)) qualitySessions += 1;
             }
-            if (/strength|lift/i.test(activity.sport || activity.name || "") || activity.lift_focus) {
+            if (canonicalActivityKey(activity) === "strength" || activity.lift_focus) {
               strengthSessions += 1;
             }
           });
@@ -1560,19 +1664,12 @@
 
       async function loadDashboard() {
         try {
-          document.querySelector("#loadingBanner")?.classList.remove("hidden");
-          text("#workoutBadge", "Generating Plan");
           const response = await fetch("/api/dashboard");
           if (!response.ok) throw new Error("Dashboard request failed with status " + response.status);
           const data = await response.json();
           const profile = data.profile || {};
           const summary = data.summary || {};
           const previousRun = summary.previous_run || {};
-          const recommendation = Object.assign({}, FALLBACK_RECOMMENDATION, data.recommendation || {});
-          recommendation.explanation_sections = Object.assign({}, FALLBACK_RECOMMENDATION.explanation_sections, recommendation.explanation_sections || {});
-          const recap = Array.isArray(recommendation.recap) ? recommendation.recap : FALLBACK_RECOMMENDATION.recap;
-          const warnings = Array.isArray(recommendation.warnings) ? recommendation.warnings : FALLBACK_RECOMMENDATION.warnings;
-          const sections = recommendation.explanation_sections || {};
           const connections = (data.connections && data.connections.status) || {};
           const stravaConnected = Boolean(connections.strava);
           const whoopConnected = Boolean(connections.whoop);
@@ -1591,21 +1688,6 @@
           text("#yesterdayRunText", previousRun.day ? formatDisplayDate(previousRun.day, true) + " · " + numberValue(previousRun.duration_minutes, 0) + " min" : "No recent run found");
           text("#mileage", loadMiles >= 28 ? "High" : loadMiles >= 18 ? "Medium" : "Light");
           text("#loadStatus", loadMiles.toFixed(1) + " miles in the last 7 days");
-          text("#runDistance", numberValue(recommendation.run_distance_miles, 0).toFixed(1) + " mi");
-          text("#runPrescription", paceRangeOnly(recommendation.run_pace_guidance));
-          text("#runDetail", "Planned running volume for " + formatDisplayDate(data.today, false));
-          text("#paceDetail", titleCase(stringValue(recommendation.intensity, "steady").replace(/\s*\([^)]*\)/g, "").split(/[;,.]/)[0]));
-          text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
-          text("#liftFocus", shortLiftFocus(recommendation.lift_focus || "Optional"));
-          html("#coachSummary", formatReasonBody(compactSummary(recommendation)));
-          renderLiftList(document.querySelector("#liftList"), recommendation);
-
-          setReasonLine("#reasonRecoveryPrimary", "ok", stringValue(sections.recovery, FALLBACK_RECOMMENDATION.explanation_sections.recovery));
-          setReasonLine("#reasonRecoverySecondary", "warn", stringValue(warnings[0], "Recovery markers suggest keeping the day controlled."));
-          setReasonLine("#reasonLoadPrimary", "ok", stringValue(sections.overall, FALLBACK_RECOMMENDATION.explanation_sections.overall));
-          setReasonLine("#reasonLoadSecondary", "warn", stringValue(warnings[1], sections.run || FALLBACK_RECOMMENDATION.explanation_sections.run));
-          setReasonLine("#reasonLiftPrimary", "warn", stringValue(warnings[2], sections.lift || FALLBACK_RECOMMENDATION.explanation_sections.lift));
-          setReasonLine("#reasonLiftSecondary", "ok", stringValue(sections.pace, FALLBACK_RECOMMENDATION.explanation_sections.pace));
 
           if (stravaConnected) document.querySelector("#stravaLight").classList.add("live");
           if (whoopConnected) document.querySelector("#whoopLight").classList.add("live");
@@ -1614,19 +1696,72 @@
           text("#connectionHeadline", stravaConnected && whoopConnected ? "Both fitness platforms are hooked up." : "One or more fitness platforms need attention.");
           text("#connectionDetail", "Live data is loading from your connected services.");
 
-          renderBriefItems(document.querySelector("#recap"), recap, "No recent recap was generated.", false);
+          renderBriefItems(document.querySelector("#recap"), ["Latest WHOOP recovery and Strava work are loaded and ready for today's check-in."], "No recent recap was generated.", false);
           renderRecapDays(document.querySelector("#recapDays"), data.activity_feed || [], data.today);
           updateRecapStats(data.activity_feed || [], data.today);
-          renderCalendar(document.querySelector("#calendar"), data.activity_calendar || [], recommendation, data.today);
+          renderCalendar(document.querySelector("#calendar"), data.activity_calendar || [], null, data.today);
           text("#calendarTitle", new Date(data.today + "T12:00:00").toLocaleDateString(undefined, { month: "long" }) + " Training Calendar");
-          document.querySelector("#loadingBanner")?.classList.add("hidden");
+          window.__dashboardData = data;
         } catch (error) {
           html("#coachSummary", formatReasonBody("The dashboard could not load your training data. Refresh in a moment and try again."));
           renderCalendar(document.querySelector("#calendar"), [], FALLBACK_RECOMMENDATION, "");
-          document.querySelector("#loadingBanner")?.classList.add("hidden");
+          text("#generateStatus", "The health data did not load. Refresh and try again.");
         }
       }
 
+      function applyRecommendation(data) {
+        const recommendation = Object.assign({}, FALLBACK_RECOMMENDATION, data.recommendation || {});
+        recommendation.explanation_sections = Object.assign({}, FALLBACK_RECOMMENDATION.explanation_sections, recommendation.explanation_sections || {});
+        const warnings = Array.isArray(recommendation.warnings) ? recommendation.warnings : FALLBACK_RECOMMENDATION.warnings;
+        const sections = recommendation.explanation_sections || {};
+
+        text("#runDistance", numberValue(recommendation.run_distance_miles, 0).toFixed(1) + " mi");
+        text("#runPrescription", paceRangeOnly(recommendation.run_pace_guidance));
+        text("#runDetail", "Planned running volume for " + formatDisplayDate(data.today, false));
+        text("#paceDetail", titleCase(stringValue(recommendation.intensity, "steady").replace(/\s*\([^)]*\)/g, "").split(/[;,.]/)[0]));
+        text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
+        text("#liftFocus", shortLiftFocus(recommendation.lift_focus || "Optional"));
+        html("#coachSummary", formatReasonBody(compactSummary(recommendation)));
+        renderLiftList(document.querySelector("#liftList"), recommendation);
+        setReasonLine("#reasonRecoveryPrimary", "ok", stringValue(sections.recovery, FALLBACK_RECOMMENDATION.explanation_sections.recovery));
+        setReasonLine("#reasonRecoverySecondary", "warn", stringValue(warnings[0], "Recovery markers suggest keeping the day controlled."));
+        setReasonLine("#reasonLoadPrimary", "ok", stringValue(sections.overall, FALLBACK_RECOMMENDATION.explanation_sections.overall));
+        setReasonLine("#reasonLoadSecondary", "warn", stringValue(warnings[1], sections.run || FALLBACK_RECOMMENDATION.explanation_sections.run));
+        setReasonLine("#reasonLiftPrimary", "warn", stringValue(warnings[2], sections.lift || FALLBACK_RECOMMENDATION.explanation_sections.lift));
+        setReasonLine("#reasonLiftSecondary", "ok", stringValue(sections.pace, FALLBACK_RECOMMENDATION.explanation_sections.pace));
+        document.querySelector("#trainingSection")?.classList.remove("hidden");
+        renderCalendar(document.querySelector("#calendar"), data.activity_calendar || [], recommendation, data.today);
+      }
+
+      async function generateRecommendation() {
+        const button = document.querySelector("#generateButton");
+        if (button) button.disabled = true;
+        text("#generateStatus", "Generating today's recommendation...");
+        document.querySelector("#loadingBanner")?.classList.remove("hidden");
+        try {
+          const response = await fetch("/api/recommendation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              physical_feeling: stringValue(document.querySelector("#physicalFeeling")?.value, "normal"),
+              mental_feeling: stringValue(document.querySelector("#mentalFeeling")?.value, "steady"),
+              notes: stringValue(document.querySelector("#checkinNotes")?.value, ""),
+            }),
+          });
+          if (!response.ok) throw new Error("Recommendation request failed with status " + response.status);
+          const data = await response.json();
+          window.__dashboardData = data;
+          applyRecommendation(data);
+          text("#generateStatus", "Today's recommendation is ready.");
+        } catch (error) {
+          text("#generateStatus", "The recommendation could not be generated right now. Please try again.");
+        } finally {
+          document.querySelector("#loadingBanner")?.classList.add("hidden");
+          if (button) button.disabled = false;
+        }
+      }
+
+      document.querySelector("#generateButton")?.addEventListener("click", generateRecommendation);
       loadDashboard();
     </script>
   </body>
