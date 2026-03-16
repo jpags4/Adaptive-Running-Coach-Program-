@@ -18,6 +18,8 @@
         --gold-soft: rgba(255, 186, 8, 0.18);
         --red: #ff5f7a;
         --red-soft: rgba(255, 95, 122, 0.15);
+        --violet: #7c5cff;
+        --violet-soft: rgba(124, 92, 255, 0.12);
       }
 
       * { box-sizing: border-box; }
@@ -169,8 +171,8 @@
         justify-content: center;
         padding: 10px 18px;
         border-radius: 999px;
-        background: var(--green-soft);
-        color: #008b63;
+        background: var(--violet-soft);
+        color: var(--violet);
         font-size: 0.98rem;
         font-weight: 600;
       }
@@ -186,6 +188,7 @@
         gap: 22px;
         padding: 24px;
         border-radius: 24px;
+        align-content: start;
       }
 
       .training-column + .training-column {
@@ -193,13 +196,24 @@
       }
 
       .run-panel {
-        background: linear-gradient(180deg, rgba(225, 245, 235, 0.92) 0%, rgba(255, 255, 255, 0.98) 62%);
-        border: 1px solid rgba(10, 167, 111, 0.12);
+        background: linear-gradient(180deg, rgba(239, 235, 255, 0.94) 0%, rgba(255, 255, 255, 0.99) 62%);
+        border: 1px solid rgba(124, 92, 255, 0.14);
       }
 
       .strength-panel {
         background: linear-gradient(180deg, rgba(255, 245, 228, 0.95) 0%, rgba(255, 255, 255, 0.98) 62%);
         border: 1px solid rgba(217, 122, 6, 0.12);
+      }
+
+      .run-panel .metric-block {
+        gap: 6px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(124, 92, 255, 0.08);
+      }
+
+      .run-panel .metric-block:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
       }
 
       .metric-block {
@@ -231,7 +245,7 @@
       }
 
       .distance-value {
-        font-size: clamp(3.3rem, 6vw, 5rem);
+        font-size: clamp(2.8rem, 4.6vw, 4.2rem);
         line-height: 0.92;
         letter-spacing: -0.07em;
         font-weight: 500;
@@ -298,34 +312,6 @@
         display: block;
         font-size: 1rem;
         font-weight: 600;
-      }
-
-      .lift-details {
-        margin-top: 18px;
-        border-top: 1px solid var(--line);
-        padding-top: 14px;
-      }
-
-      .lift-details summary {
-        cursor: pointer;
-        list-style: none;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        color: var(--ink);
-        font-size: 0.95rem;
-        font-weight: 600;
-      }
-
-      .lift-details summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .lift-details-copy {
-        margin-top: 10px;
-        color: var(--muted);
-        font-size: 0.95rem;
-        line-height: 1.5;
       }
 
       .summary-box {
@@ -891,6 +877,36 @@
       </section>
 
       <section class="section card">
+        <details class="recap-details">
+          <summary>
+            <strong>Weekly Recap</strong>
+            <span class="summary-arrow">&#9662;</span>
+          </summary>
+          <div class="details-body">
+            <div class="recap-grid">
+              <div class="recap-stat">
+                <div class="section-title">Total Mileage</div>
+                <strong id="recapMileage">-</strong>
+                <span id="recapMileageSub">-</span>
+              </div>
+              <div class="recap-stat">
+                <div class="section-title">Quality Sessions</div>
+                <strong id="recapQuality">-</strong>
+                <span id="recapQualitySub">-</span>
+              </div>
+              <div class="recap-stat">
+                <div class="section-title">Strength Work</div>
+                <strong id="recapStrength">-</strong>
+                <span id="recapStrengthSub">-</span>
+              </div>
+            </div>
+            <div id="recapDays" class="recap-days"></div>
+            <div id="recap" class="brief-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <section class="section card">
         <div class="training-head">
           <div class="section-title">Today's Training</div>
           <span id="workoutBadge" class="pill">Generating Plan</span>
@@ -928,13 +944,6 @@
             </div>
 
             <div id="liftList" class="lift-list"></div>
-            <details class="lift-details">
-              <summary>
-                <span>Why this lift today</span>
-                <span class="summary-arrow">&#9662;</span>
-              </summary>
-              <div id="liftReason" class="lift-details-copy">Loading lift rationale.</div>
-            </details>
           </div>
         </div>
 
@@ -991,42 +1000,12 @@
         </details>
       </section>
 
-      <section class="section card">
-        <details class="recap-details">
-          <summary>
-            <strong>Weekly Recap</strong>
-            <span class="summary-arrow">&#9662;</span>
-          </summary>
-          <div class="details-body">
-            <div class="recap-grid">
-              <div class="recap-stat">
-                <div class="section-title">Total Mileage</div>
-                <strong id="recapMileage">-</strong>
-                <span id="recapMileageSub">-</span>
-              </div>
-              <div class="recap-stat">
-                <div class="section-title">Quality Sessions</div>
-                <strong id="recapQuality">-</strong>
-                <span id="recapQualitySub">-</span>
-              </div>
-              <div class="recap-stat">
-                <div class="section-title">Strength Work</div>
-                <strong id="recapStrength">-</strong>
-                <span id="recapStrengthSub">-</span>
-              </div>
-            </div>
-            <div id="recapDays" class="recap-days"></div>
-            <div id="recap" class="brief-list"></div>
-          </div>
-        </details>
-      </section>
-
       <section class="section">
         <div class="calendar-head">
           <div class="calendar-meta">
             <div class="section-title">Training Calendar</div>
             <h3 id="calendarTitle" class="calendar-heading">March Training Calendar</h3>
-            <p class="calendar-note">Past days show what you actually did. Future days are projections based on your current progress and will update as new data comes in.</p>
+            <p class="calendar-note">Future days are projections based on your current progress and will update as new data comes in.</p>
           </div>
           <div class="calendar-legend">
             <span class="legend-item"><span class="legend-dot easy"></span>Easy</span>
@@ -1258,10 +1237,20 @@
 
         if (items.length) return items;
 
+        const doseFirst = [...raw.matchAll(/(\d+\s*x\s*\d+(?:[–-]\d+)?(?:\s*(?:per leg|per side))?)\s+([^.;]+)/gi)];
+        doseFirst.forEach((match) => {
+          const dose = match[1].replace(/\s+/g, "");
+          const title = titleCase(match[2].replace(/\([^)]*\)/g, "").trim());
+          if (!title || /warm-?up|finish with|rest /i.test(title)) return;
+          items.push({ title: title, dose: dose });
+        });
+
+        if (items.length) return items;
+
         const commaItems = raw
           .split(/[,;]+/)
           .map((item) => item.trim())
-          .filter((item) => item && !/warm-?up|finish with|rest /i.test(item));
+          .filter((item) => item && !/warm-?up|finish with|rest |minutes total|rounds of/i.test(item));
 
         return commaItems.slice(0, 4).map((item) => ({
           title: titleCase(item.replace(/\s*[—-].*$/, "").replace(/:$/, "").trim()),
@@ -1583,7 +1572,6 @@
           text("#paceDetail", titleCase(stringValue(recommendation.intensity, "steady").replace(/\s*\([^)]*\)/g, "").split(/[;,.]/)[0]));
           text("#duration", numberValue(recommendation.duration_minutes, 0) > 0 ? numberValue(recommendation.duration_minutes, 0) + " minutes total" : "Time unavailable");
           text("#liftFocus", shortLiftFocus(recommendation.lift_focus || "Optional"));
-          text("#liftReason", stringValue(sections.lift, FALLBACK_RECOMMENDATION.explanation_sections.lift));
           text("#coachSummary", compactSummary(recommendation));
           renderLiftList(document.querySelector("#liftList"), recommendation);
 
