@@ -303,8 +303,10 @@
       .checkin-actions {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 14px;
         margin-top: 18px;
+        max-width: 100%;
       }
 
       .generate-button {
@@ -316,11 +318,14 @@
         background: var(--violet);
         color: white;
         cursor: pointer;
+        max-width: 100%;
       }
 
       .generate-note {
         color: var(--muted);
         line-height: 1.5;
+        flex: 1 1 280px;
+        min-width: 0;
       }
 
       .pill {
@@ -996,6 +1001,11 @@
         .checkin-field label {
           min-height: 0;
         }
+
+        .generate-button {
+          width: 100%;
+          justify-content: center;
+        }
       }
 
       @media (max-width: 900px) {
@@ -1461,6 +1471,26 @@
       function extractLiftExercises(recommendation) {
         const raw = stringValue(recommendation.lift_guidance, "");
         const items = [];
+        const numberedParts = raw
+          .split(/\s*(?=\d+\)\s*)/)
+          .map((item) => item.trim())
+          .filter((item) => /^\d+\)/.test(item));
+
+        if (numberedParts.length) {
+          numberedParts.forEach((part) => {
+            const cleaned = part.replace(/^\d+\)\s*/, "").replace(/[.;]\s*$/, "").trim();
+            if (!cleaned || /warm-?up|finish with|minutes after|later in the day/i.test(cleaned)) return;
+
+            const main = cleaned.split(/\s*[;,.](?=\s*[A-Z0-9])/)[0].trim();
+            const dose = normalizeLiftDose(main);
+            const title = cleanLiftTitle(main);
+            if (!title) return;
+            items.push({ title: title, dose: dose });
+          });
+
+          if (items.length) return items.slice(0, 4);
+        }
+
         const colonSplit = raw.includes(":") ? raw.split(":").slice(1).join(":") : raw;
         const commaSeparated = colonSplit
           .split(",")
