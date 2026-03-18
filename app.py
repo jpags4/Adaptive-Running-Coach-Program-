@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 import re
 from html import escape
@@ -49,6 +50,7 @@ from storage import (
 
 ROOT = Path(__file__).parent
 STATIC_DIR = ROOT / "static"
+FRONTEND_DIST_DIR = ROOT / "frontend" / "dist"
 WEEKDAY_NAMES = [
     "monday",
     "tuesday",
@@ -354,7 +356,12 @@ def _week_plan_key(day_value) -> str:
 
 
 def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict]]:
-    baseline_recommendation = coach_recommendation(profile, runs, metrics, today=anchor)
+    metric_dates = sorted(
+        (datetime.strptime(item.day, "%Y-%m-%d").date() for item in metrics if getattr(item, "day", "")),
+        reverse=True,
+    )
+    planning_day = next((day for day in metric_dates if day <= anchor), metric_dates[0] if metric_dates else anchor)
+    baseline_recommendation = coach_recommendation(profile, runs, metrics, today=planning_day)
     if baseline_recommendation.run_distance_miles <= 0:
         easy_pace = average_easy_pace(runs)
         baseline_recommendation = Recommendation(
@@ -764,6 +771,17 @@ def debug_query_summary(query: dict[str, list[str]]) -> str:
 
 
 class CoachHandler(BaseHTTPRequestHandler):
+    def _send_file(self, path: Path, content_type: str | None = None) -> None:
+        body = path.read_bytes()
+        self.send_response(200)
+        resolved_type = content_type or mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+        if resolved_type.startswith("text/") or resolved_type in {"application/javascript", "application/json"}:
+            resolved_type = f"{resolved_type}; charset=utf-8"
+        self.send_header("Content-Type", resolved_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _send_json(self, payload: dict, status: int = 200) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
@@ -773,13 +791,12 @@ class CoachHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _send_html_file(self, filename: str) -> None:
-        path = STATIC_DIR / filename
-        body = path.read_bytes()
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        react_path = FRONTEND_DIST_DIR / filename
+        static_path = STATIC_DIR / filename
+        if react_path.exists():
+            self._send_file(react_path, content_type="text/html")
+            return
+        self._send_file(static_path, content_type="text/html")
 
     def _send_html_text(self, body: str, status: int = 200) -> None:
         encoded = body.encode("utf-8")
@@ -867,6 +884,12 @@ class CoachHandler(BaseHTTPRequestHandler):
         settings = load_settings()
         tokens = load_tokens()
         states = load_states()
+
+        if parsed.path.startswith("/assets/"):
+            asset_path = FRONTEND_DIST_DIR / parsed.path.lstrip("/")
+            if asset_path.exists() and asset_path.is_file():
+                self._send_file(asset_path)
+                return
 
         if parsed.path == "/":
             self._send_html_file("index.html")
@@ -1001,8 +1024,15 @@ class CoachHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/dashboard":
-            payload = build_dashboard_payload(settings, tokens, include_recommendation=False)
+            query = parse_qs(parsed.query)
+            include_recommendation = query.get("include_recommendation", ["0"])[0].lower() in {"1", "true", "yes"}
+            payload = build_dashboard_payload(settings, tokens, include_recommendation=include_recommendation)
             self._send_json(payload)
+            return
+
+        frontend_index = FRONTEND_DIST_DIR / "index.html"
+        if frontend_index.exists() and not parsed.path.startswith("/api/"):
+            self._send_file(frontend_index, content_type="text/html")
             return
 
         self._send_html_text(error_page("Not found", "That page does not exist."), status=404)
