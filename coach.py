@@ -148,6 +148,54 @@ def recommendation_from_dict(payload: dict) -> Recommendation:
     )
 
 
+def _intensity_rank(value: str) -> int:
+    text = str(value or "").strip().lower()
+    if text in {"rest", "off"}:
+        return 0
+    if text in {"very easy", "recovery"}:
+        return 1
+    if text == "easy":
+        return 2
+    if text in {"moderate", "steady"}:
+        return 3
+    if text in {"hard", "tempo", "threshold", "interval", "very hard"}:
+        return 4
+    return 2
+
+
+def _workout_text_rank(value: str) -> int:
+    text = str(value or "").strip().lower()
+    if any(token in text for token in {"rest", "mobility", "walk"}):
+        return 0
+    if any(token in text for token in {"very easy", "recovery"}):
+        return 1
+    if any(token in text for token in {"easy", "aerobic"}):
+        return 2
+    if any(token in text for token in {"steady", "moderate", "progression"}):
+        return 3
+    if any(token in text for token in {"threshold", "tempo", "interval", "race", "hard"}):
+        return 4
+    return 2
+
+
+def _lift_load_rank(value: str) -> int:
+    text = str(value or "").strip().lower()
+    if any(token in text for token in {"no lifting", "off-day"}):
+        return 0
+    if any(token in text for token in {"mobility", "tissue care", "light durability"}):
+        return 1
+    return 2
+
+
+def _recommendation_load_score(recommendation: Recommendation) -> float:
+    run_rank = max(_intensity_rank(recommendation.intensity), _workout_text_rank(recommendation.workout))
+    return run_rank * 100 + recommendation.run_distance_miles * 10 + _lift_load_rank(recommendation.lift_focus)
+
+
+def _planned_session_load_score(workout: str, distance_miles: float) -> float:
+    return _workout_text_rank(workout) * 100 + max(0.0, float(distance_miles or 0.0)) * 10
+
+
 def parse_date(value: str) -> date:
     return datetime.strptime(value, "%Y-%m-%d").date()
 
@@ -939,10 +987,16 @@ def build_recommendation_options(
     aggressive = recommendation_from_dict(base_payload)
     adaptation = dict(recommendation.daily_adaptation or {})
     physical = str((subjective_feedback or {}).get("physical_feeling") or "").strip().lower()
+    completed_strength = int((subjective_feedback or {}).get("weekly_strength_sessions_completed") or 0)
+    strength_recently = int((subjective_feedback or {}).get("strength_sessions_last_2_days") or 0)
+    strength_today = bool((subjective_feedback or {}).get("has_strength_activity_today"))
     readiness_status = str(adaptation.get("readiness_status") or "").strip().lower()
     planned_distance = aggressive.planned_run_distance_miles or aggressive.run_distance_miles
     base_distance = recommendation.run_distance_miles
     delta_cap = round(min(0.8, max(0.4, planned_distance * 0.12 if planned_distance else 0.4)), 1)
+    strength_room = completed_strength < max(1, profile.desired_strength_frequency)
+    allow_support_lift = strength_room and strength_recently == 0 and not strength_today and readiness_status != "not supported"
+    easy_day_distance_cap = max(3.5, profile.weekly_mileage_target * 0.16)
 
     if readiness_status == "not supported":
         conservative = recommendation_from_dict(base_payload)
@@ -954,8 +1008,12 @@ def build_recommendation_options(
             conservative.run_distance_miles = round(max(0.0, base_distance - delta_cap), 1)
             conservative.duration_minutes = max(0, int(round(conservative.run_distance_miles * 10.2))) if conservative.run_distance_miles > 0 else 0
             conservative.run_pace_guidance = str(conservative.pace_model.get("easy", {}).get("pace_range") or conservative.run_pace_guidance)
-        conservative.lift_focus = "Today is a lifting off-day" if conservative.run_distance_miles > 0 else "No lifting"
-        conservative.lift_guidance = "Today is a lifting off-day." if conservative.run_distance_miles > 0 else "No lifting today."
+        if allow_support_lift and _intensity_rank(conservative.intensity) <= 2 and conservative.run_distance_miles <= easy_day_distance_cap:
+            conservative.lift_focus = "Light durability work only"
+            conservative.lift_guidance = "Add a short lift today: 2-4 controlled exercises, keep 1-2 reps in reserve, and stop if the legs feel worse after the warm-up."
+        else:
+            conservative.lift_focus = "Today is a lifting off-day" if conservative.run_distance_miles > 0 else "No lifting"
+            conservative.lift_guidance = "Today is a lifting off-day." if conservative.run_distance_miles > 0 else "No lifting today."
 
         if aggressive.workout != "Rest and recovery":
             if readiness_status == "partly supported":
@@ -964,11 +1022,17 @@ def build_recommendation_options(
                 aggressive_target = base_distance
             aggressive.run_distance_miles = round(max(base_distance, aggressive_target), 1)
             aggressive.duration_minutes = max(aggressive.duration_minutes, int(round(aggressive.run_distance_miles * 10)))
-            if aggressive.planned_pace_guidance:
+            planned_score = _planned_session_load_score(aggressive.planned_workout, aggressive.planned_run_distance_miles)
+            base_score = _recommendation_load_score(recommendation)
+            if aggressive.planned_pace_guidance and planned_score >= base_score:
                 aggressive.run_pace_guidance = aggressive.planned_pace_guidance
-            aggressive.workout = aggressive.planned_workout or aggressive.workout
-            if aggressive.intensity in {"easy", "very easy"} and aggressive.planned_workout and "easy" not in aggressive.planned_workout.lower():
+            if aggressive.planned_workout and planned_score >= base_score:
+                aggressive.workout = aggressive.planned_workout
+            if aggressive.intensity in {"easy", "very easy"} and aggressive.planned_workout and planned_score >= base_score and "easy" not in aggressive.planned_workout.lower():
                 aggressive.intensity = "moderate"
+
+    if _recommendation_load_score(aggressive) < _recommendation_load_score(conservative):
+        conservative, aggressive = aggressive, conservative
 
     conservative.daily_adaptation = {
         **adaptation,

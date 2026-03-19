@@ -8,6 +8,7 @@ from app import (
     _current_day_status,
     _pace_text_for_type,
     _profile_settings_payload,
+    _recommendation_training_context,
     build_training_roadmap,
     calendar_days,
     projected_calendar_entries,
@@ -559,6 +560,105 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertEqual(guarded.lift_focus, "Today is a lifting off-day")
         self.assertEqual(guarded.lift_guidance, "Today is a lifting off-day.")
+
+    def test_guardrails_reintroduce_lift_when_strength_is_behind_and_day_is_easy(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-16",
+            workout="Easy aerobic run",
+            intensity="easy",
+            duration_minutes=38,
+            run_distance_miles=3.4,
+            run_pace_guidance="9:15-9:45/mi",
+            lift_focus="No lifting",
+            lift_guidance="No lifting today.",
+            recap=[],
+            explanation=[],
+            explanation_sections={
+                "overall": "",
+                "run": "",
+                "pace": "",
+                "lift": "",
+                "recovery": "",
+            },
+            warnings=[],
+            confidence="medium",
+        )
+
+        guarded = _apply_guardrails(
+            recommendation,
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            subjective_feedback={
+                "physical_feeling": "normal",
+                "mental_feeling": "steady",
+                "weekly_strength_sessions_completed": 1,
+                "strength_sessions_last_2_days": 0,
+                "has_strength_activity_today": False,
+            },
+        )
+
+        self.assertEqual(guarded.lift_focus, "Light durability work only")
+        self.assertIn("short lift", guarded.lift_guidance.lower())
+
+    def test_recommendation_options_keep_aggressive_variant_more_demanding(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-16",
+            workout="Easy aerobic run",
+            intensity="easy",
+            duration_minutes=36,
+            run_distance_miles=3.5,
+            run_pace_guidance="8:49-9:10/mi",
+            lift_focus="Light durability work only",
+            lift_guidance="Short post-run lift.",
+            recap=[],
+            explanation=["Recovery is strong, so a short easy run fits today."],
+            explanation_sections={},
+            warnings=[],
+            confidence="high",
+            planned_workout="Rest or optional mobility",
+            planned_run_distance_miles=4.0,
+            planned_pace_guidance="Rest day",
+            pace_model=build_pace_model(SAMPLE_PROFILE, SAMPLE_RUNS).to_dict(),
+            weekly_intent=build_weekly_intent(SAMPLE_PROFILE, SAMPLE_RUNS, SAMPLE_METRICS, today=date(2026, 3, 16)).to_dict(),
+            daily_adaptation={"readiness_status": "supported"},
+        )
+
+        options, _ = build_recommendation_options(
+            recommendation,
+            SAMPLE_PROFILE,
+            subjective_feedback={
+                "weekly_strength_sessions_completed": 1,
+                "strength_sessions_last_2_days": 0,
+                "has_strength_activity_today": False,
+            },
+        )
+
+        conservative = next(option["recommendation"] for option in options if option["key"] == "conservative")
+        aggressive = next(option["recommendation"] for option in options if option["key"] == "aggressive")
+
+        self.assertEqual(conservative["workout"], "Easy aerobic run")
+        self.assertNotIn("rest", aggressive["workout"].lower())
+        self.assertGreaterEqual(aggressive["run_distance_miles"], conservative["run_distance_miles"])
+        self.assertGreaterEqual(
+            {"rest": 0, "very easy": 1, "easy": 2, "moderate": 3, "hard": 4}.get(aggressive["intensity"], 2),
+            {"rest": 0, "very easy": 1, "easy": 2, "moderate": 3, "hard": 4}.get(conservative["intensity"], 2),
+        )
+
+    def test_recommendation_training_context_counts_weekly_strength_days(self) -> None:
+        activity_feed = [
+            {"day": "2026-03-16", "name": "Strength Training", "duration_minutes": 35, "strain": 8.2},
+            {"day": "2026-03-17", "name": "Run", "distance_miles": 4.0, "duration_minutes": 32},
+            {"day": "2026-03-18", "name": "Weight Lifting", "duration_minutes": 42, "strain": 9.1},
+            {"day": "2026-03-19", "name": "Yoga", "duration_minutes": 20, "strain": 4.0},
+        ]
+
+        context = _recommendation_training_context(activity_feed, "2026-03-19")
+
+        self.assertEqual(context["weekly_strength_sessions_completed"], 3)
+        self.assertEqual(context["strength_sessions_last_2_days"], 1)
+        self.assertTrue(context["has_strength_activity_today"])
+        self.assertEqual(context["today_completed_strain"], 4.0)
 
     def test_current_day_status_marks_logged_run_as_on_track(self) -> None:
         recommendation = Recommendation(

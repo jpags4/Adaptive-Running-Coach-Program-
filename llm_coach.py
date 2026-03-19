@@ -152,6 +152,10 @@ def _safety_and_progression_context(
     physical = str(feedback.get("physical_feeling") or "").strip().lower()
     mental = str(feedback.get("mental_feeling") or "").strip().lower()
     notes = str(feedback.get("notes") or "").strip().lower()
+    weekly_strength_sessions_completed = int(feedback.get("weekly_strength_sessions_completed") or 0)
+    strength_sessions_last_2_days = int(feedback.get("strength_sessions_last_2_days") or 0)
+    has_strength_activity_today = bool(feedback.get("has_strength_activity_today"))
+    today_completed_strain = float(feedback.get("today_completed_strain") or 0.0)
     illness_noted = any(
         token in notes
         for token in [
@@ -193,6 +197,10 @@ def _safety_and_progression_context(
         "subjective_physical": physical,
         "subjective_mental": mental,
         "subjective_notes": notes,
+        "weekly_strength_sessions_completed": weekly_strength_sessions_completed,
+        "strength_sessions_last_2_days": strength_sessions_last_2_days,
+        "has_strength_activity_today": has_strength_activity_today,
+        "today_completed_strain": today_completed_strain,
         "illness_noted_in_checkin": illness_noted,
         "guardrails": [
             "If physical feedback says sick or the notes mention headache, fever, nausea, dizziness, flu-like symptoms, or feeling unwell, prescribe a rest day or very light walking only and no strength training.",
@@ -201,6 +209,7 @@ def _safety_and_progression_context(
             "Do not prescribe a hard or tempo session if there was already a hard run in the last 3 days or multiple high-strain days in the last 3 days.",
             "Respect progression: avoid recommending a run more than about 10% longer than the athlete's recent longest run unless the race is close and the data strongly supports it.",
             "Prefer two rest or very low-strain days per week and cap lifting at three days per week unless there is an unusually strong reason not to.",
+            "If weekly strength is behind target and readiness is good, prefer placing a short lift on an easy or non-run day instead of bunching lifts on back-to-back days later in the week.",
         ],
     }
 
@@ -286,6 +295,28 @@ def _apply_guardrails(
         recommendation.lift_focus = "Today is a lifting off-day"
         recommendation.lift_guidance = "Today is a lifting off-day."
         sections["lift"] = "Today is a lifting off-day so the run can stand on its own without adding extra fatigue."
+    else:
+        strength_room = context["weekly_strength_sessions_completed"] < max(1, profile.desired_strength_frequency)
+        no_recent_strength_stack = context["strength_sessions_last_2_days"] == 0 and not context["has_strength_activity_today"]
+        easy_day = _intensity_rank(recommendation.intensity) <= 1 and recommendation.run_distance_miles <= max(3.5, profile.weekly_mileage_target * 0.16)
+
+        if strength_room and no_recent_strength_stack and easy_day:
+            if recommendation.run_distance_miles > 0:
+                recommendation.lift_focus = "Light durability work only"
+                recommendation.lift_guidance = (
+                    "Use today's good readiness for a short lift after the run: 2-4 controlled exercises, stop 1-2 reps shy of failure, and keep it secondary to tomorrow's run quality."
+                )
+                sections["lift"] = (
+                    "Strength is under target for the week, so this easy run can pair with a short durability lift without stacking too much fatigue."
+                )
+            else:
+                recommendation.lift_focus = "Adaptive strength + core"
+                recommendation.lift_guidance = (
+                    "Readiness is strong and you are behind the weekly strength target, so make this a lift-focused day with 3-5 controlled movements and no grinding reps."
+                )
+                sections["lift"] = (
+                    "With no meaningful run load today and strength still under target for the week, a lift is more useful than taking a full training off-day."
+                )
 
     longest_recent_run = context["recent_longest_run_21_day"]
     target_cap = profile.weekly_mileage_target * 0.35

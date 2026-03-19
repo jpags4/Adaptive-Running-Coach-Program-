@@ -221,6 +221,53 @@ def _filter_calendar_activities(activity_feed: list[dict]) -> list[dict]:
     return filtered
 
 
+def _recommendation_training_context(activity_feed: list[dict], today_iso: str) -> dict:
+    if not today_iso:
+        return {}
+
+    today_value = datetime.strptime(today_iso, "%Y-%m-%d").date()
+    week_start = today_value - timedelta(days=today_value.weekday())
+    prior_two_day_cutoff = today_value - timedelta(days=2)
+
+    strength_days_this_week: set[str] = set()
+    strength_days_last_two: set[str] = set()
+    today_has_strength = False
+    today_strain_values: list[float] = []
+
+    for item in activity_feed:
+        day = str(item.get("day") or "")
+        if not day:
+            continue
+        try:
+            day_value = datetime.strptime(day, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+
+        kind = _calendar_activity_kind(item)
+        if day == today_iso and item.get("strain") is not None:
+            try:
+                today_strain_values.append(float(item.get("strain") or 0.0))
+            except (TypeError, ValueError):
+                pass
+
+        if kind != "strength":
+            continue
+
+        if week_start <= day_value <= today_value:
+            strength_days_this_week.add(day)
+        if prior_two_day_cutoff <= day_value < today_value:
+            strength_days_last_two.add(day)
+        if day == today_iso:
+            today_has_strength = True
+
+    return {
+        "weekly_strength_sessions_completed": len(strength_days_this_week),
+        "strength_sessions_last_2_days": len(strength_days_last_two),
+        "has_strength_activity_today": today_has_strength,
+        "today_completed_strain": round(max(today_strain_values or [0.0]), 1),
+    }
+
+
 def _preferred_long_run_index(value: str) -> int:
     normalized = str(value or "").strip().lower()
     return WEEKDAY_NAMES.index(normalized) if normalized in WEEKDAY_NAMES else 6
@@ -793,19 +840,22 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     recommendation_options: list[dict] = []
     recommended_option_key = "conservative"
     recommendation_meta = {"source": None, "model": None, "reason": None}
+    recommendation_feedback = dict(subjective_feedback or {})
+    recommendation_feedback.update(_recommendation_training_context(activity_feed, today_iso))
+
     if include_recommendation:
         recommendation, recommendation_meta = llm_recommendation(
             profile,
             runs,
             metrics,
             today=today_date,
-            subjective_feedback=subjective_feedback,
+            subjective_feedback=recommendation_feedback,
             weekly_intent=weekly_intent,
         )
         recommendation_options, recommended_option_key = build_recommendation_options(
             recommendation,
             profile,
-            subjective_feedback=subjective_feedback,
+            subjective_feedback=recommendation_feedback,
         )
 
     payload = {
