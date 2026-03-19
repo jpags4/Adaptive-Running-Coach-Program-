@@ -6,6 +6,7 @@ from app import (
     _apply_clarification_answers_to_settings,
     _generate_weekly_plan,
     _current_day_status,
+    _pace_text_for_type,
     _profile_settings_payload,
     build_training_roadmap,
     calendar_days,
@@ -590,6 +591,26 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertEqual(status["status"], "on_track")
         self.assertIn("3.3", status["detail"])
+
+    def test_projected_paces_separate_easy_and_quality_days(self) -> None:
+        weekly_intent = build_weekly_intent(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            today=date(2026, 3, 18),
+        )
+        recommendation = coach_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            today=date(2026, 3, 18),
+            weekly_intent=weekly_intent,
+        )
+
+        easy_pace = _pace_text_for_type("easy", recommendation, weekly_intent=weekly_intent.to_dict())
+        quality_pace = _pace_text_for_type("quality", recommendation, weekly_intent=weekly_intent.to_dict())
+
+        self.assertNotEqual(easy_pace, quality_pace)
 
 
 if __name__ == "__main__":

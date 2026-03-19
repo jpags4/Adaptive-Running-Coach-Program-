@@ -260,10 +260,17 @@ def _shift_pace_bounds(bounds: tuple[float, float], faster: float = 0.0, slower:
     return f"{_format_pace_value(shifted_low)}-{_format_pace_value(shifted_high)}/mi"
 
 
-def _pace_text_for_type(workout_type: str, recommendation) -> str:
+def _pace_text_for_type(workout_type: str, recommendation, weekly_intent: dict | None = None) -> str:
     pace_model = getattr(recommendation, "pace_model", {}) or {}
+    primary_adaptation = str((weekly_intent or {}).get("primary_adaptation") or "").strip().lower()
     if pace_model:
         if workout_type == "quality":
+            if primary_adaptation == "race-specific stamina":
+                return str(
+                    pace_model.get("race_pace", {}).get("pace_range")
+                    or pace_model.get("threshold", {}).get("pace_range")
+                    or recommendation.run_pace_guidance
+                )
             return str(
                 pace_model.get("threshold", {}).get("pace_range")
                 or pace_model.get("race_pace", {}).get("pace_range")
@@ -279,12 +286,12 @@ def _pace_text_for_type(workout_type: str, recommendation) -> str:
     bounds = _parse_pace_bounds(base)
     if bounds:
         if workout_type == "quality":
-            return _shift_pace_bounds(bounds, faster=0.7, slower=-0.2)
+            return _shift_pace_bounds(bounds, faster=0.85, slower=-0.3)
         if workout_type == "steady":
-            return _shift_pace_bounds(bounds, faster=0.3, slower=-0.05)
+            return _shift_pace_bounds(bounds, faster=0.4, slower=-0.05)
         if workout_type == "long":
-            return _shift_pace_bounds(bounds, faster=-0.1, slower=0.2)
-        return _shift_pace_bounds(bounds)
+            return _shift_pace_bounds(bounds, faster=-0.05, slower=0.3)
+        return _shift_pace_bounds(bounds, faster=0.0, slower=0.35)
 
     if workout_type == "quality":
         return "8:30-8:55/mi"
@@ -325,31 +332,31 @@ def _run_blueprints(long_run_day: int, recommendation, weekly_intent: dict | Non
             "weight": 0.18,
             "duration": 42,
             "intensity": "easy",
-            "pace_text": _pace_text_for_type("easy", recommendation),
+            "pace_text": _pace_text_for_type("easy", recommendation, weekly_intent=weekly_intent),
         },
         quality_day: {
             "weight": 0.20,
             "duration": 52 if quality_intensity == "hard" else 44,
             "intensity": quality_intensity,
-            "pace_text": _pace_text_for_type("quality", recommendation),
+            "pace_text": _pace_text_for_type("quality", recommendation, weekly_intent=weekly_intent),
         },
         steady_day: {
             "weight": 0.22,
             "duration": 48,
             "intensity": "moderate",
-            "pace_text": _pace_text_for_type("steady", recommendation),
+            "pace_text": _pace_text_for_type("steady", recommendation, weekly_intent=weekly_intent),
         },
         aerobic_day: {
             "weight": 0.16,
             "duration": 40,
             "intensity": "easy",
-            "pace_text": _pace_text_for_type("easy", recommendation),
+            "pace_text": _pace_text_for_type("easy", recommendation, weekly_intent=weekly_intent),
         },
         long_run_day: {
             "weight": 0.24,
             "duration": 70,
             "intensity": "moderate",
-            "pace_text": _pace_text_for_type("long", recommendation),
+            "pace_text": _pace_text_for_type("long", recommendation, weekly_intent=weekly_intent),
         },
     }
     return run_blueprints
