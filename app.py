@@ -539,12 +539,22 @@ def _load_or_create_weekly_plan(anchor, profile, runs, metrics) -> dict[str, lis
 def build_training_roadmap(anchor, profile, runs, metrics, weeks: int = 4) -> list[dict]:
     roadmap: list[dict] = []
     current_week_start = anchor - timedelta(days=anchor.weekday())
+    current_intent = build_weekly_intent(profile, runs, metrics, today=anchor)
+    projected_miles = round(float(current_intent.mileage_target), 1)
 
     for week_offset in range(1, weeks + 1):
         week_start = current_week_start + timedelta(days=7 * week_offset)
         week_end = week_start + timedelta(days=6)
         intent = build_weekly_intent(profile, runs, metrics, today=week_start)
         certainty = "moderate" if week_offset == 1 else "light" if week_offset == 2 else "tentative"
+        if intent.week_type == "taper":
+            projected_miles = round(max(12.0, projected_miles * 0.78), 1)
+        elif intent.week_type == "absorb":
+            projected_miles = round(max(16.0, projected_miles * 0.9), 1)
+        elif intent.week_type == "build":
+            projected_miles = round(min(float(profile.weekly_mileage_target), projected_miles * 1.06), 1)
+        else:
+            projected_miles = round(min(float(profile.weekly_mileage_target), projected_miles * 1.03), 1)
         hard_days = 1 if intent.primary_adaptation in {"threshold", "race-specific stamina"} else 0
         rest_days = 3 if intent.week_type in {"absorb", "taper"} else 2
         summary = (
@@ -560,8 +570,8 @@ def build_training_roadmap(anchor, profile, runs, metrics, weeks: int = 4) -> li
                 "phase": intent.phase,
                 "week_type": intent.week_type,
                 "primary_adaptation": intent.primary_adaptation,
-                "mileage_range": intent.mileage_range,
-                "estimated_total_miles": round(float(intent.mileage_target), 1),
+                "mileage_range": f"{max(10.0, projected_miles - 1.5):.0f}-{projected_miles + 1.5:.0f} miles",
+                "estimated_total_miles": projected_miles,
                 "estimated_hard_days": hard_days,
                 "estimated_rest_days": rest_days,
                 "long_run_target": intent.long_run_target,
@@ -630,6 +640,62 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
         current_day += timedelta(days=1)
 
     return cards
+
+
+def _current_day_status(today_iso: str, activity_feed: list[dict], recommendation) -> dict | None:
+    if not today_iso:
+        return None
+
+    todays_activities = [item for item in activity_feed if str(item.get("day") or "") == today_iso]
+    if not todays_activities:
+        return None
+
+    todays_runs = [
+        item for item in todays_activities
+        if _calendar_activity_kind(item) == "run"
+    ]
+    todays_strength = [
+        item for item in todays_activities
+        if _calendar_activity_kind(item) == "strength"
+    ]
+
+    completed_run_miles = round(sum(float(item.get("distance_miles") or 0.0) for item in todays_runs), 1)
+    completed_strain = max(
+        [float(item.get("strain") or 0.0) for item in todays_activities if item.get("strain") is not None] or [0.0]
+    )
+    planned_miles = round(float(getattr(recommendation, "run_distance_miles", 0.0) or 0.0), 1) if recommendation else 0.0
+
+    if planned_miles <= 0:
+        status = "completed"
+        headline = "You already trained today."
+        detail = f"Logged {completed_run_miles:.1f} run miles today." if completed_run_miles > 0 else "A workout is already logged for today."
+    elif completed_run_miles >= planned_miles * 0.9:
+        status = "on_track"
+        headline = "Today is on track."
+        detail = f"You've logged {completed_run_miles:.1f} of the planned {planned_miles:.1f} miles."
+    elif completed_run_miles > 0:
+        status = "in_progress"
+        headline = "Today's work is in progress."
+        detail = f"You've logged {completed_run_miles:.1f} of the planned {planned_miles:.1f} miles so far."
+    else:
+        status = "cross_trained"
+        headline = "You already trained, but not with the planned run yet."
+        detail = "Cross-training is logged for today, so use the recommendation as a remainder-of-day guide."
+
+    if todays_strength and completed_run_miles <= 0:
+        detail += " Strength work is already on the board."
+    if completed_strain:
+        detail += f" Current recorded strain: {completed_strain:.1f}."
+
+    return {
+        "status": status,
+        "headline": headline,
+        "detail": detail,
+        "completed_run_miles": completed_run_miles,
+        "planned_run_miles": planned_miles,
+        "has_strength_activity": bool(todays_strength),
+        "todays_activities": len(todays_activities),
+    }
 
 
 def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None = None, include_recommendation: bool = False) -> dict:
@@ -757,6 +823,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             "latest_resting_hr": metrics[-1].resting_hr,
             "latest_hrv": metrics[-1].hrv_ms,
             "previous_run": previous_run_summary(runs),
+            "current_day_status": _current_day_status(today_iso, activity_feed, recommendation),
         },
         "recommendation": recommendation.to_dict() if recommendation else None,
         "recommendation_options": recommendation_options,

@@ -1451,6 +1451,8 @@ function CalendarActivity({ activity, theme = 'light' }) {
   const isDark = theme === 'dark'
   const isRun = /run/i.test(String(activity.name || '')) || /run/i.test(String(activity.sport || ''))
   const intensity = simplifyIntensity(activity.intensity || activity.workout_type || '')
+  const liftLabel = calendarLiftFocus(activity)
+  const showIntensityPill = isRun ? intensity !== '-' : Boolean(intensity && intensity !== '-' && liftLabel)
 
   return (
     <div className="pb-2.5 last:pb-0">
@@ -1462,14 +1464,18 @@ function CalendarActivity({ activity, theme = 'light' }) {
           <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{calendarPace(activity)}</p>
         </>
       ) : (
-        <p className={`text-sm leading-6 ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`}>
-          {calendarLiftFocus(activity)}
-        </p>
+        liftLabel ? (
+          <p className={`text-sm leading-6 ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`}>
+            {liftLabel}
+          </p>
+        ) : null
       )}
 
-      <span className={`mt-2 inline-flex rounded-2xl px-2.5 py-1 text-sm font-medium ${intensityPillClass(intensity)}`}>
-        {intensity.toLowerCase()}
-      </span>
+      {showIntensityPill ? (
+        <span className={`mt-2 inline-flex rounded-2xl px-2.5 py-1 text-sm font-medium ${intensityPillClass(intensity)}`}>
+          {intensity.toLowerCase()}
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -1875,6 +1881,13 @@ function loadColor(recentMileage, weeklyMileageTarget) {
   return recent >= target * 0.85 ? 'text-emerald-600' : 'text-amber-500'
 }
 
+function currentDayStatusTone(status, theme = 'light') {
+  const isDark = theme === 'dark'
+  if (status === 'on_track') return isDark ? 'border-emerald-800 bg-emerald-950/30 text-emerald-100' : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+  if (status === 'in_progress') return isDark ? 'border-amber-800 bg-amber-950/30 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'
+  return isDark ? 'border-sky-800 bg-sky-950/30 text-sky-100' : 'border-sky-200 bg-sky-50 text-sky-900'
+}
+
 function normalizePhysicalFeeling(value) {
   return value === 'injured' ? 'sore' : value
 }
@@ -2009,6 +2022,7 @@ export default function App() {
   const profile = summaryData.profile ?? {}
   const summary = summaryData.summary ?? {}
   const previousRun = summary.previous_run ?? {}
+  const currentDayStatus = summary.current_day_status ?? null
   const recoveryAccent = whoopRecoveryColor(summary.latest_recovery)
   const loadAccent = loadColor(summary.recent_mileage, profile.weekly_mileage_target)
   const handleSelectRecommendationOption = (key) => {
@@ -2120,6 +2134,14 @@ export default function App() {
             theme={theme}
           />
         </section>
+
+        {currentDayStatus ? (
+          <section className={`mb-2 rounded-[1.7rem] border px-6 py-5 ${currentDayStatusTone(currentDayStatus.status, theme)}`}>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-current/70">Today So Far</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight">{currentDayStatus.headline}</p>
+            <p className="mt-2 max-w-4xl text-base leading-7">{currentDayStatus.detail}</p>
+          </section>
+        ) : null}
 
         {!recommendationData ? (
           <CheckInCard

@@ -5,6 +5,7 @@ from unittest import mock
 from app import (
     _apply_clarification_answers_to_settings,
     _generate_weekly_plan,
+    _current_day_status,
     _profile_settings_payload,
     build_training_roadmap,
     calendar_days,
@@ -237,6 +238,7 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(roadmap[0]["week_start"], "2026-03-16")
         self.assertTrue(all(item["mileage_range"] for item in roadmap))
         self.assertTrue(all(item["confidence_note"] for item in roadmap))
+        self.assertGreaterEqual(roadmap[1]["estimated_total_miles"], roadmap[0]["estimated_total_miles"])
 
     def test_uncertainty_assessment_returns_follow_up_questions(self) -> None:
         recommendation = coach_recommendation(
@@ -556,6 +558,38 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertEqual(guarded.lift_focus, "Today is a lifting off-day")
         self.assertEqual(guarded.lift_guidance, "Today is a lifting off-day.")
+
+    def test_current_day_status_marks_logged_run_as_on_track(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-18",
+            workout="Easy aerobic run",
+            intensity="easy",
+            duration_minutes=40,
+            run_distance_miles=3.2,
+            run_pace_guidance="9:15-9:45/mi",
+            lift_focus="No lifting",
+            lift_guidance="No lifting today.",
+            recap=[],
+            explanation=[],
+            explanation_sections={},
+            warnings=[],
+            confidence="high",
+        )
+        activity_feed = [
+            {
+                "name": "Run",
+                "sport": "Run",
+                "day": "2026-03-18",
+                "distance_miles": 3.3,
+                "duration_minutes": 24,
+                "average_pace_min_per_mile": 7.3,
+            }
+        ]
+
+        status = _current_day_status("2026-03-18", activity_feed, recommendation)
+
+        self.assertEqual(status["status"], "on_track")
+        self.assertIn("3.3", status["detail"])
 
 
 if __name__ == "__main__":

@@ -197,7 +197,7 @@ def _safety_and_progression_context(
         "guardrails": [
             "If physical feedback says sick or the notes mention headache, fever, nausea, dizziness, flu-like symptoms, or feeling unwell, prescribe a rest day or very light walking only and no strength training.",
             "If recovery is below 35%, or sleep is below 5.5 hours, or resting heart rate is 7+ bpm above baseline, do not prescribe a hard workout.",
-            "If recovery is below 50%, or sleep is below 6.5 hours, or resting heart rate is 4+ bpm above baseline, or heavy legs, soreness, stress, or mental fatigue are reported, downshift intensity.",
+            "If recovery is below 50%, or sleep is below 6.0 hours, or resting heart rate is 4+ bpm above baseline, or heavy legs, soreness, stress, or mental fatigue are reported, downshift intensity. Sleep between 6.0 and 6.5 hours should only downshift when paired with mediocre recovery or other red flags.",
             "Do not prescribe a hard or tempo session if there was already a hard run in the last 3 days or multiple high-strain days in the last 3 days.",
             "Respect progression: avoid recommending a run more than about 10% longer than the athlete's recent longest run unless the race is close and the data strongly supports it.",
             "Prefer two rest or very low-strain days per week and cap lifting at three days per week unless there is an unusually strong reason not to.",
@@ -221,7 +221,8 @@ def _apply_guardrails(
     mental = context["subjective_mental"]
     low_readiness = (
         context["latest_recovery_score"] < 50
-        or context["latest_sleep_hours"] < 6.5
+        or context["latest_sleep_hours"] < 6.0
+        or (context["latest_sleep_hours"] < 6.5 and context["latest_recovery_score"] < 45)
         or context["elevated_resting_hr"]
         or physical in {"heavy", "sore"}
         or mental in {"stressed", "drained"}
