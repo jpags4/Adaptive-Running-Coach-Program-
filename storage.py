@@ -180,6 +180,13 @@ def load_settings() -> dict[str, Any]:
             "weekly_mileage_target": "28",
             "preferred_long_run_day": "Sunday",
             "athlete_name": "",
+            "goal_half_marathon_time": "",
+            "recent_race_result": "",
+            "max_comfortable_long_run_miles": "",
+            "desired_runs_per_week": "5",
+            "desired_strength_frequency": "2",
+            "preferred_adaptation_emphasis": "",
+            "injury_flags": "",
             "strava": {"client_id": "", "client_secret": ""},
             "whoop": {"client_id": "", "client_secret": ""},
         },
@@ -205,6 +212,34 @@ def load_settings() -> dict[str, Any]:
     settings["preferred_long_run_day"] = os.environ.get(
         "PREFERRED_LONG_RUN_DAY",
         settings.get("preferred_long_run_day", "Sunday"),
+    ).strip()
+    settings["goal_half_marathon_time"] = os.environ.get(
+        "GOAL_HALF_MARATHON_TIME",
+        settings.get("goal_half_marathon_time", ""),
+    ).strip()
+    settings["recent_race_result"] = os.environ.get(
+        "RECENT_RACE_RESULT",
+        settings.get("recent_race_result", ""),
+    ).strip()
+    settings["max_comfortable_long_run_miles"] = os.environ.get(
+        "MAX_COMFORTABLE_LONG_RUN_MILES",
+        str(settings.get("max_comfortable_long_run_miles", "")),
+    ).strip()
+    settings["desired_runs_per_week"] = os.environ.get(
+        "DESIRED_RUNS_PER_WEEK",
+        str(settings.get("desired_runs_per_week", "5")),
+    ).strip()
+    settings["desired_strength_frequency"] = os.environ.get(
+        "DESIRED_STRENGTH_FREQUENCY",
+        str(settings.get("desired_strength_frequency", "2")),
+    ).strip()
+    settings["preferred_adaptation_emphasis"] = os.environ.get(
+        "PREFERRED_ADAPTATION_EMPHASIS",
+        settings.get("preferred_adaptation_emphasis", ""),
+    ).strip()
+    settings["injury_flags"] = os.environ.get(
+        "INJURY_FLAGS",
+        settings.get("injury_flags", ""),
     ).strip()
 
     settings.setdefault("strava", {})

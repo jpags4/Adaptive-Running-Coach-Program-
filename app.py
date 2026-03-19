@@ -10,7 +10,17 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
-from coach import Recommendation, average_easy_pace, coach_recommendation, pace_window, recent_mileage
+from coach import (
+    Recommendation,
+    assess_recommendation_uncertainty,
+    average_easy_pace,
+    build_recommendation_options,
+    build_weekly_intent,
+    coach_recommendation,
+    days_until_race,
+    pace_window,
+    recent_mileage,
+)
 from integrations import (
     OAuthError,
     build_strava_authorize_url,
@@ -60,6 +70,94 @@ WEEKDAY_NAMES = [
     "saturday",
     "sunday",
 ]
+
+
+def _string_value(value, default: str = "") -> str:
+    return str(value if value is not None else default).strip()
+
+
+def _profile_settings_payload(settings: dict, tokens: dict) -> dict:
+    hosted_env = using_hosted_env()
+    public_base_url = settings.get("public_base_url", "")
+    return {
+        "athlete_name": _string_value(settings.get("athlete_name")),
+        "goal_race_date": _string_value(settings.get("goal_race_date")),
+        "weekly_mileage_target": _string_value(settings.get("weekly_mileage_target"), "28") or "28",
+        "preferred_long_run_day": _string_value(settings.get("preferred_long_run_day"), "Sunday") or "Sunday",
+        "goal_half_marathon_time": _string_value(settings.get("goal_half_marathon_time")),
+        "recent_race_result": _string_value(settings.get("recent_race_result")),
+        "max_comfortable_long_run_miles": _string_value(settings.get("max_comfortable_long_run_miles")),
+        "desired_runs_per_week": _string_value(settings.get("desired_runs_per_week"), "5") or "5",
+        "desired_strength_frequency": _string_value(settings.get("desired_strength_frequency"), "2") or "2",
+        "preferred_adaptation_emphasis": _string_value(settings.get("preferred_adaptation_emphasis")),
+        "injury_flags": _string_value(settings.get("injury_flags")),
+        "public_base_url": _string_value(public_base_url),
+        "allow_insecure_ssl": bool(settings.get("allow_insecure_ssl")),
+        "strava_client_id": _string_value(settings.get("strava", {}).get("client_id")),
+        "strava_client_secret": _string_value(settings.get("strava", {}).get("client_secret")),
+        "whoop_client_id": _string_value(settings.get("whoop", {}).get("client_id")),
+        "whoop_client_secret": _string_value(settings.get("whoop", {}).get("client_secret")),
+        "strava": {
+            "client_id": _string_value(settings.get("strava", {}).get("client_id")),
+            "client_secret": _string_value(settings.get("strava", {}).get("client_secret")),
+            "connected": bool(settings.get("strava", {}).get("client_id")) and bool(tokens.get("strava")),
+            "callback_url": strava_redirect_uri(public_base_url) if public_base_url else "",
+            "connect_url": "/connect/strava",
+        },
+        "whoop": {
+            "client_id": _string_value(settings.get("whoop", {}).get("client_id")),
+            "client_secret": _string_value(settings.get("whoop", {}).get("client_secret")),
+            "connected": bool(settings.get("whoop", {}).get("client_id")) and bool(tokens.get("whoop")),
+            "callback_url": whoop_redirect_uri(public_base_url) if public_base_url else "",
+            "connect_url": "/connect/whoop",
+        },
+        "hosted_env": hosted_env,
+    }
+
+
+def _settings_from_json_payload(existing_settings: dict, payload: dict) -> dict:
+    settings = dict(existing_settings)
+    settings["athlete_name"] = _string_value(payload.get("athlete_name"), settings.get("athlete_name", ""))
+    settings["goal_race_date"] = _string_value(payload.get("goal_race_date"), settings.get("goal_race_date", ""))
+    settings["weekly_mileage_target"] = _string_value(payload.get("weekly_mileage_target"), settings.get("weekly_mileage_target", "28")) or "28"
+    settings["preferred_long_run_day"] = _string_value(payload.get("preferred_long_run_day"), settings.get("preferred_long_run_day", "Sunday")) or "Sunday"
+    settings["goal_half_marathon_time"] = _string_value(payload.get("goal_half_marathon_time"), settings.get("goal_half_marathon_time", ""))
+    settings["recent_race_result"] = _string_value(payload.get("recent_race_result"), settings.get("recent_race_result", ""))
+    settings["max_comfortable_long_run_miles"] = _string_value(payload.get("max_comfortable_long_run_miles"), settings.get("max_comfortable_long_run_miles", ""))
+    settings["desired_runs_per_week"] = _string_value(payload.get("desired_runs_per_week"), settings.get("desired_runs_per_week", "5")) or "5"
+    settings["desired_strength_frequency"] = _string_value(payload.get("desired_strength_frequency"), settings.get("desired_strength_frequency", "2")) or "2"
+    settings["preferred_adaptation_emphasis"] = _string_value(payload.get("preferred_adaptation_emphasis"), settings.get("preferred_adaptation_emphasis", ""))
+    settings["injury_flags"] = _string_value(payload.get("injury_flags"), settings.get("injury_flags", ""))
+    settings["public_base_url"] = _string_value(payload.get("public_base_url"), settings.get("public_base_url", ""))
+    settings["allow_insecure_ssl"] = bool(payload.get("allow_insecure_ssl", settings.get("allow_insecure_ssl", False)))
+    settings.setdefault("strava", {})
+    settings.setdefault("whoop", {})
+    settings["strava"]["client_id"] = _string_value(payload.get("strava_client_id"), settings["strava"].get("client_id", ""))
+    settings["strava"]["client_secret"] = _string_value(payload.get("strava_client_secret"), settings["strava"].get("client_secret", ""))
+    settings["whoop"]["client_id"] = _string_value(payload.get("whoop_client_id"), settings["whoop"].get("client_id", ""))
+    settings["whoop"]["client_secret"] = _string_value(payload.get("whoop_client_secret"), settings["whoop"].get("client_secret", ""))
+    return settings
+
+
+def _apply_clarification_answers_to_settings(settings: dict, subjective_feedback: dict | None) -> dict:
+    if not subjective_feedback:
+        return settings
+
+    clarification_answers = subjective_feedback.get("clarification_answers") or {}
+    if not isinstance(clarification_answers, dict):
+        return settings
+
+    updated = dict(settings)
+    field_map = {
+        "goal_time": "goal_half_marathon_time",
+        "benchmark": "recent_race_result",
+        "long_run_cap": "max_comfortable_long_run_miles",
+    }
+    for key, field in field_map.items():
+        value = _string_value(clarification_answers.get(key))
+        if value:
+            updated[field] = value
+    return updated
 
 
 def previous_run_summary(runs: list) -> dict:
@@ -140,6 +238,10 @@ def _parse_pace_bounds(text: str) -> tuple[float, float] | None:
         pace = int(single_match.group(1)) + int(single_match.group(2)) / 60
         return pace, pace
 
+    decimal_range = re.search(r"(\d{1,2}\.\d{2})\s*[–-]\s*(\d{1,2}\.\d{2})\s*min/mi", value, re.IGNORECASE)
+    if decimal_range:
+        return float(decimal_range.group(1)), float(decimal_range.group(2))
+
     return None
 
 
@@ -158,6 +260,20 @@ def _shift_pace_bounds(bounds: tuple[float, float], faster: float = 0.0, slower:
 
 
 def _pace_text_for_type(workout_type: str, recommendation) -> str:
+    pace_model = getattr(recommendation, "pace_model", {}) or {}
+    if pace_model:
+        if workout_type == "quality":
+            return str(
+                pace_model.get("threshold", {}).get("pace_range")
+                or pace_model.get("race_pace", {}).get("pace_range")
+                or recommendation.run_pace_guidance
+            )
+        if workout_type == "steady":
+            return str(pace_model.get("steady", {}).get("pace_range") or recommendation.run_pace_guidance)
+        if workout_type == "long":
+            return str(pace_model.get("long_run", {}).get("pace_range") or recommendation.run_pace_guidance)
+        return str(pace_model.get("easy", {}).get("pace_range") or recommendation.run_pace_guidance)
+
     base = str(recommendation.run_pace_guidance or "").strip()
     bounds = _parse_pace_bounds(base)
     if bounds:
@@ -192,11 +308,16 @@ def _lift_focus_for_day(weekday: int, long_run_day: int) -> str:
     return ""
 
 
-def _run_blueprints(long_run_day: int, recommendation) -> dict[int, dict]:
+def _run_blueprints(long_run_day: int, recommendation, weekly_intent: dict | None = None) -> dict[int, dict]:
     quality_day = (long_run_day - 5) % 7
     steady_day = (long_run_day - 3) % 7
     easy_day = (quality_day - 1) % 7
     aerobic_day = (steady_day + 1) % 7
+    primary_adaptation = str((weekly_intent or {}).get("primary_adaptation") or "").strip().lower()
+    absorb_week = primary_adaptation == "recovery / absorb"
+    quality_intensity = "hard" if primary_adaptation in {"threshold", "race-specific stamina"} else "moderate"
+    if absorb_week:
+        quality_intensity = "easy"
 
     run_blueprints = {
         easy_day: {
@@ -207,8 +328,8 @@ def _run_blueprints(long_run_day: int, recommendation) -> dict[int, dict]:
         },
         quality_day: {
             "weight": 0.20,
-            "duration": 50,
-            "intensity": "hard",
+            "duration": 52 if quality_intensity == "hard" else 44,
+            "intensity": quality_intensity,
             "pace_text": _pace_text_for_type("quality", recommendation),
         },
         steady_day: {
@@ -279,16 +400,25 @@ def projected_calendar_entries(anchor, recommendation, end_day, profile) -> dict
 
     projections: dict[str, list[dict]] = {}
     long_run_day = _preferred_long_run_index(getattr(profile, "preferred_long_run_day", "Sunday"))
-    run_blueprints = _run_blueprints(long_run_day, recommendation)
+    weekly_intent = getattr(recommendation, "weekly_intent", {}) or {}
+    run_blueprints = _run_blueprints(long_run_day, recommendation, weekly_intent=weekly_intent)
     current_week_start = anchor - timedelta(days=anchor.weekday())
-    base_weekly_target = max(30.0, float(getattr(profile, "weekly_mileage_target", 0) or 0))
+    if weekly_intent:
+        base_weekly_target = max(20.0, float(weekly_intent.get("mileage_target") or getattr(profile, "weekly_mileage_target", 0) or 0))
+    else:
+        base_weekly_target = max(30.0, float(getattr(profile, "weekly_mileage_target", 0) or 0))
     projection_date = anchor + timedelta(days=1)
 
     while projection_date <= end_day:
         week_start = projection_date - timedelta(days=projection_date.weekday())
         week_end = min(end_day, week_start + timedelta(days=6))
         week_offset = max(0, (week_start - current_week_start).days // 7)
-        target_week_miles = round(base_weekly_target * (1.1 ** week_offset), 1)
+        week_type = str(weekly_intent.get("week_type") or "").strip().lower()
+        multiplier = 1.05 if week_type == "build" else 0.92 if week_type == "absorb" else 0.8 if week_type == "taper" else 1.1 if not weekly_intent else 1.0
+        if week_offset == 0:
+            target_week_miles = round(base_weekly_target, 1)
+        else:
+            target_week_miles = round(base_weekly_target * (multiplier ** week_offset), 1)
 
         week_days = [
             day
@@ -361,7 +491,8 @@ def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict
         reverse=True,
     )
     planning_day = next((day for day in metric_dates if day <= anchor), metric_dates[0] if metric_dates else anchor)
-    baseline_recommendation = coach_recommendation(profile, runs, metrics, today=planning_day)
+    weekly_intent = build_weekly_intent(profile, runs, metrics, today=planning_day)
+    baseline_recommendation = coach_recommendation(profile, runs, metrics, today=planning_day, weekly_intent=weekly_intent)
     if baseline_recommendation.run_distance_miles <= 0:
         easy_pace = average_easy_pace(runs)
         baseline_recommendation = Recommendation(
@@ -384,8 +515,9 @@ def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict
             },
             warnings=[],
             confidence="medium",
+            weekly_intent=weekly_intent.to_dict(),
         )
-    end_day = (anchor - timedelta(days=anchor.weekday())) + timedelta(days=13)
+    end_day = (anchor - timedelta(days=anchor.weekday())) + timedelta(days=6)
     plan = projected_calendar_entries(anchor, baseline_recommendation, end_day, profile)
     return plan
 
@@ -403,6 +535,58 @@ def _load_or_create_weekly_plan(anchor, profile, runs, metrics) -> dict[str, lis
     return plan
 
 
+def build_training_roadmap(anchor, profile, runs, metrics, weeks: int = 4) -> list[dict]:
+    roadmap: list[dict] = []
+    current_week_start = anchor - timedelta(days=anchor.weekday())
+
+    for week_offset in range(1, weeks + 1):
+        week_start = current_week_start + timedelta(days=7 * week_offset)
+        week_end = week_start + timedelta(days=6)
+        intent = build_weekly_intent(profile, runs, metrics, today=week_start)
+        certainty = "moderate" if week_offset == 1 else "light" if week_offset == 2 else "tentative"
+        hard_days = 1 if intent.primary_adaptation in {"threshold", "race-specific stamina"} else 0
+        rest_days = 3 if intent.week_type in {"absorb", "taper"} else 2
+        summary = (
+            f"{intent.phase} week focused on {intent.primary_adaptation}."
+            if intent.primary_adaptation
+            else intent.phase
+        )
+        roadmap.append(
+            {
+                "week_start": week_start.isoformat(),
+                "week_end": week_end.isoformat(),
+                "label": f"Week of {week_start.strftime('%b')} {week_start.day}",
+                "phase": intent.phase,
+                "week_type": intent.week_type,
+                "primary_adaptation": intent.primary_adaptation,
+                "mileage_range": intent.mileage_range,
+                "estimated_total_miles": round(float(intent.mileage_target), 1),
+                "estimated_hard_days": hard_days,
+                "estimated_rest_days": rest_days,
+                "long_run_target": intent.long_run_target,
+                "quality_session_target": intent.quality_session_target,
+                "progression_note": intent.progression_note,
+                "race_connection": intent.race_connection,
+                "summary": summary,
+                "strength_target": intent.strength_target,
+                "strain_constraints": list(intent.strain_constraints),
+                "non_negotiables": list(intent.non_negotiables),
+                "flex_points": list(intent.flex_points),
+                "certainty": certainty,
+                "confidence_note": (
+                    "Most likely next step if recovery and training stay on track."
+                    if certainty == "moderate"
+                    else "Directional outlook that may shift with recovery, life stress, and how this week lands."
+                    if certainty == "light"
+                    else "Longer-range sketch only. Expect this to change as new data comes in."
+                ),
+                "days_to_race": days_until_race(profile.goal_race_date, week_start),
+            }
+        )
+
+    return roadmap
+
+
 def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None, today: str = "", profile=None, weekly_plan=None) -> list[dict]:
     anchor = datetime.strptime(today, "%Y-%m-%d").date() if today else datetime.utcnow().date()
     feed_by_day: dict[str, list[dict]] = {}
@@ -413,7 +597,7 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
         feed_by_day.setdefault(day, []).append(item)
 
     start_day = anchor - timedelta(days=anchor.weekday())
-    end_day = start_day + timedelta(days=13)
+    end_day = start_day + timedelta(days=6)
     projected_by_day = weekly_plan or {}
 
     cards: list[dict] = []
@@ -448,6 +632,7 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
 
 
 def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None = None, include_recommendation: bool = False) -> dict:
+    settings = _apply_clarification_answers_to_settings(settings, subjective_feedback)
     connection_status = {
         "strava": bool(settings.get("strava", {}).get("client_id")) and bool(tokens.get("strava")),
         "whoop": bool(settings.get("whoop", {}).get("client_id")) and bool(tokens.get("whoop")),
@@ -527,8 +712,12 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
 
     today_iso = safe_iso_today()
     today_date = datetime.strptime(today_iso, "%Y-%m-%d").date()
+    weekly_intent = build_weekly_intent(profile, runs, metrics, today=today_date)
     weekly_plan = _load_or_create_weekly_plan(today_date, profile, runs, metrics)
+    roadmap = build_training_roadmap(today_date, profile, runs, metrics)
     recommendation = None
+    recommendation_options: list[dict] = []
+    recommended_option_key = "conservative"
     recommendation_meta = {"source": None, "model": None, "reason": None}
     if include_recommendation:
         recommendation, recommendation_meta = llm_recommendation(
@@ -536,6 +725,12 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             runs,
             metrics,
             today=today_date,
+            subjective_feedback=subjective_feedback,
+            weekly_intent=weekly_intent,
+        )
+        recommendation_options, recommended_option_key = build_recommendation_options(
+            recommendation,
+            profile,
             subjective_feedback=subjective_feedback,
         )
 
@@ -545,6 +740,13 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             "goal_race_date": profile.goal_race_date,
             "weekly_mileage_target": profile.weekly_mileage_target,
             "preferred_long_run_day": profile.preferred_long_run_day,
+            "goal_half_marathon_time": profile.goal_half_marathon_time,
+            "recent_race_result": profile.recent_race_result,
+            "max_comfortable_long_run_miles": profile.max_comfortable_long_run_miles,
+            "desired_runs_per_week": profile.desired_runs_per_week,
+            "desired_strength_frequency": profile.desired_strength_frequency,
+            "preferred_adaptation_emphasis": profile.preferred_adaptation_emphasis,
+            "injury_flags": profile.injury_flags,
         },
         "summary": {
             "recent_mileage": recent_mileage(runs),
@@ -556,7 +758,12 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             "previous_run": previous_run_summary(runs),
         },
         "recommendation": recommendation.to_dict() if recommendation else None,
+        "recommendation_options": recommendation_options,
+        "recommended_option_key": recommended_option_key,
+        "clarification_questions": [],
         "recommendation_meta": recommendation_meta,
+        "weekly_focus": weekly_intent.to_dict(),
+        "training_roadmap": roadmap,
         "weekly_plan_key": _week_plan_key(today_date),
         "activity_feed": activity_feed,
         "activity_calendar": calendar_days(
@@ -577,6 +784,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             "strava_callback_url": strava_redirect_uri(settings.get("public_base_url", "")) if settings.get("public_base_url") else "",
             "whoop_callback_url": whoop_redirect_uri(settings.get("public_base_url", "")) if settings.get("public_base_url") else "",
         },
+        "profile_settings": _profile_settings_payload(settings, tokens),
         "data_mode": live_preview,
         "today": today_iso,
     }
@@ -671,6 +879,27 @@ def setup_form(settings: dict, message: str = "") -> str:
           </label>
           <label>Preferred long run day
             <input name="preferred_long_run_day" value="{escape(settings.get("preferred_long_run_day", "Sunday"))}" />
+          </label>
+          <label>Goal half marathon time
+            <input name="goal_half_marathon_time" value="{escape(settings.get("goal_half_marathon_time", ""))}" />
+          </label>
+          <label>Recent race result or benchmark
+            <input name="recent_race_result" value="{escape(settings.get("recent_race_result", ""))}" />
+          </label>
+          <label>Max comfortable long run (miles)
+            <input name="max_comfortable_long_run_miles" value="{escape(str(settings.get("max_comfortable_long_run_miles", "")))}" />
+          </label>
+          <label>Desired runs per week
+            <input name="desired_runs_per_week" value="{escape(str(settings.get("desired_runs_per_week", "5")))}" />
+          </label>
+          <label>Desired strength sessions per week
+            <input name="desired_strength_frequency" value="{escape(str(settings.get("desired_strength_frequency", "2")))}" />
+          </label>
+          <label>Preferred adaptation emphasis
+            <input name="preferred_adaptation_emphasis" value="{escape(settings.get("preferred_adaptation_emphasis", ""))}" />
+          </label>
+          <label>Injury or niggle flags
+            <input name="injury_flags" value="{escape(settings.get("injury_flags", ""))}" />
           </label>
 
           <h2>Strava</h2>
@@ -829,6 +1058,29 @@ class CoachHandler(BaseHTTPRequestHandler):
         }
 
     def do_POST(self) -> None:
+        if self.path == "/api/profile-settings":
+            settings = load_settings()
+            tokens = load_tokens()
+            if using_hosted_env():
+                self._send_json(
+                    {
+                        "error": "Hosted environment variables are active, so local settings changes are disabled.",
+                        "profile_settings": _profile_settings_payload(settings, tokens),
+                    },
+                    status=403,
+                )
+                return
+            try:
+                payload = self._read_json()
+            except Exception:
+                self._send_json({"error": "Invalid JSON body."}, status=400)
+                return
+
+            settings = _settings_from_json_payload(settings, payload)
+            save_settings(settings)
+            self._send_json({"ok": True, "profile_settings": _profile_settings_payload(settings, tokens)})
+            return
+
         if self.path == "/api/recommendation":
             settings = load_settings()
             tokens = load_tokens()
@@ -845,6 +1097,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                     "physical_feeling": str(form.get("physical_feeling", "")).strip(),
                     "mental_feeling": str(form.get("mental_feeling", "")).strip(),
                     "notes": str(form.get("notes", "")).strip(),
+                    "clarification_answers": form.get("clarification_answers", {}) if isinstance(form.get("clarification_answers"), dict) else {},
                 },
                 include_recommendation=True,
             )
@@ -859,22 +1112,28 @@ class CoachHandler(BaseHTTPRequestHandler):
             return
 
         form = self._read_form()
-        settings = {
-            "athlete_name": form.get("athlete_name", "").strip(),
-            "goal_race_date": form.get("goal_race_date", "").strip(),
-            "weekly_mileage_target": form.get("weekly_mileage_target", "28").strip() or "28",
-            "preferred_long_run_day": form.get("preferred_long_run_day", "Sunday").strip() or "Sunday",
-            "public_base_url": form.get("public_base_url", "").strip(),
-            "allow_insecure_ssl": form.get("allow_insecure_ssl") == "on",
-            "strava": {
-                "client_id": form.get("strava_client_id", "").strip(),
-                "client_secret": form.get("strava_client_secret", "").strip(),
+        settings = _settings_from_json_payload(
+            load_settings(),
+            {
+                "athlete_name": form.get("athlete_name", ""),
+                "goal_race_date": form.get("goal_race_date", ""),
+                "weekly_mileage_target": form.get("weekly_mileage_target", "28"),
+                "preferred_long_run_day": form.get("preferred_long_run_day", "Sunday"),
+                "goal_half_marathon_time": form.get("goal_half_marathon_time", ""),
+                "recent_race_result": form.get("recent_race_result", ""),
+                "max_comfortable_long_run_miles": form.get("max_comfortable_long_run_miles", ""),
+                "desired_runs_per_week": form.get("desired_runs_per_week", "5"),
+                "desired_strength_frequency": form.get("desired_strength_frequency", "2"),
+                "preferred_adaptation_emphasis": form.get("preferred_adaptation_emphasis", ""),
+                "injury_flags": form.get("injury_flags", ""),
+                "public_base_url": form.get("public_base_url", ""),
+                "allow_insecure_ssl": form.get("allow_insecure_ssl") == "on",
+                "strava_client_id": form.get("strava_client_id", ""),
+                "strava_client_secret": form.get("strava_client_secret", ""),
+                "whoop_client_id": form.get("whoop_client_id", ""),
+                "whoop_client_secret": form.get("whoop_client_secret", ""),
             },
-            "whoop": {
-                "client_id": form.get("whoop_client_id", "").strip(),
-                "client_secret": form.get("whoop_client_secret", "").strip(),
-            },
-        }
+        )
         save_settings(settings)
         self._send_html_text(setup_form(settings, message="Saved. You can go back and press Connect now."))
 
@@ -897,6 +1156,10 @@ class CoachHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/setup":
             self._send_html_text(setup_form(settings))
+            return
+
+        if parsed.path == "/api/profile-settings":
+            self._send_json({"profile_settings": _profile_settings_payload(settings, tokens)})
             return
 
         if parsed.path == "/connect/strava":

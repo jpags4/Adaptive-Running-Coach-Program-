@@ -493,14 +493,42 @@ def whoop_workout_preview(snapshot: dict) -> list[dict]:
     return previews
 
 
+def _safe_int(value, default: int) -> int:
+    try:
+        return int(str(value).strip())
+    except Exception:
+        return default
+
+
+def _safe_float(value, default: float) -> float:
+    text = str(value).strip()
+    if not text:
+        return default
+    try:
+        return float(text)
+    except Exception:
+        digits = "".join(char for char in text if char.isdigit() or char == ".")
+        try:
+            return float(digits) if digits else default
+        except Exception:
+            return default
+
+
 def profile_from_settings(settings: dict) -> AthleteProfile:
     goal_race_date = settings.get("goal_race_date") or (date.today().replace(month=5, day=10).isoformat())
-    weekly_target = int(settings.get("weekly_mileage_target") or 28)
+    weekly_target = _safe_int(settings.get("weekly_mileage_target") or 28, 28)
     return AthleteProfile(
         name=settings.get("athlete_name") or "Runner",
         goal_race_date=goal_race_date,
         weekly_mileage_target=weekly_target,
         preferred_long_run_day=settings.get("preferred_long_run_day") or "Sunday",
+        goal_half_marathon_time=settings.get("goal_half_marathon_time") or "",
+        recent_race_result=settings.get("recent_race_result") or "",
+        max_comfortable_long_run_miles=_safe_float(settings.get("max_comfortable_long_run_miles") or 0.0, 0.0),
+        desired_runs_per_week=_safe_int(settings.get("desired_runs_per_week") or 5, 5),
+        desired_strength_frequency=_safe_int(settings.get("desired_strength_frequency") or 2, 2),
+        preferred_adaptation_emphasis=settings.get("preferred_adaptation_emphasis") or "",
+        injury_flags=settings.get("injury_flags") or "",
     )
 
 

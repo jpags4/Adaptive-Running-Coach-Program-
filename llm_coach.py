@@ -10,9 +10,15 @@ from coach import (
     RecoveryMetrics,
     Run,
     average_easy_pace,
+    build_pace_model,
+    coach_recommendation,
+    build_weekly_intent,
     pace_window,
     parse_date,
+    planned_session_for_day,
     recent_mileage,
+    _reschedule_guidance,
+    _weekly_goal_phrase,
 )
 
 
@@ -387,40 +393,42 @@ def _model_unavailable_recommendation(
     metrics: list[RecoveryMetrics],
     reason: str,
     today: date | None = None,
+    weekly_intent=None,
 ) -> tuple[Recommendation, dict]:
     if today is None:
         if metrics:
-            today_str = max(metrics, key=lambda item: item.day).day
+            today_value = parse_date(max(metrics, key=lambda item: item.day).day)
         else:
-            today_str = date.today().isoformat()
+            today_value = date.today()
     else:
-        today_str = today.isoformat()
+        today_value = today
 
-    explanation_sections = {
-        "overall": "The app could not get a model-generated recommendation right now.",
-        "run": "Run details are unavailable because the language model did not return a valid coaching plan.",
-        "pace": "Pace guidance is unavailable until the model responds successfully.",
-        "lift": "Lifting guidance is unavailable until the model responds successfully.",
-        "recovery": "Recovery metrics may still be loading, but the recommendation engine itself did not finish.",
-    }
-    recommendation = Recommendation(
-        date=today_str,
-        workout="Recommendation unavailable",
-        intensity="unavailable",
-        duration_minutes=0,
-        run_distance_miles=0.0,
-        run_pace_guidance="Unavailable until the model responds",
-        lift_focus="Unavailable until the model responds",
-        lift_guidance="No lifting recommendation is available right now because the model did not complete.",
-        recap=_fallback_recap(profile, runs, metrics),
-        explanation=list(explanation_sections.values()),
-        explanation_sections=explanation_sections,
-        warnings=[
-            "The app is currently relying on the language model for recommendations and did not receive a usable response.",
-            reason,
-        ],
-        confidence="unavailable",
+    weekly_intent = weekly_intent or build_weekly_intent(profile, runs, metrics, today=today_value)
+    recommendation = coach_recommendation(
+        profile,
+        runs,
+        metrics,
+        today=today_value,
+        subjective_feedback=None,
+        weekly_intent=weekly_intent,
     )
+    recommendation.warnings.insert(0, "Model fallback: using deterministic coach logic because the language model was unavailable.")
+    recommendation.warnings.insert(1, reason)
+    recommendation.confidence = "medium" if recommendation.confidence == "high" else recommendation.confidence
+    recommendation.explanation.insert(0, "The model was unavailable, so this uses the app's built-in coach logic to keep today's plan useful and aligned with the week.")
+    recommendation.explanation_sections["overall"] = "The language model was unavailable, so the app used its built-in coaching rules to keep today's recommendation useful."
+    recommendation.explanation_sections["recovery"] = (
+        recommendation.explanation_sections.get("recovery")
+        or "The fallback still used your recent recovery data and weekly plan to shape the day."
+    )
+    recommendation.daily_adaptation = {
+        **dict(recommendation.daily_adaptation or {}),
+        "weekly_goal_remains": _weekly_goal_phrase(weekly_intent),
+        "reschedule_suggestion": _reschedule_guidance(
+            weekly_intent,
+            str((recommendation.daily_adaptation or {}).get("readiness_status") or "supported"),
+        ),
+    }
     return recommendation, {"source": "unavailable", "model": None, "reason": reason}
 
 
@@ -430,6 +438,7 @@ def llm_recommendation(
     metrics: list[RecoveryMetrics],
     today: date | None = None,
     subjective_feedback: dict | None = None,
+    weekly_intent=None,
 ) -> tuple[Recommendation, dict]:
     if not openai_enabled():
         return _model_unavailable_recommendation(
@@ -438,6 +447,7 @@ def llm_recommendation(
             metrics,
             "OPENAI_API_KEY not set",
             today=today,
+            weekly_intent=weekly_intent,
         )
 
     try:
@@ -449,6 +459,7 @@ def llm_recommendation(
             metrics,
             "openai package not installed",
             today=today,
+            weekly_intent=weekly_intent,
         )
 
     model = os.environ.get("OPENAI_MODEL", "gpt-5-mini").strip() or "gpt-5-mini"
@@ -456,6 +467,10 @@ def llm_recommendation(
 
     latest_metric = max(metrics, key=lambda item: item.day)
     today_str = today.isoformat() if today else latest_metric.day
+    today_value = parse_date(today_str)
+    weekly_intent = weekly_intent or build_weekly_intent(profile, runs, metrics, today=today_value)
+    planned = planned_session_for_day(weekly_intent, profile, today_value)
+    pace_model = build_pace_model(profile, runs)
     safety_context = _safety_and_progression_context(profile, runs, metrics, today_str, subjective_feedback)
     context = {
         "athlete_profile": {
@@ -469,6 +484,9 @@ def llm_recommendation(
         "latest_run_summary": _latest_run_summary(runs),
         "today": today_str,
         "subjective_feedback": subjective_feedback or {},
+        "weekly_intent": weekly_intent.to_dict(),
+        "planned_session_today": planned,
+        "pace_model": pace_model.to_dict(),
         "safety_and_progression_context": safety_context,
         "coach_preferences": [
             "The recommendation engine should rely on the language model as the source of reasoning rather than earlier hand-written coach logic.",
@@ -483,6 +501,9 @@ def llm_recommendation(
             "Some days should be run-only days. Do not force a lift recommendation every day; when strength is not appropriate, say clearly that today is a lifting off-day.",
             "If subjective feedback is provided, weight it meaningfully. Physical soreness, heavy legs, low motivation, or emotional stress should reduce risk and ambition even when biometric data looks decent.",
             "Use explicit safety and progression rules, not only style preferences. The final system should be grounded in guardrails that prevent aggressive recommendations on poor-readiness days.",
+            "Start from the weekly plan. First decide what was planned for today, then decide whether readiness supports keeping it, scaling it down, or swapping it out while preserving the week's purpose.",
+            "When you adapt today's plan, explicitly preserve the weekly intent in the wording so the athlete understands what changed and what did not.",
+            "Use the pace model anchors instead of inventing one generic pace from a single easy-pace estimate.",
         ],
     }
 
@@ -502,6 +523,8 @@ def llm_recommendation(
         "Your explanation_sections object must separately explain: "
         "overall why this day fits, why the run distance is set where it is, why the pace guidance is set where it is, "
         "why the lifting recommendation is set where it is, and how recovery metrics changed the recommendation. "
+        "Treat the provided weekly_intent and planned_session_today as the starting plan for the day. "
+        "If readiness supports it, keep the plan. If readiness partly supports it, scale it down. If not, swap or rest while protecting the week's key purpose. "
         "The explanation array should be a concise bullet-style version of those same ideas. "
         "The recap should summarize the most relevant recent work and current readiness. "
         "Keep the pace guidance rough and human-usable, not over-precise. "
@@ -539,6 +562,11 @@ def llm_recommendation(
             explanation_sections=dict(payload["explanation_sections"]),
             warnings=list(payload["warnings"]),
             confidence=payload["confidence"],
+            planned_workout=str(planned["workout"]),
+            planned_run_distance_miles=float(planned["distance_miles"]),
+            planned_pace_guidance=str(planned["pace_guidance"]),
+            pace_model=pace_model.to_dict(),
+            weekly_intent=weekly_intent.to_dict(),
         )
         recommendation = _apply_guardrails(
             recommendation,
@@ -547,6 +575,19 @@ def llm_recommendation(
             metrics,
             subjective_feedback=subjective_feedback,
         )
+        readiness_status = "supported"
+        if recommendation.workout == "Rest and recovery":
+            readiness_status = "not supported"
+        elif recommendation.workout != recommendation.planned_workout:
+            readiness_status = "partly supported"
+        recommendation.daily_adaptation = {
+            "planned_session": recommendation.planned_workout or str(planned["workout"]),
+            "readiness_status": readiness_status,
+            "adjustment_reason": recommendation.explanation_sections.get("overall") or "",
+            "adjusted_session": recommendation.workout,
+            "weekly_goal_remains": _weekly_goal_phrase(weekly_intent),
+            "reschedule_suggestion": _reschedule_guidance(weekly_intent, readiness_status),
+        }
         return recommendation, {"source": "openai", "model": model, "reason": None}
     except Exception as exc:
         return _model_unavailable_recommendation(
@@ -555,4 +596,5 @@ def llm_recommendation(
             metrics,
             f"OpenAI request failed: {exc}",
             today=today,
+            weekly_intent=weekly_intent,
         )

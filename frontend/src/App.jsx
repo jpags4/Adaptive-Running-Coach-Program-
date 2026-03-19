@@ -39,6 +39,25 @@ function ThemeToggle({ theme, onToggle }) {
   )
 }
 
+function UserCircleIcon({ className = 'h-5 w-5' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5.5 19a7.4 7.4 0 0 1 13 0" />
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  )
+}
+
 function Icon({ path, className = 'h-5 w-5' }) {
   return (
     <svg
@@ -279,7 +298,7 @@ function ErrorScreen({ message, theme = 'light' }) {
   )
 }
 
-function Header({ name, today, goalRaceDate, theme, onToggleTheme }) {
+function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile }) {
   const isDark = theme === 'dark'
   return (
     <header className={`flex items-start justify-between gap-8 border-b pb-8 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
@@ -294,7 +313,21 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme }) {
       </div>
 
       <div className="flex flex-col items-end gap-6 pt-1 text-right">
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className={`inline-flex h-14 w-14 items-center justify-center rounded-full border transition ${
+              isDark
+                ? 'border-neutral-700 bg-neutral-900 text-neutral-100 hover:border-violet-500'
+                : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300'
+            }`}
+            aria-label="Open profile settings"
+          >
+            <UserCircleIcon className="h-6 w-6" />
+          </button>
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        </div>
         <div>
           <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
             Race Goal
@@ -305,6 +338,172 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme }) {
         </div>
       </div>
     </header>
+  )
+}
+
+function ProfileSettingsPanel({
+  isOpen,
+  profileSettings,
+  isSaving,
+  onClose,
+  onChange,
+  onSave,
+  theme = 'light',
+}) {
+  if (!isOpen || !profileSettings) return null
+  const isDark = theme === 'dark'
+  const hostedEnv = Boolean(profileSettings.hosted_env)
+
+  const renderInput = (label, field, type = 'text', placeholder = '') => (
+    <label className="block">
+      <span className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{label}</span>
+      <input
+        type={type}
+        value={profileSettings[field] ?? ''}
+        onChange={(event) => onChange(field, event.target.type === 'checkbox' ? event.target.checked : event.target.value)}
+        placeholder={placeholder}
+        disabled={hostedEnv || isSaving}
+        className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
+          isDark
+            ? 'border-neutral-800 bg-neutral-950 text-white placeholder:text-neutral-500'
+            : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'
+        } ${hostedEnv || isSaving ? 'opacity-70' : ''}`}
+      />
+    </label>
+  )
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <aside className={`absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l px-6 py-6 shadow-2xl ${isDark ? 'border-neutral-800 bg-neutral-950 text-white' : 'border-neutral-200 bg-stone-50 text-neutral-950'}`}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>Profile</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-tight">Athlete Settings</h2>
+            <p className={`mt-3 text-base leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+              This is the central place for race goals, training preferences, and Strava/WHOOP setup.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={`rounded-full border px-4 py-2 text-sm font-semibold ${
+              isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200' : 'border-neutral-200 bg-white text-neutral-700'
+            }`}
+          >
+            Close
+          </button>
+        </div>
+
+        {hostedEnv ? (
+          <div className={`mt-6 rounded-2xl border px-4 py-4 text-sm leading-7 ${isDark ? 'border-amber-800 bg-amber-950/40 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+            Hosted environment variables are active, so editing local settings from the app is disabled here.
+          </div>
+        ) : null}
+
+        <div className="mt-8 space-y-8">
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+            <h3 className="text-2xl font-semibold tracking-tight">Athlete</h3>
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {renderInput('Name', 'athlete_name')}
+              {renderInput('Goal Race Date', 'goal_race_date', 'text', '2026-05-10')}
+              {renderInput('Goal Half Time', 'goal_half_marathon_time', 'text', '1:45:00')}
+              {renderInput('Recent Benchmark', 'recent_race_result', 'text', '10K in 48:30')}
+            </div>
+          </section>
+
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+            <h3 className="text-2xl font-semibold tracking-tight">Training Preferences</h3>
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {renderInput('Weekly Mileage Target', 'weekly_mileage_target')}
+              {renderInput('Preferred Long Run Day', 'preferred_long_run_day')}
+              {renderInput('Max Comfortable Long Run', 'max_comfortable_long_run_miles')}
+              {renderInput('Desired Runs Per Week', 'desired_runs_per_week')}
+              {renderInput('Strength Sessions Per Week', 'desired_strength_frequency')}
+              {renderInput('Adaptation Emphasis', 'preferred_adaptation_emphasis', 'text', 'threshold')}
+            </div>
+            <label className="mt-4 block">
+              <span className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>Injury / Niggle Flags</span>
+              <textarea
+                value={profileSettings.injury_flags ?? ''}
+                onChange={(event) => onChange('injury_flags', event.target.value)}
+                disabled={hostedEnv || isSaving}
+                className={`mt-2 min-h-24 w-full rounded-2xl border px-4 py-3 text-sm outline-none ${
+                  isDark ? 'border-neutral-800 bg-neutral-950 text-white' : 'border-neutral-200 bg-white text-neutral-900'
+                }`}
+              />
+            </label>
+          </section>
+
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+            <h3 className="text-2xl font-semibold tracking-tight">Integrations</h3>
+            <div className="mt-5 grid grid-cols-1 gap-5">
+              {[
+                ['Strava', profileSettings.strava],
+                ['WHOOP', profileSettings.whoop],
+              ].map(([label, provider]) => (
+                <div key={label} className={`rounded-[1.4rem] border p-4 ${isDark ? 'border-neutral-800 bg-neutral-950/90' : 'border-neutral-200 bg-stone-50'}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-semibold tracking-tight">{label}</p>
+                      <p className={`mt-1 text-sm ${provider?.connected ? 'text-emerald-600' : isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        {provider?.connected ? 'Connected' : 'Not connected yet'}
+                      </p>
+                    </div>
+                    <a
+                      href={provider?.connect_url || '#'}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                        isDark ? 'bg-violet-600 text-white' : 'bg-neutral-950 text-white'
+                      }`}
+                    >
+                      {provider?.connected ? `Reconnect ${label}` : `Connect ${label}`}
+                    </a>
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {renderInput(`${label} Client ID`, `${label.toLowerCase()}_client_id`)}
+                    {renderInput(`${label} Client Secret`, `${label.toLowerCase()}_client_secret`)}
+                  </div>
+                  <p className={`mt-3 break-all text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                    Callback URL: {provider?.callback_url || 'Add your public base URL to generate this'}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {renderInput('Public Base URL', 'public_base_url', 'text', 'https://your-app.onrender.com')}
+              <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-white'}`}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(profileSettings.allow_insecure_ssl)}
+                  onChange={(event) => onChange('allow_insecure_ssl', event.target.checked)}
+                  disabled={hostedEnv || isSaving}
+                />
+                <span className={`text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>Allow insecure SSL for local development</span>
+              </label>
+            </div>
+          </section>
+        </div>
+
+        <div className="mt-8 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className={`rounded-full border px-5 py-3 text-sm font-semibold ${isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200' : 'border-neutral-200 bg-white text-neutral-700'}`}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={hostedEnv || isSaving}
+            className={`rounded-full px-5 py-3 text-sm font-semibold ${isDark ? 'bg-violet-600 text-white' : 'bg-neutral-950 text-white'} ${hostedEnv || isSaving ? 'opacity-70' : ''}`}
+          >
+            {isSaving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </div>
+      </aside>
+    </div>
   )
 }
 
@@ -499,7 +698,7 @@ function CheckInCard({
   )
 }
 
-function TrainingCard({ recommendation, today, theme = 'light' }) {
+function TrainingCard({ recommendation, today, onUpdateCheckIn, theme = 'light' }) {
   if (!recommendation) return null
 
   const isDark = theme === 'dark'
@@ -508,6 +707,7 @@ function TrainingCard({ recommendation, today, theme = 'light' }) {
     Array.isArray(recommendation.explanation) ? recommendation.explanation[0] : '',
     'overall'
   )
+  const adaptation = recommendation.daily_adaptation ?? {}
   const isLiftOffDay = /lifting off-day|no lifting/i.test(String(recommendation.lift_focus || ''))
   const liftBlocks = isLiftOffDay ? [] : formatLiftBlocks(recommendation.lift_guidance)
   const intensityLabel = simplifyIntensity(recommendation.intensity)
@@ -515,13 +715,26 @@ function TrainingCard({ recommendation, today, theme = 'light' }) {
 
   return (
     <section className={`rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
-      <div className="flex flex-wrap items-center gap-4">
-        <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          Today’s Training
-        </p>
-        <span className={`rounded-full px-4 py-2 text-sm font-semibold ${intensityPillClass(intensityLabel)}`}>
-          {shortWorkoutTitle(recommendation.workout)}
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Today’s Training
+          </p>
+          <span className={`rounded-full px-4 py-2 text-sm font-semibold ${intensityPillClass(intensityLabel)}`}>
+            {shortWorkoutTitle(recommendation.workout)}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onUpdateCheckIn}
+          className={`rounded-full border px-4 py-2 text-sm font-semibold ${
+            isDark
+              ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white'
+              : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
+          }`}
+        >
+          Update Check-In
+        </button>
       </div>
 
       <div className={`mt-8 rounded-[1.75rem] border px-5 py-4 text-lg leading-8 ${
@@ -725,6 +938,399 @@ function TrainingCard({ recommendation, today, theme = 'light' }) {
   )
 }
 
+function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
+  if (!weeklyFocus) return null
+
+  const isDark = theme === 'dark'
+  const paceModel = weeklyFocus.pace_model ?? {}
+  const paceRows = [
+    ['Easy', paceModel.easy?.pace_range, paceModel.easy?.confidence],
+    ['Steady', paceModel.steady?.pace_range, paceModel.steady?.confidence],
+    ['Threshold', paceModel.threshold?.pace_range, paceModel.threshold?.confidence],
+    ['Long Run', paceModel.long_run?.pace_range, paceModel.long_run?.confidence],
+    ['Race Pace', paceModel.race_pace?.pace_range, paceModel.race_pace?.confidence],
+  ]
+
+  return (
+    <section className={`mt-8 rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-6">
+        <div>
+          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            This Week
+          </p>
+          <h2 className={`mt-3 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            {weeklyFocus.phase || 'Weekly focus'}
+          </h2>
+          <p className={`mt-3 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+            {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
+          </p>
+        </div>
+        <div className={`rounded-[1.5rem] border px-5 py-4 ${isDark ? 'border-violet-900/40 bg-violet-950/40' : 'border-violet-100 bg-violet-50/70'}`}>
+          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-violet-200' : 'text-violet-800'}`}>
+            Primary Adaptation
+          </p>
+          <p className={`mt-2 text-xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            {capitalize(weeklyFocus.primary_adaptation || '') || 'TBD'}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-4">
+        <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} theme={theme} />
+        <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} theme={theme} />
+        <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} theme={theme} />
+        <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} theme={theme} />
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <FocusList title="Risk Control" items={weeklyFocus.strain_constraints} theme={theme} />
+        <FocusList title="Must Not Change" items={weeklyFocus.non_negotiables} theme={theme} />
+        <FocusList title="Can Adapt Daily" items={weeklyFocus.flex_points} theme={theme} />
+      </div>
+
+      <div className={`mt-6 rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+        <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          Pace Ranges This Week
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {paceRows.map(([label, value, confidence]) => (
+            <div key={label} className={`rounded-2xl border px-4 py-3 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{label}</p>
+              <p className={`mt-2 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{value || '-'}</p>
+              <p className={`mt-1 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{confidence ? `${capitalize(confidence)} confidence` : ''}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FocusMetric({ label, value, theme = 'light' }) {
+  const isDark = theme === 'dark'
+  return (
+    <div className={`rounded-[1.5rem] border px-5 py-4 ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-stone-50'}`}>
+      <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{label}</p>
+      <p className={`mt-2 text-base leading-7 ${isDark ? 'text-white' : 'text-neutral-950'}`}>{value || '-'}</p>
+    </div>
+  )
+}
+
+function FocusList({ title, items = [], theme = 'light' }) {
+  const isDark = theme === 'dark'
+  return (
+    <div className={`rounded-[1.5rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-stone-50'}`}>
+      <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{title}</p>
+      <ul className={`mt-3 space-y-3 text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+        {(items || []).filter(Boolean).map((item, index) => (
+          <li key={`${title}-${index}`} className="flex gap-3">
+            <span className={`${isDark ? 'text-violet-300' : 'text-violet-700'}`}>•</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ClarificationQuestions({ questions, onUseAnswer, theme = 'light' }) {
+  if (!Array.isArray(questions) || questions.length === 0) return null
+  const isDark = theme === 'dark'
+
+  return (
+    <section className={`mt-8 rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-amber-800/50 bg-amber-950/30' : 'border-amber-200 bg-amber-50/80'}`}>
+      <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
+        Coach Follow-Up
+      </p>
+      <h2 className={`mt-3 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+        A few details would sharpen today&apos;s call
+      </h2>
+      <div className="mt-6 space-y-4">
+        {questions.map((question) => (
+          <div key={question.id} className={`rounded-[1.4rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950/90' : 'border-neutral-200 bg-white'}`}>
+            <p className={`text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{question.prompt}</p>
+            <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{question.why_it_matters}</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {(question.suggested_answers || []).map((answer) => (
+                <PromptButton
+                  key={`${question.id}-${answer}`}
+                  active={false}
+                  onClick={() => onUseAnswer(question.id, question.prompt, answer)}
+                  theme={theme}
+                >
+                  {answer}
+                </PromptButton>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function RecommendationOptions({ options, selectedKey, onSelect, theme = 'light' }) {
+  if (!Array.isArray(options) || options.length === 0) return null
+  const isDark = theme === 'dark'
+
+  return (
+    <div className="mb-4 mt-4">
+      <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+        Today&apos;s Recommendation Path
+      </p>
+      <div className="mt-3 flex flex-wrap gap-3">
+        {options.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => onSelect(option.key)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              selectedKey === option.key
+                ? isDark
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-neutral-950 text-white'
+                : isDark
+                  ? 'border border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-violet-500 hover:text-white'
+                  : 'border border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TrainingRoadmap({ weeks, theme = 'light' }) {
+  if (!Array.isArray(weeks) || weeks.length === 0) return null
+  const isDark = theme === 'dark'
+
+  return (
+    <section className={`mt-8 rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-6">
+        <div>
+          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Roadmap
+          </p>
+          <h2 className={`mt-3 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            What The Next Weeks Likely Look Like
+          </h2>
+          <p className={`mt-3 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+            This is a directional progression view, not a locked schedule. The closer weeks are firmer; the later weeks stay intentionally flexible.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-2">
+        {weeks.map((week) => (
+          <div key={week.week_start} className={`rounded-[1.6rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950/85' : 'border-neutral-200 bg-stone-50'}`}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                  {week.label}
+                </p>
+                <h3 className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                  {week.phase}
+                </h3>
+              </div>
+              <span className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] ${
+                week.certainty === 'moderate'
+                  ? isDark ? 'bg-emerald-950 text-emerald-300' : 'bg-emerald-100 text-emerald-800'
+                  : week.certainty === 'light'
+                    ? isDark ? 'bg-amber-950 text-amber-300' : 'bg-amber-100 text-amber-800'
+                    : isDark ? 'bg-neutral-800 text-neutral-300' : 'bg-neutral-200 text-neutral-700'
+              }`}>
+                {week.certainty}
+              </span>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FocusMetric label="Primary Adaptation" value={capitalize(week.primary_adaptation || '')} theme={theme} />
+              <FocusMetric label="Mileage Shape" value={week.mileage_range} theme={theme} />
+              <FocusMetric label="Long Run Shape" value={week.long_run_target} theme={theme} />
+              <FocusMetric label="Key Session Shape" value={week.quality_session_target} theme={theme} />
+            </div>
+
+            <div className={`mt-4 rounded-[1.35rem] border px-4 py-4 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+              <p className={`text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                {week.progression_note}
+              </p>
+              <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                {week.confidence_note}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) {
+  if (!Array.isArray(cards) || cards.length === 0 || !weeklyFocus) return null
+  const isDark = theme === 'dark'
+  const paceModel = weeklyFocus.pace_model ?? {}
+  const paceRows = [
+    ['Easy', paceModel.easy?.pace_range, paceModel.easy?.confidence],
+    ['Steady', paceModel.steady?.pace_range, paceModel.steady?.confidence],
+    ['Threshold', paceModel.threshold?.pace_range, paceModel.threshold?.confidence],
+    ['Long Run', paceModel.long_run?.pace_range, paceModel.long_run?.confidence],
+  ]
+  const weekdayHeadings = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+  return (
+    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-6">
+        <div>
+          <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Training Calendar
+          </p>
+          <h2 className={`mt-3 text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
+        </div>
+
+        <div className={`flex items-center gap-5 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+          <LegendDot color="bg-emerald-500" label="Easy" />
+          <LegendDot color="bg-amber-400" label="Moderate" />
+          <LegendDot color="bg-rose-500" label="Hard" />
+        </div>
+      </div>
+
+      <div className="mt-10">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              Current Week
+            </p>
+            <h3 className={`mt-3 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              {weeklyFocus.phase || 'This Week'}
+            </h3>
+            <p className={`mt-2 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+              {weeklyFocus.progression_note || weeklyFocus.race_connection}
+            </p>
+          </div>
+          <div className={`rounded-[1.4rem] border px-5 py-4 ${isDark ? 'border-violet-900/40 bg-violet-950/40' : 'border-violet-100 bg-violet-50/70'}`}>
+            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-violet-200' : 'text-violet-800'}`}>
+              Primary Adaptation
+            </p>
+            <p className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              {capitalize(weeklyFocus.primary_adaptation || '') || 'TBD'}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
+          <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} theme={theme} />
+          <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} theme={theme} />
+          <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} theme={theme} />
+          <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} theme={theme} />
+        </div>
+
+        <div className={`mt-6 rounded-[1.8rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Current Week Schedule
+              </p>
+              <p className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                {formatWeekSpan(cards)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-7 gap-2 xl:gap-3">
+            {weekdayHeadings.map((heading) => (
+              <p key={heading} className={`text-center text-sm font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                {heading}
+              </p>
+            ))}
+            {cards.map((card) => (
+              <CalendarCard key={card.day} card={card} theme={theme} />
+            ))}
+          </div>
+        </div>
+
+        <div className={`mt-6 rounded-[1.8rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+          <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Pace Ranges This Week
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {paceRows.map(([label, value, confidence]) => (
+              <div key={label} className={`rounded-2xl border px-4 py-3 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{label}</p>
+                <p className={`mt-2 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{value || '-'}</p>
+                <p className={`mt-1 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{paceZoneLabel(label)}</p>
+                <p className={`mt-1 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{confidence ? `${capitalize(confidence)} confidence` : ''}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {Array.isArray(weeks) && weeks.length > 0 ? (
+        <div className="mt-10">
+          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Upcoming Training Blocks
+          </p>
+          <div className="mt-5 space-y-4">
+            {weeks.map((week, index) => (
+              <details key={week.week_start} className={`group rounded-[1.8rem] border ${
+                week.certainty === 'moderate'
+                  ? isDark ? 'border-emerald-800/70 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
+                  : week.certainty === 'light'
+                    ? isDark ? 'border-amber-800/70 bg-amber-950/15' : 'border-amber-200 bg-amber-50/35'
+                    : isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white'
+              }`}>
+                <summary className="cursor-pointer list-none px-5 py-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                        Week {index + 2} · {formatRoadmapWeekSpan(week)}
+                      </p>
+                      <h4 className={`mt-3 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                        {week.phase}
+                      </h4>
+                      <p className={`mt-2 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                        {week.summary || week.progression_note}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-5">
+                      <span className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] ${certaintyPillClass(week.certainty, theme)}`}>
+                        {week.certainty}
+                      </span>
+                      <div className={`flex items-center gap-4 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                        <span>{trimNumber(week.estimated_total_miles)} mi</span>
+                        <span>Hard {week.estimated_hard_days}</span>
+                        <span>Rest {week.estimated_rest_days}</span>
+                      </div>
+                      <span className={`text-xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
+                    </div>
+                  </div>
+                </summary>
+
+                <div className={`border-t px-5 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+                    <FocusMetric label="Primary Adaptation" value={capitalize(week.primary_adaptation || '')} theme={theme} />
+                    <FocusMetric label="Mileage Shape" value={week.mileage_range} theme={theme} />
+                    <FocusMetric label="Long Run Shape" value={week.long_run_target} theme={theme} />
+                    <FocusMetric label="Key Session Shape" value={week.quality_session_target} theme={theme} />
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <ReasonCard title="Why This Week Exists" text={week.progression_note} tone="neutral" theme={theme} />
+                    <ReasonCard title="How It Serves The Race" text={week.race_connection} tone="violet" theme={theme} />
+                  </div>
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 function TrainingCalendar({ cards, theme = 'light' }) {
   if (!Array.isArray(cards) || cards.length === 0) return null
   const isDark = theme === 'dark'
@@ -742,7 +1348,7 @@ function TrainingCalendar({ cards, theme = 'light' }) {
             {monthHeading(cards)}
           </h2>
           <p className={`mt-3 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            Past days show what you actually did. Future days are projections based on your current progress and update as new data comes in.
+            This calendar stays focused on the current week so you can see what already happened and what the immediate plan looks like next.
           </p>
         </div>
 
@@ -783,14 +1389,13 @@ function CalendarCard({ card, theme = 'light' }) {
   const isDark = theme === 'dark'
   const activities = Array.isArray(card.activities) ? card.activities : []
   const stripeClass = calendarStripeClass(activities)
-  const isRestDay = activities.length === 0
   const date = new Date(`${card.day}T12:00:00`)
   const weekdayShort = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date).toUpperCase()
   const dayNumber = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date)
 
   return (
     <div
-      className={`relative min-h-[6.2rem] overflow-hidden rounded-[1.3rem] border px-3 pb-3 pt-2.5 shadow-sm ${
+      className={`relative min-h-[15rem] overflow-hidden rounded-[1.3rem] border px-2.5 pb-3 pt-2.5 shadow-sm xl:min-h-[17rem] ${
         card.is_today
           ? isDark
             ? 'border-2 border-white bg-neutral-900'
@@ -824,14 +1429,8 @@ function CalendarCard({ card, theme = 'light' }) {
         </div>
       )}
 
-      <div
-        className={`${
-          card.is_today ? '' : 'mt-3'
-        } ${isRestDay ? 'pt-1.5' : `border-t pt-2.5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}`}
-      >
-        {activities.length === 0 ? (
-          <p className={`text-base italic ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>Rest Day</p>
-        ) : (
+      <div className={`${card.is_today ? '' : 'mt-3'} ${activities.length === 0 ? 'min-h-[8rem]' : 'pt-2.5'}`}>
+        {activities.length > 0 ? (
           <div className="space-y-2.5">
             {activities.map((activity, index) => (
               <CalendarActivity
@@ -841,7 +1440,7 @@ function CalendarCard({ card, theme = 'light' }) {
               />
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
@@ -853,7 +1452,7 @@ function CalendarActivity({ activity, theme = 'light' }) {
   const intensity = simplifyIntensity(activity.intensity || activity.workout_type || '')
 
   return (
-    <div className="border-b border-neutral-200 pb-2.5 last:border-b-0 last:pb-0">
+    <div className="pb-2.5 last:pb-0">
       {isRun ? (
         <>
           <p className={`text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
@@ -933,6 +1532,15 @@ function capitalize(text) {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : ''
 }
 
+function paceZoneLabel(label) {
+  const text = String(label || '').toLowerCase()
+  if (text.includes('easy')) return 'Zone 2 aerobic'
+  if (text.includes('steady')) return 'Zone 3 steady'
+  if (text.includes('threshold')) return 'Zone 4 threshold'
+  if (text.includes('long')) return 'Zone 2-3 long run'
+  return ''
+}
+
 function formatDate(dateString) {
   if (!dateString) return ''
   const date = new Date(`${dateString}T12:00:00`)
@@ -954,10 +1562,31 @@ function formatRaceGoal(dateString) {
 }
 
 function monthHeading(cards) {
+  return 'Training Calendar'
+}
+
+function formatWeekSpan(cards) {
   const first = cards[0]?.day
-  if (!first) return 'Training Calendar'
-  const date = new Date(`${first}T12:00:00`)
-  return `${new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date)} Training Calendar`
+  const last = cards[cards.length - 1]?.day
+  if (!first || !last) return ''
+  const firstDate = new Date(`${first}T12:00:00`)
+  const lastDate = new Date(`${last}T12:00:00`)
+  const sameMonth = firstDate.getMonth() === lastDate.getMonth()
+  const firstText = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(firstDate)
+  const lastText = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(lastDate)
+  const fullLastText = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(lastDate)
+  return sameMonth ? `${firstText}-${lastText}` : `${firstText}-${fullLastText}`
+}
+
+function formatRoadmapWeekSpan(week) {
+  if (!week?.week_start || !week?.week_end) return week?.label || ''
+  const start = new Date(`${week.week_start}T12:00:00`)
+  const end = new Date(`${week.week_end}T12:00:00`)
+  const sameMonth = start.getMonth() === end.getMonth()
+  const startText = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(start)
+  const endText = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(end)
+  const fullEndText = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(end)
+  return sameMonth ? `${startText}-${endText}` : `${startText}-${fullEndText}`
 }
 
 function shortWorkoutTitle(value) {
@@ -992,6 +1621,14 @@ function intensityPillClass(value) {
   if (text.includes('moderate')) return 'bg-amber-50 text-amber-600'
   if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-50 text-emerald-700'
   return 'bg-violet-100 text-violet-700'
+}
+
+function certaintyPillClass(value, theme = 'light') {
+  const isDark = theme === 'dark'
+  const text = String(value || '').toLowerCase()
+  if (text.includes('moderate')) return isDark ? 'bg-emerald-950 text-emerald-300' : 'bg-emerald-100 text-emerald-800'
+  if (text.includes('light')) return isDark ? 'bg-amber-950 text-amber-300' : 'bg-amber-100 text-amber-800'
+  return isDark ? 'bg-neutral-800 text-neutral-300' : 'bg-neutral-200 text-neutral-700'
 }
 
 function calendarStripeClass(activities) {
@@ -1230,6 +1867,14 @@ function normalizePhysicalFeeling(value) {
   return value === 'injured' ? 'sore' : value
 }
 
+function normalizeClarificationValue(questionId, answer) {
+  if (questionId === 'long_run_cap') {
+    const match = String(answer || '').match(/(\d+(?:\.\d+)?)/)
+    return match ? match[1] : answer
+  }
+  return answer
+}
+
 export default function App() {
   const [theme, setTheme] = useState(() => {
     try {
@@ -1240,12 +1885,17 @@ export default function App() {
   })
   const [summaryData, setSummaryData] = useState(null)
   const [recommendationData, setRecommendationData] = useState(null)
+  const [recommendationOptions, setRecommendationOptions] = useState([])
+  const [selectedRecommendationKey, setSelectedRecommendationKey] = useState('conservative')
   const [error, setError] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [physicalFeeling, setPhysicalFeeling] = useState('normal')
   const [mentalFeeling, setMentalFeeling] = useState('steady')
   const [notes, setNotes] = useState('')
   const [isCheckInCollapsed, setIsCheckInCollapsed] = useState(false)
+  const [profileSettings, setProfileSettings] = useState(null)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
   const isDark = theme === 'dark'
 
   useEffect(() => {
@@ -1256,27 +1906,52 @@ export default function App() {
     }
   }, [theme])
 
+  async function loadDashboard(signal) {
+    const response = await fetch('/api/dashboard', signal ? { signal } : undefined)
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+    const payload = await response.json()
+    setSummaryData(payload)
+    setProfileSettings(payload.profile_settings ?? null)
+  }
+
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
 
-    async function loadDashboard() {
-      try {
-        const response = await fetch('/api/dashboard')
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`)
-        }
-        const payload = await response.json()
-        if (!cancelled) setSummaryData(payload)
-      } catch (err) {
-        if (!cancelled) setError(err.message || 'Unknown error')
+    loadDashboard(controller.signal).catch((err) => {
+      if (err.name !== 'AbortError') {
+        setError(err.message || 'Unknown error')
       }
-    }
+    })
 
-    loadDashboard()
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [])
+
+  async function persistProfileSettings(nextSettings, { closeAfterSave = false } = {}) {
+    setIsSavingProfile(true)
+    setError('')
+    try {
+      const response = await fetch('/api/profile-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(nextSettings),
+      })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.error || `Profile save failed with status ${response.status}`)
+      }
+      setProfileSettings(payload.profile_settings ?? nextSettings)
+      await loadDashboard()
+      if (closeAfterSave) setIsProfileOpen(false)
+    } catch (err) {
+      setError(err.message || 'Unknown error')
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
 
   async function handleGenerateRecommendation() {
     setIsGenerating(true)
@@ -1300,7 +1975,14 @@ export default function App() {
 
       const payload = await response.json()
       setSummaryData(payload)
-      setRecommendationData(payload.recommendation ?? null)
+      setRecommendationOptions(Array.isArray(payload.recommendation_options) ? payload.recommendation_options : [])
+      setSelectedRecommendationKey(payload.recommended_option_key || 'conservative')
+      setProfileSettings(payload.profile_settings ?? null)
+      const initialRecommendation =
+        (payload.recommendation_options || []).find((option) => option.key === (payload.recommended_option_key || 'conservative'))?.recommendation
+        ?? payload.recommendation
+        ?? null
+      setRecommendationData(initialRecommendation)
       setIsCheckInCollapsed(true)
     } catch (err) {
       setError(err.message || 'Unknown error')
@@ -1317,6 +1999,22 @@ export default function App() {
   const previousRun = summary.previous_run ?? {}
   const recoveryAccent = whoopRecoveryColor(summary.latest_recovery)
   const loadAccent = loadColor(summary.recent_mileage, profile.weekly_mileage_target)
+  const handleSelectRecommendationOption = (key) => {
+    setSelectedRecommendationKey(key)
+    const option = recommendationOptions.find((item) => item.key === key)
+    if (option?.recommendation) {
+      setRecommendationData(option.recommendation)
+    }
+  }
+
+  const handleProfileFieldChange = (field, value) => {
+    setProfileSettings((current) => ({ ...(current ?? {}), [field]: value }))
+  }
+
+  const handleSaveProfile = async () => {
+    if (!profileSettings) return
+    await persistProfileSettings(profileSettings, { closeAfterSave: true })
+  }
 
   return (
     <main
@@ -1333,6 +2031,7 @@ export default function App() {
           goalRaceDate={profile.goal_race_date}
           theme={theme}
           onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+          onOpenProfile={() => setIsProfileOpen(true)}
         />
 
         <section className="grid grid-cols-1 gap-6 py-10 md:grid-cols-2 xl:grid-cols-3">
@@ -1381,7 +2080,7 @@ export default function App() {
           />
           <StatCard
             icon={<RouteIcon />}
-            label="Yesterday’s Miles"
+            label="Last Run Mileage"
             value={previousRun.distance_miles ? `${previousRun.distance_miles} mi` : '-'}
             subtext={
               previousRun.day
@@ -1410,28 +2109,59 @@ export default function App() {
           />
         </section>
 
-        <CheckInCard
-          physicalFeeling={physicalFeeling}
-          mentalFeeling={mentalFeeling}
-          notes={notes}
-          isGenerating={isGenerating}
-          isCollapsed={isCheckInCollapsed}
-          onOpen={() => setIsCheckInCollapsed(false)}
-          onPhysicalChange={setPhysicalFeeling}
-          onMentalChange={setMentalFeeling}
-          onNotesChange={setNotes}
-          onGenerate={handleGenerateRecommendation}
-          theme={theme}
-        />
+        {!recommendationData ? (
+          <CheckInCard
+            physicalFeeling={physicalFeeling}
+            mentalFeeling={mentalFeeling}
+            notes={notes}
+            isGenerating={isGenerating}
+            isCollapsed={isCheckInCollapsed}
+            onOpen={() => setIsCheckInCollapsed(false)}
+            onPhysicalChange={setPhysicalFeeling}
+            onMentalChange={setMentalFeeling}
+            onNotesChange={setNotes}
+            onGenerate={handleGenerateRecommendation}
+            theme={theme}
+          />
+        ) : null}
 
         {recommendationData ? (
           <div className="mt-8">
-            <TrainingCard recommendation={recommendationData} today={summaryData.today} theme={theme} />
+            <RecommendationOptions
+              options={recommendationOptions}
+              selectedKey={selectedRecommendationKey}
+              onSelect={handleSelectRecommendationOption}
+              theme={theme}
+            />
+            <TrainingCard
+              recommendation={recommendationData}
+              today={summaryData.today}
+              onUpdateCheckIn={() => {
+                setRecommendationData(null)
+                setIsCheckInCollapsed(false)
+              }}
+              theme={theme}
+            />
           </div>
         ) : null}
 
-        <TrainingCalendar cards={summaryData.activity_calendar} theme={theme} />
+        <MasterTrainingCalendar
+          cards={summaryData.activity_calendar}
+          weeklyFocus={summaryData.weekly_focus}
+          weeks={summaryData.training_roadmap}
+          theme={theme}
+        />
       </div>
+
+      <ProfileSettingsPanel
+        isOpen={isProfileOpen}
+        profileSettings={profileSettings}
+        isSaving={isSavingProfile}
+        onClose={() => setIsProfileOpen(false)}
+        onChange={handleProfileFieldChange}
+        onSave={handleSaveProfile}
+        theme={theme}
+      />
     </main>
   )
 }
