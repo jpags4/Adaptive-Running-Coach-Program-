@@ -353,6 +353,7 @@ function ProfileSettingsPanel({
   if (!isOpen || !profileSettings) return null
   const isDark = theme === 'dark'
   const hostedEnv = Boolean(profileSettings.hosted_env)
+  const envOverrideNotice = String(profileSettings.env_override_notice || '').trim()
 
   const renderInput = (label, field, type = 'text', placeholder = '') => (
     <label className="block">
@@ -362,12 +363,12 @@ function ProfileSettingsPanel({
         value={profileSettings[field] ?? ''}
         onChange={(event) => onChange(field, event.target.type === 'checkbox' ? event.target.checked : event.target.value)}
         placeholder={placeholder}
-        disabled={hostedEnv || isSaving}
+        disabled={isSaving}
         className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${
           isDark
             ? 'border-neutral-800 bg-neutral-950 text-white placeholder:text-neutral-500'
             : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'
-        } ${hostedEnv || isSaving ? 'opacity-70' : ''}`}
+        } ${isSaving ? 'opacity-70' : ''}`}
       />
     </label>
   )
@@ -395,9 +396,9 @@ function ProfileSettingsPanel({
           </button>
         </div>
 
-        {hostedEnv ? (
+        {hostedEnv && envOverrideNotice ? (
           <div className={`mt-6 rounded-2xl border px-4 py-4 text-sm leading-7 ${isDark ? 'border-amber-800 bg-amber-950/40 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
-            Hosted environment variables are active, so editing local settings from the app is disabled here.
+            {envOverrideNotice}
           </div>
         ) : null}
 
@@ -427,7 +428,7 @@ function ProfileSettingsPanel({
               <textarea
                 value={profileSettings.injury_flags ?? ''}
                 onChange={(event) => onChange('injury_flags', event.target.value)}
-                disabled={hostedEnv || isSaving}
+                disabled={isSaving}
                 className={`mt-2 min-h-24 w-full rounded-2xl border px-4 py-3 text-sm outline-none ${
                   isDark ? 'border-neutral-800 bg-neutral-950 text-white' : 'border-neutral-200 bg-white text-neutral-900'
                 }`}
@@ -477,7 +478,7 @@ function ProfileSettingsPanel({
                   type="checkbox"
                   checked={Boolean(profileSettings.allow_insecure_ssl)}
                   onChange={(event) => onChange('allow_insecure_ssl', event.target.checked)}
-                  disabled={hostedEnv || isSaving}
+                  disabled={isSaving}
                 />
                 <span className={`text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>Allow insecure SSL for local development</span>
               </label>
@@ -496,8 +497,8 @@ function ProfileSettingsPanel({
           <button
             type="button"
             onClick={onSave}
-            disabled={hostedEnv || isSaving}
-            className={`rounded-full px-5 py-3 text-sm font-semibold ${isDark ? 'bg-violet-600 text-white' : 'bg-neutral-950 text-white'} ${hostedEnv || isSaving ? 'opacity-70' : ''}`}
+            disabled={isSaving}
+            className={`rounded-full px-5 py-3 text-sm font-semibold ${isDark ? 'bg-violet-600 text-white' : 'bg-neutral-950 text-white'} ${isSaving ? 'opacity-70' : ''}`}
           >
             {isSaving ? 'Saving...' : 'Save Settings'}
           </button>
@@ -1807,10 +1808,11 @@ function calendarPace(activity) {
 }
 
 function calendarLiftFocus(activity) {
-  const text = String(activity.lift_focus || activity.name || '').trim()
-  if (!text) return 'Strength'
+  const text = humanizeActivityLabel(activity.lift_focus || activity.name || '')
+  if (!text || text === '-') return ''
   const compact = text
     .replace(/^lift$/i, 'Strength')
+    .replace(/^weight training$/i, 'Weight Training')
     .replace(/^no lift today.*$/i, 'Off day')
     .replace(/\([^)]*\)/g, '')
     .replace(/[.;].*$/g, '')
@@ -1840,12 +1842,22 @@ function calendarLiftFocus(activity) {
     .replace(/\s{2,}/g, ' ')
     .trim()
   if (/off day/i.test(compact)) return 'Off day'
+  if (/^strength$/i.test(compact)) return ''
+  if (/^weight training$/i.test(compact)) return 'Weight Training'
   if (/upper body/i.test(compact)) return /core/i.test(compact) ? 'Upper Body + Core' : 'Upper Body'
   if (/posterior chain/i.test(compact)) return /core/i.test(compact) ? 'Posterior Chain + Core' : /single-leg/i.test(compact) ? 'Posterior Chain + Single-Leg' : 'Posterior Chain'
   if (/single-leg strength|single-leg/i.test(compact)) return /glutes/i.test(compact) ? 'Single-Leg + Glutes' : 'Single-Leg'
   if (/lower body/i.test(compact)) return /single-leg/i.test(compact) ? 'Lower Body + Single-Leg' : 'Lower Body'
   if (/glutes/i.test(compact) && /core/i.test(compact)) return 'Glutes + Core'
   return compact || 'Strength'
+}
+
+function humanizeActivityLabel(value) {
+  return String(value || '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
 }
 
 function whoopRecoveryColor(value) {

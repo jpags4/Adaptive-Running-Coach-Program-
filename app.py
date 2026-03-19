@@ -112,6 +112,7 @@ def _profile_settings_payload(settings: dict, tokens: dict) -> dict:
             "connect_url": "/connect/whoop",
         },
         "hosted_env": hosted_env,
+        "env_override_notice": "Hosted environment variables are present. You can still edit saved app settings here, but environment-backed values may override local saves after refresh." if hosted_env else "",
     }
 
 
@@ -862,7 +863,7 @@ def setup_form(settings: dict, message: str = "") -> str:
         <div class="card">
           <h1>App Setup</h1>
           <p>This page stores your app IDs and secrets on your own computer so you do not need to type them into Terminal.</p>
-          <p><strong>{'Hosted environment variables are active, so this page is now mainly for reference.' if hosted_env else 'Right now the app is using local settings saved on this machine.'}</strong></p>
+          <p><strong>{'Hosted environment variables are active. You can still save app settings here, but environment-backed values may override local saves after refresh.' if hosted_env else 'Right now the app is using local settings saved on this machine.'}</strong></p>
           {f"<p><strong>{escape(message)}</strong></p>" if message else ""}
         </div>
 
@@ -904,21 +905,21 @@ def setup_form(settings: dict, message: str = "") -> str:
 
           <h2>Strava</h2>
           <label>Strava client ID
-            <input name="strava_client_id" value="{escape(strava.get("client_id", ""))}" {"readonly" if hosted_env else ""} />
+            <input name="strava_client_id" value="{escape(strava.get("client_id", ""))}" />
           </label>
           <label>Strava client secret
-            <input name="strava_client_secret" value="{escape(strava.get("client_secret", ""))}" {"readonly" if hosted_env else ""} />
+            <input name="strava_client_secret" value="{escape(strava.get("client_secret", ""))}" />
           </label>
 
           <h2>WHOOP</h2>
           <label>WHOOP client ID
-            <input name="whoop_client_id" value="{escape(whoop.get("client_id", ""))}" {"readonly" if hosted_env else ""} />
+            <input name="whoop_client_id" value="{escape(whoop.get("client_id", ""))}" />
           </label>
           <label>WHOOP client secret
-            <input name="whoop_client_secret" value="{escape(whoop.get("client_secret", ""))}" {"readonly" if hosted_env else ""} />
+            <input name="whoop_client_secret" value="{escape(whoop.get("client_secret", ""))}" />
           </label>
           <label>Public base URL (local example: https://your-name.ngrok-free.dev, hosted example: https://your-app.onrender.com)
-            <input name="public_base_url" value="{escape(public_base_url)}" {"readonly" if hosted_env else ""} />
+            <input name="public_base_url" value="{escape(public_base_url)}" />
           </label>
           <label>
             <input type="checkbox" name="allow_insecure_ssl" {"checked" if settings.get("allow_insecure_ssl") else ""} style="width:auto; margin-right:8px;" />
@@ -926,7 +927,7 @@ def setup_form(settings: dict, message: str = "") -> str:
           </label>
           <p>This is only for cases where your network adds its own certificate and Python refuses the connection.</p>
 
-          {'<button type="submit">Save setup</button>' if not hosted_env else '<p>Change hosted values in your hosting dashboard environment settings.</p>'}
+          <button type="submit">Save setup</button>
         </form>
 
         <div class="card">
@@ -1061,15 +1062,6 @@ class CoachHandler(BaseHTTPRequestHandler):
         if self.path == "/api/profile-settings":
             settings = load_settings()
             tokens = load_tokens()
-            if using_hosted_env():
-                self._send_json(
-                    {
-                        "error": "Hosted environment variables are active, so local settings changes are disabled.",
-                        "profile_settings": _profile_settings_payload(settings, tokens),
-                    },
-                    status=403,
-                )
-                return
             try:
                 payload = self._read_json()
             except Exception:
@@ -1106,9 +1098,6 @@ class CoachHandler(BaseHTTPRequestHandler):
 
         if self.path != "/setup":
             self._send_html_text(error_page("Not found", "That form target does not exist."), status=404)
-            return
-        if using_hosted_env():
-            self._send_html_text(setup_form(load_settings(), message="Hosted environment variables are active, so local setup changes are disabled."))
             return
 
         form = self._read_form()

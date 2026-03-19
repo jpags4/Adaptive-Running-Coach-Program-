@@ -6,6 +6,8 @@ import ssl
 import time
 from dataclasses import asdict
 from datetime import UTC, date, datetime
+import os
+from zoneinfo import ZoneInfo
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -566,4 +568,8 @@ def merge_live_data(strava_snapshot: dict, whoop_snapshot: dict, settings: dict)
 
 
 def safe_iso_today() -> str:
-    return datetime.now(UTC).date().isoformat()
+    timezone_name = os.environ.get("APP_TIMEZONE", "").strip() or os.environ.get("TZ", "").strip() or "America/New_York"
+    try:
+        return datetime.now(ZoneInfo(timezone_name)).date().isoformat()
+    except Exception:
+        return datetime.now(UTC).astimezone().date().isoformat()
