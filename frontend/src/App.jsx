@@ -81,15 +81,16 @@ function RunningShoeIcon({ className = 'h-5 w-5' }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.65"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <path d="M3.5 16.5h16.2a.8.8 0 0 0 .8-.8v-1l-4.8-1.3-2.6-3.9-2.3.2-.6 2.8-2.9 1.5H4.3a.8.8 0 0 0-.8.8v1.9Z" />
-      <path d="M9.2 13.9l1.1 1.1" />
-      <path d="M12.1 13.1l1.1 1.1" />
+      <path d="M3.5 16.25h14.4c1.55 0 2.6-.46 2.6-1.62c0-.56-.3-.95-.86-1.11l-4.36-1.16a3.7 3.7 0 0 1-2.05-1.45l-1.5-2.16c-.32-.47-.93-.71-1.48-.59l-1.48.34l-.44 2.53a1.28 1.28 0 0 1-.72.95l-2.9 1.3h-.96c-.69 0-1.25.56-1.25 1.25v1.72Z" />
+      <path d="M9.55 12.55h1.45" />
+      <path d="M12.15 11.85h1.4" />
+      <path d="M14.5 12.45h1.22" />
     </svg>
   )
 }
@@ -119,14 +120,17 @@ function DumbbellIcon({ className = 'h-5 w-5' }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <path d="M4 10v4M7 8v8M17 8v8M20 10v4" />
-      <path d="M7 12h10" />
+      <path d="M4.25 9.35v5.3" />
+      <path d="M6.85 7.6v8.8" />
+      <path d="M17.15 7.6v8.8" />
+      <path d="M19.75 9.35v5.3" />
+      <path d="M6.85 12h10.3" />
     </svg>
   )
 }
@@ -137,27 +141,57 @@ function TargetIcon({ className = 'h-5 w-5' }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.65"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="12" cy="12" r="4.5" />
-      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="7.35" />
+      <circle cx="12" cy="12" r="3.95" />
+      <circle cx="12" cy="12" r="1.05" fill="currentColor" stroke="none" />
     </svg>
   )
 }
 
 function KeyIcon({ className = 'h-5 w-5' }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <circle cx="8" cy="15" r="3" />
-      <path d="M10.5 13.5L20 4" />
-      <path d="M16 8h2" />
-      <path d="M18 6v2" />
-      <path d="M14 10h2" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.65"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="8.1" cy="14.9" r="2.95" />
+      <path d="M10.25 12.75l8.25-8.25" />
+      <path d="M15.1 7.9l1.35 1.35" />
+      <path d="M17.05 5.95l1.35 1.35" />
+      <path d="M11.05 14.2h3.15" />
+    </svg>
+  )
+}
+
+function SparkleIcon({ className = 'h-5 w-5' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.65"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M11.5 4.25l1.15 4.1l4.1 1.15l-4.1 1.15l-1.15 4.1l-1.15-4.1l-4.1-1.15l4.1-1.15l1.15-4.1Z" />
+      <path d="M18.15 4.6v2.3" />
+      <path d="M19.3 5.75H17" />
+      <path d="M6 16.9v3" />
+      <path d="M7.5 18.4h-3" />
     </svg>
   )
 }
@@ -569,13 +603,45 @@ function PromptButton({ active, onClick, children, theme = 'light' }) {
   )
 }
 
-function CheckInCard({
+function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = false }) {
+  const isDark = theme === 'dark'
+
+  return (
+    <section className="py-8">
+      <div className="mx-auto flex max-w-5xl justify-center">
+        <button
+          type="button"
+          onClick={onOpen}
+          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-6 text-center text-2xl font-semibold tracking-tight transition duration-200 ${
+            isDark
+              ? 'border-violet-500/50 bg-neutral-950 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.24),0_0_42px_rgba(168,85,247,0.28)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.35),0_0_56px_rgba(168,85,247,0.34)]'
+              : 'border-violet-300 bg-white text-neutral-950 shadow-[0_0_0_1px_rgba(216,180,254,0.8),0_0_46px_rgba(196,181,253,0.42)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.9),0_0_58px_rgba(192,132,252,0.48)]'
+          }`}
+        >
+          <span className={`pointer-events-none absolute inset-0 opacity-80 ${
+            isDark
+              ? 'bg-[radial-gradient(circle_at_top,_rgba(192,132,252,0.16),_transparent_55%)]'
+              : 'bg-[radial-gradient(circle_at_top,_rgba(216,180,254,0.35),_transparent_60%)]'
+          }`} />
+          <span className={`relative flex h-11 w-11 items-center justify-center rounded-2xl ${
+            isDark ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-50 text-violet-600'
+          }`}>
+            <SparkleIcon />
+          </span>
+          <span className="relative">{hasRecommendation ? 'Update Today’s Recommendation' : 'Generate Today’s Recommendation'}</span>
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function CheckInModal({
+  isOpen,
   physicalFeeling,
   mentalFeeling,
   notes,
   isGenerating,
-  isCollapsed,
-  onOpen,
+  onClose,
   onPhysicalChange,
   onMentalChange,
   onNotesChange,
@@ -583,131 +649,117 @@ function CheckInCard({
   theme = 'light',
 }) {
   const isDark = theme === 'dark'
-  if (isCollapsed) {
-    return (
-      <section className={`rounded-[2rem] border p-6 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/90'}`}>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              Daily Check-In
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <button
+        type="button"
+        aria-label="Close recommendation prompts"
+        onClick={onClose}
+        className="absolute inset-0 bg-neutral-950/45 backdrop-blur-sm"
+      />
+      <section className={`relative z-10 max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border p-8 shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
+        isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
+      }`}>
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="max-w-3xl">
+            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              Recommendation Prompts
             </p>
-            <p className={`mt-2 text-base ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-              Legs: <span className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-950'}`}>{capitalize(physicalFeeling)}</span>
-              {' · '}
-              Mind: <span className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-950'}`}>{capitalize(mentalFeeling)}</span>
+            <h2 className={`mt-4 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              Fill this out, then generate today&apos;s recommendation.
+            </h2>
+            <p className={`mt-4 text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+              Your biometrics and recent running load are already on the page. These prompts let the model account
+              for how your legs feel, how your head feels, and anything else you want it to weigh.
             </p>
           </div>
+
           <button
             type="button"
-            onClick={onOpen}
-            className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
+            onClick={onClose}
+            className={`inline-flex h-12 w-12 items-center justify-center rounded-full border text-xl transition ${
               isDark
-                ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white'
-                : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
+                ? 'border-neutral-700 bg-neutral-950 text-neutral-300 hover:border-violet-500 hover:text-white'
+                : 'border-neutral-200 bg-white text-neutral-500 hover:border-violet-300 hover:text-neutral-950'
             }`}
           >
-            Update Check-In
+            ×
+          </button>
+        </div>
+
+        <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <div>
+            <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              How do your legs feel?
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {['fresh', 'normal', 'heavy', 'sore', 'injured'].map((option) => (
+                <PromptButton key={option} active={physicalFeeling === option} onClick={() => onPhysicalChange(option)} theme={theme}>
+                  {capitalize(option)}
+                </PromptButton>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              What&apos;s your mental state?
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {['sharp', 'steady', 'stressed', 'drained'].map((option) => (
+                <PromptButton key={option} active={mentalFeeling === option} onClick={() => onMentalChange(option)} theme={theme}>
+                  {capitalize(option)}
+                </PromptButton>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <label className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Anything else the coach should know?
+          </label>
+          <textarea
+            value={notes}
+            onChange={(event) => onNotesChange(event.target.value)}
+            placeholder="Examples: poor sleep, lingering calf tightness, emotionally drained, limited time, want to lift arms only."
+            className={`mt-4 min-h-32 w-full rounded-[1.5rem] border px-5 py-4 text-base leading-7 outline-none transition placeholder:text-neutral-400 focus:border-violet-400 ${
+              isDark
+                ? 'border-neutral-800 bg-neutral-950 text-neutral-100'
+                : 'border-neutral-200 bg-stone-50 text-neutral-800'
+            }`}
+          />
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={isGenerating}
+            className={`inline-flex items-center gap-3 rounded-full px-7 py-4 text-sm font-semibold transition ${
+              isGenerating
+                ? isDark
+                  ? 'cursor-not-allowed bg-neutral-800 text-neutral-500'
+                  : 'cursor-not-allowed bg-neutral-200 text-neutral-500'
+                : isDark
+                  ? 'bg-violet-600 text-white shadow-[0_12px_28px_rgba(109,40,217,0.28)] hover:bg-violet-500'
+                  : 'bg-neutral-950 text-white shadow-[0_12px_28px_rgba(76,29,149,0.22)] hover:bg-neutral-800'
+            }`}
+          >
+            {isGenerating ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-700" />
+                Generating Recommendation...
+              </>
+            ) : (
+              'Generate Recommendation'
+            )}
           </button>
         </div>
       </section>
-    )
-  }
-
-  return (
-    <section className={`rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/90'}`}>
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="max-w-3xl">
-          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Daily Check-In
-          </p>
-          <h2 className={`mt-4 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-            Let&apos;s get started with a few questions, then generate today&apos;s recommendation.
-          </h2>
-          <p className={`mt-4 text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-            Your biometrics and recent running load are already here. This check-in lets the model
-            account for sore legs, stress, and how you actually feel before it locks in the plan.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={isGenerating}
-          className={`inline-flex items-center gap-3 rounded-full px-6 py-4 text-sm font-semibold transition ${
-            isGenerating
-              ? isDark
-                ? 'cursor-not-allowed bg-neutral-800 text-neutral-500'
-                : 'cursor-not-allowed bg-neutral-200 text-neutral-500'
-              : isDark
-                ? 'bg-violet-600 text-white shadow-[0_12px_28px_rgba(109,40,217,0.28)] hover:bg-violet-500'
-                : 'bg-neutral-950 text-white shadow-[0_12px_28px_rgba(76,29,149,0.22)] hover:bg-neutral-800'
-          }`}
-        >
-          {isGenerating ? (
-            <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-700" />
-              Generating Recommendation...
-            </>
-          ) : (
-            'Generate Recommendation'
-          )}
-        </button>
-      </div>
-
-      <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <div>
-          <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            How do your legs feel?
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {['fresh', 'normal', 'heavy', 'sore', 'injured'].map((option) => (
-              <PromptButton
-                key={option}
-                active={physicalFeeling === option}
-                onClick={() => onPhysicalChange(option)}
-                theme={theme}
-              >
-                {capitalize(option)}
-              </PromptButton>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            What&apos;s your mental state?
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {['sharp', 'steady', 'stressed', 'drained'].map((option) => (
-              <PromptButton
-                key={option}
-                active={mentalFeeling === option}
-                onClick={() => onMentalChange(option)}
-                theme={theme}
-              >
-                {capitalize(option)}
-              </PromptButton>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <label className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          Anything else the coach should know?
-        </label>
-        <textarea
-          value={notes}
-          onChange={(event) => onNotesChange(event.target.value)}
-          placeholder="Examples: poor sleep, lingering calf tightness, emotionally drained, limited time, want to lift arms only."
-          className={`mt-4 min-h-28 w-full rounded-[1.5rem] border px-5 py-4 text-base leading-7 outline-none transition placeholder:text-neutral-400 focus:border-violet-400 ${
-            isDark
-              ? 'border-neutral-800 bg-neutral-950 text-neutral-100'
-              : 'border-neutral-200 bg-stone-50 text-neutral-800'
-          }`}
-        />
-      </div>
-    </section>
+    </div>
   )
 }
 
@@ -1159,19 +1211,15 @@ function TrainingRoadmap({ weeks, theme = 'light' }) {
 function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) {
   if (!Array.isArray(cards) || cards.length === 0 || !weeklyFocus) return null
   const isDark = theme === 'dark'
-  const paceModel = weeklyFocus.pace_model ?? {}
-  const paceRows = [
-    ['Easy', paceModel.easy?.pace_range, paceModel.easy?.confidence],
-    ['Steady', paceModel.steady?.pace_range, paceModel.steady?.confidence],
-    ['Threshold', paceModel.threshold?.pace_range, paceModel.threshold?.confidence],
-    ['Long Run', paceModel.long_run?.pace_range, paceModel.long_run?.confidence],
-  ]
   const weekdayHeadings = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
+          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Training Calendar
+          </p>
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
         </div>
 
@@ -1183,7 +1231,35 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
       </div>
 
       <div className="mt-10">
-        <div className={`rounded-[1.8rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+        <details open className={`group rounded-[1.8rem] border ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+          <summary className="list-none cursor-pointer px-5 py-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                  Current Week
+                </p>
+                <h3 className={`mt-3 text-4xl font-semibold tracking-tight md:text-[3.2rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                  {weeklyFocus.phase || 'Weekly focus'}
+                </h3>
+                <p className={`mt-4 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                  {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
+                </p>
+              </div>
+              <span className={`mt-1 text-2xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
+            </div>
+          </summary>
+
+          <div className={`border-t px-5 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+              <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
+              <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
+              <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
+              <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
+            </div>
+          </div>
+        </details>
+
+        <div className={`mt-6 rounded-[1.8rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -1206,84 +1282,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
             ))}
           </div>
         </div>
-
-        <div className={`mt-6 rounded-[1.8rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
-          <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Pace Ranges This Week
-          </p>
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {paceRows.map(([label, value, confidence]) => (
-              <div key={label} className={`rounded-2xl border px-4 py-3 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
-                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{label}</p>
-                <p className={`mt-2 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{value || '-'}</p>
-                <p className={`mt-1 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{paceZoneLabel(label)}</p>
-                <p className={`mt-1 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{confidence ? `${capitalize(confidence)} confidence` : ''}</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
-
-      {Array.isArray(weeks) && weeks.length > 0 ? (
-        <div className="mt-10">
-          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Upcoming Training Blocks
-          </p>
-          <div className="mt-5 space-y-4">
-            {weeks.map((week, index) => (
-              <details key={week.week_start} className={`group rounded-[1.8rem] border ${
-                week.certainty === 'moderate'
-                  ? isDark ? 'border-emerald-800/70 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
-                  : week.certainty === 'light'
-                    ? isDark ? 'border-amber-800/70 bg-amber-950/15' : 'border-amber-200 bg-amber-50/35'
-                    : isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white'
-              }`}>
-                <summary className="cursor-pointer list-none px-5 py-5">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                        Week {index + 2} · {formatRoadmapWeekSpan(week)}
-                      </p>
-                      <h4 className={`mt-3 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                        {week.phase}
-                      </h4>
-                      <p className={`mt-2 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                        {week.summary || week.progression_note}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-5">
-                      <span className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] ${certaintyPillClass(week.certainty, theme)}`}>
-                        {week.certainty}
-                      </span>
-                      <div className={`flex items-center gap-4 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                        <span>{trimNumber(week.estimated_total_miles)} mi</span>
-                        <span>Hard {week.estimated_hard_days}</span>
-                        <span>Rest {week.estimated_rest_days}</span>
-                      </div>
-                      <span className={`text-xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
-                    </div>
-                  </div>
-                </summary>
-
-                <div className={`border-t px-5 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-                    <FocusMetric label="Primary Adaptation" value={capitalize(week.primary_adaptation || '')} theme={theme} />
-                    <FocusMetric label="Mileage Shape" value={week.mileage_range} theme={theme} />
-                    <FocusMetric label="Long Run Shape" value={week.long_run_target} theme={theme} />
-                    <FocusMetric label="Key Session Shape" value={week.quality_session_target} theme={theme} />
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    <ReasonCard title="Why This Week Exists" text={week.progression_note} tone="neutral" theme={theme} />
-                    <ReasonCard title="How It Serves The Race" text={week.race_connection} tone="violet" theme={theme} />
-                  </div>
-                </div>
-              </details>
-            ))}
-          </div>
-        </div>
-      ) : null}
     </section>
   )
 }
@@ -1992,7 +1991,6 @@ function ActivityLogItem({
         : isRun
           ? 'bg-neutral-300'
           : 'bg-violet-500'
-  const defaultOpen = Boolean(String(noteValue || '').trim())
   const runMetrics = [
     { label: 'Distance', value: activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-' },
     { label: 'Pace', value: calendarPace(activity) },
@@ -2006,10 +2004,7 @@ function ActivityLogItem({
   const metrics = isRun ? runMetrics : strengthMetrics
 
   return (
-    <details
-      open={defaultOpen}
-      className={`overflow-hidden rounded-[1.4rem] border ${isDark ? 'border-neutral-800 bg-neutral-900/90 text-white' : 'border-neutral-200 bg-white text-neutral-950'}`}
-    >
+    <details className={`overflow-hidden rounded-[1.4rem] border ${isDark ? 'border-neutral-800 bg-neutral-900/90 text-white' : 'border-neutral-200 bg-white text-neutral-950'}`}>
       <summary className="list-none cursor-pointer">
         <div className="flex items-center gap-5 px-4 py-5">
           <div className={`h-16 w-1.5 rounded-full ${stripClass}`} />
@@ -2078,7 +2073,7 @@ export default function App() {
   const [physicalFeeling, setPhysicalFeeling] = useState('normal')
   const [mentalFeeling, setMentalFeeling] = useState('steady')
   const [notes, setNotes] = useState('')
-  const [isCheckInCollapsed, setIsCheckInCollapsed] = useState(false)
+  const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
   const [profileSettings, setProfileSettings] = useState(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
@@ -2125,6 +2120,22 @@ export default function App() {
 
     return () => controller.abort()
   }, [])
+
+  useEffect(() => {
+    if (!isCheckInModalOpen) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setIsCheckInModalOpen(false)
+    }
+    window.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isCheckInModalOpen])
 
   async function persistProfileSettings(nextSettings, { closeAfterSave = false } = {}) {
     setIsSavingProfile(true)
@@ -2181,7 +2192,7 @@ export default function App() {
         ?? payload.recommendation
         ?? null
       setRecommendationData(initialRecommendation)
-      setIsCheckInCollapsed(true)
+      setIsCheckInModalOpen(false)
     } catch (err) {
       setError(err.message || 'Unknown error')
     } finally {
@@ -2263,7 +2274,49 @@ export default function App() {
           onOpenProfile={() => setIsProfileOpen(true)}
         />
 
-        <WeeklyFocusCard weeklyFocus={summaryData.weekly_focus} theme={theme} />
+        <RecommendationLauncher
+          onOpen={() => setIsCheckInModalOpen(true)}
+          theme={theme}
+          hasRecommendation={Boolean(recommendationData)}
+        />
+
+        <CheckInModal
+          isOpen={isCheckInModalOpen}
+          physicalFeeling={physicalFeeling}
+          mentalFeeling={mentalFeeling}
+          notes={notes}
+          isGenerating={isGenerating}
+          onClose={() => setIsCheckInModalOpen(false)}
+          onPhysicalChange={setPhysicalFeeling}
+          onMentalChange={setMentalFeeling}
+          onNotesChange={setNotes}
+          onGenerate={handleGenerateRecommendation}
+          theme={theme}
+        />
+
+        {recommendationData ? (
+          <div className="mt-2">
+            <RecommendationOptions
+              options={recommendationOptions}
+              selectedKey={selectedRecommendationKey}
+              onSelect={handleSelectRecommendationOption}
+              theme={theme}
+            />
+            <TrainingCard
+              recommendation={recommendationData}
+              today={summaryData.today}
+              onUpdateCheckIn={() => setIsCheckInModalOpen(true)}
+              theme={theme}
+            />
+          </div>
+        ) : null}
+
+        <MasterTrainingCalendar
+          cards={summaryData.activity_calendar}
+          weeklyFocus={summaryData.weekly_focus}
+          weeks={summaryData.training_roadmap}
+          theme={theme}
+        />
 
         <section className="grid grid-cols-1 gap-6 py-10 md:grid-cols-2 xl:grid-cols-3">
           <StatCard
@@ -2347,49 +2400,6 @@ export default function App() {
             <p className="mt-2 max-w-4xl text-base leading-7">{currentDayStatus.detail}</p>
           </section>
         ) : null}
-
-        {!recommendationData ? (
-          <CheckInCard
-            physicalFeeling={physicalFeeling}
-            mentalFeeling={mentalFeeling}
-            notes={notes}
-            isGenerating={isGenerating}
-            isCollapsed={isCheckInCollapsed}
-            onOpen={() => setIsCheckInCollapsed(false)}
-            onPhysicalChange={setPhysicalFeeling}
-            onMentalChange={setMentalFeeling}
-            onNotesChange={setNotes}
-            onGenerate={handleGenerateRecommendation}
-            theme={theme}
-          />
-        ) : null}
-
-        {recommendationData ? (
-          <div className="mt-8">
-            <RecommendationOptions
-              options={recommendationOptions}
-              selectedKey={selectedRecommendationKey}
-              onSelect={handleSelectRecommendationOption}
-              theme={theme}
-            />
-            <TrainingCard
-              recommendation={recommendationData}
-              today={summaryData.today}
-              onUpdateCheckIn={() => {
-                setRecommendationData(null)
-                setIsCheckInCollapsed(false)
-              }}
-              theme={theme}
-            />
-          </div>
-        ) : null}
-
-        <MasterTrainingCalendar
-          cards={summaryData.activity_calendar}
-          weeklyFocus={summaryData.weekly_focus}
-          weeks={summaryData.training_roadmap}
-          theme={theme}
-        />
 
         <ActivityLogSection
           activityLog={summaryData.activity_log}
