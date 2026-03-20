@@ -1640,11 +1640,17 @@ function certaintyPillClass(value, theme = 'light') {
 
 function calendarStripeClass(activities) {
   const first = activities[0]
+  const kind = /run/i.test(String(first?.name || '')) || /run/i.test(String(first?.sport || ''))
+    ? 'run'
+    : /weight|strength|lift|mobility|stretch|yoga|pilates|core/i.test(String(first?.lift_focus || first?.name || first?.sport || ''))
+      ? 'strength'
+      : ''
   const intensity = simplifyIntensity(first?.intensity || first?.workout_type || '')
   const text = intensity.toLowerCase()
   if (text.includes('hard')) return 'bg-rose-500'
   if (text.includes('moderate')) return 'bg-amber-400'
   if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-500'
+  if (kind === 'strength') return 'bg-sky-400'
   return 'bg-neutral-300'
 }
 
@@ -1818,6 +1824,8 @@ function calendarLiftFocus(activity) {
   if (!text || text === '-') return ''
   const compact = text
     .replace(/^lift$/i, 'Strength')
+    .replace(/^weightlifting$/i, 'Weight Training')
+    .replace(/^weight lifting$/i, 'Weight Training')
     .replace(/^weight training$/i, 'Weight Training')
     .replace(/^no lift today.*$/i, 'Off day')
     .replace(/\([^)]*\)/g, '')

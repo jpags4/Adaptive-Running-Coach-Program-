@@ -23,7 +23,13 @@ from coach import (
     build_weekly_intent,
     coach_recommendation,
 )
-from integrations import build_strava_authorize_url, build_whoop_authorize_url
+from integrations import (
+    build_strava_authorize_url,
+    build_whoop_authorize_url,
+    strava_activity_preview,
+    strava_runs_to_model,
+    whoop_workout_preview,
+)
 from llm_coach import _apply_guardrails, llm_recommendation
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 
@@ -53,6 +59,144 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertIn("client_id=whoop-client", url)
         self.assertIn("redirect_uri=https%3A%2F%2Fdemo.ngrok-free.dev%2Fwhoop%2Fcallback", url)
         self.assertIn("state=whoopstate", url)
+
+    def test_strava_run_filters_tiny_duplicate_run_on_same_day(self) -> None:
+        activities = [
+            {
+                "type": "Run",
+                "sport_type": "Run",
+                "start_date_local": "2026-03-19T07:30:00Z",
+                "distance": 1609.34,
+                "moving_time": 600,
+                "name": "Morning Run",
+            },
+            {
+                "type": "Run",
+                "sport_type": "Run",
+                "start_date_local": "2026-03-19T18:00:00Z",
+                "distance": 160.934,
+                "moving_time": 60,
+                "name": "GPS Blip",
+            },
+        ]
+
+        runs = strava_runs_to_model(activities)
+        preview = strava_activity_preview(activities)
+
+        self.assertEqual(len(runs), 1)
+        self.assertEqual(runs[0].distance_miles, 1.0)
+        self.assertEqual(len(preview), 1)
+        self.assertEqual(preview[0]["distance_miles"], 1.0)
+
+    def test_strava_run_filters_whoop_synced_run(self) -> None:
+        activities = [
+            {
+                "type": "Run",
+                "sport_type": "Run",
+                "start_date_local": "2026-03-19T07:30:00Z",
+                "distance": 6437.36,
+                "moving_time": 2400,
+                "name": "Morning Run",
+            },
+            {
+                "type": "Run",
+                "sport_type": "Run",
+                "start_date_local": "2026-03-19T18:00:00Z",
+                "distance": 160.934,
+                "moving_time": 60,
+                "name": "WHOOP Run",
+                "device_name": "WHOOP",
+            },
+        ]
+
+        runs = strava_runs_to_model(activities)
+        preview = strava_activity_preview(activities)
+
+        self.assertEqual(len(runs), 1)
+        self.assertEqual(runs[0].distance_miles, 4.0)
+        self.assertEqual(len(preview), 1)
+        self.assertEqual(preview[0]["distance_miles"], 4.0)
+
+    @mock.patch.dict("os.environ", {"APP_TIMEZONE": "America/New_York"}, clear=False)
+    def test_whoop_workout_preview_uses_local_timezone_for_day(self) -> None:
+        snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "start": "2026-03-21T00:30:00Z",
+                        "end": "2026-03-21T01:15:00Z",
+                        "sport_name": "Weightlifting",
+                        "score": {"strain": 8.2},
+                    }
+                ]
+            }
+        }
+
+        preview = whoop_workout_preview(snapshot)
+
+        self.assertEqual(len(preview), 1)
+        self.assertEqual(preview[0]["day"], "2026-03-20")
+
+    def test_calendar_days_keeps_projected_run_with_recorded_future_strength(self) -> None:
+        recommendation = Recommendation(
+            date="2026-03-19",
+            workout="Easy aerobic run",
+            intensity="easy",
+            duration_minutes=45,
+            run_distance_miles=4.0,
+            run_pace_guidance="9:15-9:45/mi",
+            lift_focus="Single-Leg Strength + Glutes",
+            lift_guidance="Keep strength short and secondary.",
+            recap=[],
+            explanation=[],
+            explanation_sections={},
+            warnings=[],
+            confidence="high",
+            weekly_intent={"week_type": "steady", "mileage_target": 28, "primary_adaptation": "volume"},
+        )
+
+        weekly_plan = {
+            "2026-03-20": [
+                {
+                    "source": "Projection",
+                    "name": "Run",
+                    "day": "2026-03-20",
+                    "sport": "Projected Run",
+                    "distance_miles": 4.2,
+                    "duration_minutes": 40,
+                    "average_pace_min_per_mile": 0,
+                    "pace_text": "9:15-9:45/mi",
+                    "intensity": "easy",
+                    "projected": True,
+                }
+            ]
+        }
+        activity_feed = [
+            {
+                "source": "WHOOP",
+                "name": "Weightlifting",
+                "day": "2026-03-20",
+                "sport": "Weightlifting",
+                "distance_miles": 0,
+                "duration_minutes": 35,
+                "average_pace_min_per_mile": 0,
+                "strain": 8.4,
+            }
+        ]
+
+        cards = calendar_days(
+            activity_feed=activity_feed,
+            metrics=SAMPLE_METRICS,
+            recommendation=recommendation,
+            today="2026-03-19",
+            profile=SAMPLE_PROFILE,
+            weekly_plan=weekly_plan,
+        )
+
+        friday = next(card for card in cards if card["day"] == "2026-03-20")
+        self.assertEqual(len(friday["activities"]), 2)
+        self.assertTrue(any(activity.get("name") == "Run" for activity in friday["activities"]))
+        self.assertTrue(any(activity.get("name") == "Weightlifting" for activity in friday["activities"]))
 
     @mock.patch.dict("os.environ", {}, clear=False)
     def test_llm_recommendation_reports_unavailable_without_key(self) -> None:

@@ -69,6 +69,27 @@ def _ssl_context(allow_insecure_ssl: bool):
     return None
 
 
+def _app_timezone() -> ZoneInfo:
+    timezone_name = os.environ.get("APP_TIMEZONE", "").strip() or os.environ.get("TZ", "").strip() or "America/New_York"
+    try:
+        return ZoneInfo(timezone_name)
+    except Exception:
+        return ZoneInfo("America/New_York")
+
+
+def _local_iso_date(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except Exception:
+        return text[:10]
+    if dt.tzinfo is None:
+        return dt.date().isoformat()
+    return dt.astimezone(_app_timezone()).date().isoformat()
+
+
 def _http_error_details(exc: HTTPError) -> str:
     try:
         body = exc.read().decode("utf-8")
@@ -358,17 +379,62 @@ def _effort_from_activity(activity: dict) -> str:
     return "easy"
 
 
-def strava_runs_to_model(activities: list[dict]) -> list[Run]:
-    runs: list[Run] = []
+def _strava_activity_day(activity: dict) -> str:
+    start = activity.get("start_date_local") or activity.get("start_date") or ""
+    return start[:10]
+
+
+def _strava_activity_distance_miles(activity: dict) -> float:
+    return round(float(activity.get("distance", 0)) * 0.000621371, 2)
+
+
+def _looks_like_whoop_synced_run(activity: dict) -> bool:
+    markers = [
+        activity.get("device_name"),
+        activity.get("external_id"),
+        activity.get("source"),
+        activity.get("description"),
+    ]
+    return "whoop" in " ".join(str(marker or "").lower() for marker in markers)
+
+
+def _likely_duplicate_short_run_days(activities: list[dict]) -> set[str]:
+    long_run_days: set[str] = set()
     for activity in activities:
         if activity.get("type") != "Run" and activity.get("sport_type") != "Run":
+            continue
+        day = _strava_activity_day(activity)
+        if day and _strava_activity_distance_miles(activity) >= 1.0:
+            long_run_days.add(day)
+    return long_run_days
+
+
+def _skip_strava_run_activity(activity: dict, duplicate_short_run_days: set[str]) -> bool:
+    if activity.get("type") != "Run" and activity.get("sport_type") != "Run":
+        return False
+
+    if _looks_like_whoop_synced_run(activity):
+        return True
+
+    day = _strava_activity_day(activity)
+    distance_miles = _strava_activity_distance_miles(activity)
+    return bool(day and day in duplicate_short_run_days and distance_miles <= 0.25)
+
+
+def strava_runs_to_model(activities: list[dict]) -> list[Run]:
+    runs: list[Run] = []
+    duplicate_short_run_days = _likely_duplicate_short_run_days(activities)
+    for activity in activities:
+        if activity.get("type") != "Run" and activity.get("sport_type") != "Run":
+            continue
+        if _skip_strava_run_activity(activity, duplicate_short_run_days):
             continue
 
         start = activity.get("start_date_local") or activity.get("start_date")
         if not start:
             continue
 
-        distance_miles = round(float(activity.get("distance", 0)) * 0.000621371, 2)
+        distance_miles = _strava_activity_distance_miles(activity)
         duration_minutes = max(1, int(activity.get("moving_time", 0) / 60))
         average_pace = round(duration_minutes / distance_miles, 2) if distance_miles > 0 else 0.0
 
@@ -388,8 +454,11 @@ def strava_runs_to_model(activities: list[dict]) -> list[Run]:
 
 def strava_activity_preview(activities: list[dict]) -> list[dict]:
     previews: list[dict] = []
+    duplicate_short_run_days = _likely_duplicate_short_run_days(activities)
     for activity in activities[:8]:
-        distance_miles = round(float(activity.get("distance", 0)) * 0.000621371, 2)
+        if _skip_strava_run_activity(activity, duplicate_short_run_days):
+            continue
+        distance_miles = _strava_activity_distance_miles(activity)
         duration_minutes = max(1, int(activity.get("moving_time", 0) / 60))
         pace = round(duration_minutes / distance_miles, 2) if distance_miles > 0 else 0.0
         sport = activity.get("sport_type") or activity.get("type") or "Activity"
@@ -484,7 +553,7 @@ def whoop_workout_preview(snapshot: dict) -> list[dict]:
             {
                 "source": "WHOOP",
                 "name": sport_name,
-                "day": start[:10],
+                "day": _local_iso_date(start),
                 "sport": sport_name,
                 "distance_miles": 0,
                 "duration_minutes": duration_minutes,
@@ -568,8 +637,7 @@ def merge_live_data(strava_snapshot: dict, whoop_snapshot: dict, settings: dict)
 
 
 def safe_iso_today() -> str:
-    timezone_name = os.environ.get("APP_TIMEZONE", "").strip() or os.environ.get("TZ", "").strip() or "America/New_York"
     try:
-        return datetime.now(ZoneInfo(timezone_name)).date().isoformat()
+        return datetime.now(_app_timezone()).date().isoformat()
     except Exception:
         return datetime.now(UTC).astimezone().date().isoformat()

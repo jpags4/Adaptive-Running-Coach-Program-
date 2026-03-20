@@ -221,6 +221,28 @@ def _filter_calendar_activities(activity_feed: list[dict]) -> list[dict]:
     return filtered
 
 
+def _merge_projected_future_activities(recorded: list[dict], projected: list[dict]) -> list[dict]:
+    if not recorded:
+        return projected
+    if not projected:
+        return recorded
+
+    has_recorded_run = any(_calendar_activity_kind(item) == "run" for item in recorded)
+    has_recorded_strength = any(_calendar_activity_kind(item) == "strength" for item in recorded)
+
+    merged = list(recorded)
+    for item in projected:
+        kind = _calendar_activity_kind(item)
+        if kind == "run" and not has_recorded_run:
+            merged.append(item)
+            has_recorded_run = True
+        elif kind == "strength" and not has_recorded_strength:
+            merged.append(item)
+            has_recorded_strength = True
+
+    return merged
+
+
 def _recommendation_training_context(activity_feed: list[dict], today_iso: str) -> dict:
     if not today_iso:
         return {}
@@ -674,9 +696,15 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
         if not activities and current_day == anchor:
             activities = _today_plan_entries(anchor, recommendation)
             projected = bool(activities)
-        elif not activities and current_day > anchor:
-            activities = projected_by_day.get(iso_day, [])
-            projected = bool(activities)
+        elif current_day > anchor:
+            projected_activities = projected_by_day.get(iso_day, [])
+            if activities:
+                merged = _merge_projected_future_activities(activities, projected_activities)
+                projected = len(merged) > len(activities)
+                activities = merged
+            else:
+                activities = projected_activities
+                projected = bool(activities)
 
         cards.append(
             {
