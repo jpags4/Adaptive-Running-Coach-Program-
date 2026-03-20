@@ -299,7 +299,7 @@ def fetch_strava_snapshot(
         user_agent=user_agent,
     )
     activities = _get_json(
-        "https://www.strava.com/api/v3/athlete/activities?per_page=10&page=1",
+        "https://www.strava.com/api/v3/athlete/activities?per_page=50&page=1",
         access_token,
         allow_insecure_ssl=allow_insecure_ssl,
         user_agent=user_agent,
@@ -325,7 +325,7 @@ def fetch_whoop_snapshot(
         profile = {}
     try:
         recoveries = _get_json(
-            "https://api.prod.whoop.com/developer/v2/recovery?limit=7",
+            "https://api.prod.whoop.com/developer/v2/recovery?limit=50",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
@@ -334,7 +334,7 @@ def fetch_whoop_snapshot(
         raise RuntimeError(f"WHOOP recovery request failed with HTTP {exc.code}. Check that read:recovery is enabled in your WHOOP app.") from exc
     try:
         sleeps = _get_json(
-            "https://api.prod.whoop.com/developer/v2/activity/sleep?limit=7",
+            "https://api.prod.whoop.com/developer/v2/activity/sleep?limit=50",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
@@ -343,7 +343,7 @@ def fetch_whoop_snapshot(
         raise RuntimeError(f"WHOOP sleep request failed with HTTP {exc.code}. Check that read:sleep is enabled in your WHOOP app.") from exc
     try:
         cycles = _get_json(
-            "https://api.prod.whoop.com/developer/v2/cycle?limit=7",
+            "https://api.prod.whoop.com/developer/v2/cycle?limit=50",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
@@ -352,7 +352,7 @@ def fetch_whoop_snapshot(
         raise RuntimeError(f"WHOOP cycle request failed with HTTP {exc.code}. Check that read:cycles is enabled in your WHOOP app.") from exc
     try:
         workouts = _get_json(
-            "https://api.prod.whoop.com/developer/v2/activity/workout?limit=7",
+            "https://api.prod.whoop.com/developer/v2/activity/workout?limit=50",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
@@ -373,8 +373,20 @@ def _effort_from_activity(activity: dict) -> str:
     if any(keyword in name for keyword in ("tempo", "interval", "race", "threshold")):
         return "hard"
 
-    if activity.get("sport_type") == "Run" and activity.get("distance", 0) >= 15000:
-        return "moderate"
+    if activity.get("sport_type") == "Run" or activity.get("type") == "Run":
+        distance_miles = _strava_activity_distance_miles(activity)
+        duration_minutes = max(1, int(activity.get("moving_time", 0) / 60))
+        pace = duration_minutes / distance_miles if distance_miles > 0 else 0.0
+
+        # Fast 5k-ish efforts are usually strenuous even when the activity name is generic.
+        if distance_miles >= 3.0 and 0 < pace <= 7.75:
+            return "hard"
+        if distance_miles >= 6.0 and 0 < pace <= 8.75:
+            return "hard"
+        if distance_miles >= 3.0 and 0 < pace <= 9.25:
+            return "moderate"
+        if activity.get("distance", 0) >= 15000:
+            return "moderate"
 
     return "easy"
 
@@ -471,6 +483,7 @@ def strava_activity_preview(activities: list[dict]) -> list[dict]:
                 "distance_miles": distance_miles,
                 "duration_minutes": duration_minutes,
                 "average_pace_min_per_mile": pace,
+                "intensity": _effort_from_activity(activity),
             }
         )
     return previews
@@ -528,7 +541,7 @@ def whoop_metrics_to_model(snapshot: dict) -> list[RecoveryMetrics]:
 
 def whoop_workout_preview(snapshot: dict) -> list[dict]:
     previews: list[dict] = []
-    for workout in snapshot.get("workouts", {}).get("records", [])[:8]:
+    for workout in snapshot.get("workouts", {}).get("records", []):
         start = workout.get("start") or workout.get("created_at") or ""
         end = workout.get("end") or workout.get("updated_at") or ""
         sport_name = (

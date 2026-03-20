@@ -46,10 +46,12 @@ from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 from llm_coach import llm_recommendation
 from storage import (
     init_storage,
+    load_activity_notes,
     load_settings,
     load_states,
     load_tokens,
     load_weekly_plans,
+    save_activity_note,
     save_settings,
     save_states,
     save_tokens,
@@ -219,6 +221,63 @@ def _filter_calendar_activities(activity_feed: list[dict]) -> list[dict]:
         filtered.append(activity)
 
     return filtered
+
+
+def _activity_key(activity: dict) -> str:
+    return "|".join(
+        [
+            str(activity.get("source") or "unknown").strip().lower(),
+            str(activity.get("day") or "").strip(),
+            str(activity.get("sport") or activity.get("name") or "").strip().lower().replace(" ", "_"),
+            str(int(activity.get("duration_minutes") or 0)),
+            f"{float(activity.get('distance_miles') or 0.0):.2f}",
+        ]
+    )
+
+
+def _attach_activity_notes(activities: list[dict], notes_by_key: dict[str, dict]) -> list[dict]:
+    annotated: list[dict] = []
+    for activity in activities:
+        item = dict(activity)
+        activity_key = _activity_key(item)
+        note_payload = notes_by_key.get(activity_key, {}) if isinstance(notes_by_key, dict) else {}
+        item["activity_key"] = activity_key
+        item["note"] = str(note_payload.get("note") or "").strip()
+        annotated.append(item)
+    return annotated
+
+
+def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
+    runs = [item for item in activities if _calendar_activity_kind(item) == "run"]
+    strength = [item for item in activities if _calendar_activity_kind(item) == "strength"]
+    ordered_runs = sorted(runs, key=lambda item: (str(item.get("day") or ""), float(item.get("distance_miles") or 0.0)), reverse=True)
+    ordered_strength = sorted(strength, key=lambda item: (str(item.get("day") or ""), int(item.get("duration_minutes") or 0)), reverse=True)
+    return {
+        "runs": ordered_runs,
+        "strength": ordered_strength,
+    }
+
+
+def _activity_notes_context(activity_log: dict[str, list[dict]], limit: int = 8) -> str:
+    noted_items = [
+        item
+        for bucket in ("runs", "strength")
+        for item in activity_log.get(bucket, [])
+        if str(item.get("note") or "").strip()
+    ]
+    noted_items.sort(key=lambda item: str(item.get("day") or ""), reverse=True)
+    context_lines: list[str] = []
+    for item in noted_items[:limit]:
+        label = str(item.get("name") or item.get("sport") or "Workout").strip()
+        day = str(item.get("day") or "").strip()
+        details: list[str] = []
+        if float(item.get("distance_miles") or 0.0) > 0:
+            details.append(f"{float(item.get('distance_miles') or 0.0):.1f} mi")
+        if int(item.get("duration_minutes") or 0) > 0:
+            details.append(f"{int(item.get('duration_minutes') or 0)} min")
+        note = str(item.get("note") or "").strip()
+        context_lines.append(f"{day} {label} ({', '.join(details) if details else 'logged workout'}): {note}")
+    return "\n".join(context_lines)
 
 
 def _merge_projected_future_activities(recorded: list[dict], projected: list[dict]) -> list[dict]:
@@ -791,6 +850,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     metrics = SAMPLE_METRICS
     live_preview = {"mode": "sample"}
     activity_feed = sample_activity_preview(runs)
+    all_activities = list(activity_feed)
 
     try:
         live_strava = None
@@ -829,7 +889,8 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
                 profile = merged["profile"]
                 runs = merged["runs"]
                 metrics = merged["metrics"]
-                activity_feed = strava_activity_preview(live_strava.get("activities", [])) + whoop_workout_preview(live_whoop)
+                all_activities = strava_activity_preview(live_strava.get("activities", [])) + whoop_workout_preview(live_whoop)
+                activity_feed = list(all_activities)
                 activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))[:20]
                 live_preview = {
                     "mode": "live",
@@ -839,13 +900,16 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         else:
             if live_strava:
                 runs = strava_runs_to_model(live_strava.get("activities", [])) or runs
-                activity_feed = strava_activity_preview(live_strava.get("activities", []))
+                all_activities = strava_activity_preview(live_strava.get("activities", []))
+                activity_feed = list(all_activities)
             if live_whoop:
                 metrics = whoop_metrics_to_model(live_whoop) or metrics
                 whoop_activities = whoop_workout_preview(live_whoop)
                 if live_strava:
+                    all_activities = all_activities + whoop_activities
                     activity_feed = activity_feed + whoop_activities
                 elif whoop_activities:
+                    all_activities = whoop_activities
                     activity_feed = whoop_activities
 
             if live_strava or live_whoop:
@@ -869,7 +933,15 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     recommended_option_key = "conservative"
     recommendation_meta = {"source": None, "model": None, "reason": None}
     recommendation_feedback = dict(subjective_feedback or {})
-    recommendation_feedback.update(_recommendation_training_context(activity_feed, today_iso))
+    activity_notes = load_activity_notes()
+    full_activity_feed = _filter_calendar_activities(sorted(all_activities, key=lambda item: item.get("day", ""), reverse=True))
+    annotated_activity_feed = _attach_activity_notes(activity_feed, activity_notes)
+    annotated_activity_log = _activity_log_payload(_attach_activity_notes(full_activity_feed, activity_notes))
+    recommendation_feedback.update(_recommendation_training_context(annotated_activity_feed, today_iso))
+    notes_context = _activity_notes_context(annotated_activity_log)
+    if notes_context:
+        existing_notes = str(recommendation_feedback.get("notes") or "").strip()
+        recommendation_feedback["notes"] = f"{existing_notes}\n\nRecent workout notes:\n{notes_context}".strip()
 
     if include_recommendation:
         recommendation, recommendation_meta = llm_recommendation(
@@ -908,7 +980,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             "latest_resting_hr": metrics[-1].resting_hr,
             "latest_hrv": metrics[-1].hrv_ms,
             "previous_run": previous_run_summary(runs),
-            "current_day_status": _current_day_status(today_iso, activity_feed, recommendation),
+            "current_day_status": _current_day_status(today_iso, annotated_activity_feed, recommendation),
         },
         "recommendation": recommendation.to_dict() if recommendation else None,
         "recommendation_options": recommendation_options,
@@ -918,9 +990,10 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         "weekly_focus": weekly_intent.to_dict(),
         "training_roadmap": roadmap,
         "weekly_plan_key": _week_plan_key(today_date),
-        "activity_feed": activity_feed,
+        "activity_feed": annotated_activity_feed,
+        "activity_log": annotated_activity_log,
         "activity_calendar": calendar_days(
-            activity_feed,
+            annotated_activity_feed,
             metrics,
             recommendation=recommendation,
             today=today_iso,
@@ -1245,6 +1318,25 @@ class CoachHandler(BaseHTTPRequestHandler):
                 },
                 include_recommendation=True,
             )
+            self._send_json(payload)
+            return
+
+        if self.path == "/api/activity-notes":
+            try:
+                form = self._read_json()
+            except Exception:
+                self._send_json({"error": "Invalid JSON body."}, status=400)
+                return
+
+            activity_key = str(form.get("activity_key", "")).strip()
+            note = str(form.get("note", "")).strip()
+            if not activity_key:
+                self._send_json({"error": "Activity key is required."}, status=400)
+                return
+            save_activity_note(activity_key, note)
+            settings = load_settings()
+            tokens = load_tokens()
+            payload = build_dashboard_payload(settings, tokens)
             self._send_json(payload)
             return
 

@@ -1585,6 +1585,12 @@ function formatWeekSpan(cards) {
   return sameMonth ? `${firstText}-${lastText}` : `${firstText}-${fullLastText}`
 }
 
+function flattenActivityLog(activityLog) {
+  const runs = Array.isArray(activityLog?.runs) ? activityLog.runs : []
+  const strength = Array.isArray(activityLog?.strength) ? activityLog.strength : []
+  return [...runs, ...strength]
+}
+
 function formatRoadmapWeekSpan(week) {
   if (!week?.week_start || !week?.week_end) return week?.label || ''
   const start = new Date(`${week.week_start}T12:00:00`)
@@ -1908,6 +1914,150 @@ function normalizeClarificationValue(questionId, answer) {
   return answer
 }
 
+function ActivityLogSection({
+  activityLog,
+  noteDrafts,
+  noteSaveState,
+  onNoteChange,
+  onSaveNote,
+  theme = 'light',
+}) {
+  const isDark = theme === 'dark'
+  const runs = Array.isArray(activityLog?.runs) ? activityLog.runs : []
+  const strength = Array.isArray(activityLog?.strength) ? activityLog.strength : []
+
+  return (
+    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+      <div>
+        <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          Activity Log
+        </p>
+        <h2 className={`mt-3 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+          Full Workout History
+        </h2>
+        <p className={`mt-3 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+          This is your running and lifting record. Add notes to any workout and the model will include that context in future recommendations.
+        </p>
+      </div>
+
+      <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ActivityLogColumn
+          title="Runs"
+          icon={<RouteIcon />}
+          activities={runs}
+          noteDrafts={noteDrafts}
+          noteSaveState={noteSaveState}
+          onNoteChange={onNoteChange}
+          onSaveNote={onSaveNote}
+          theme={theme}
+        />
+        <ActivityLogColumn
+          title="Weight Training"
+          icon={<TrendUpIcon />}
+          activities={strength}
+          noteDrafts={noteDrafts}
+          noteSaveState={noteSaveState}
+          onNoteChange={onNoteChange}
+          onSaveNote={onSaveNote}
+          theme={theme}
+        />
+      </div>
+    </section>
+  )
+}
+
+function ActivityLogColumn({
+  title,
+  icon,
+  activities,
+  noteDrafts,
+  noteSaveState,
+  onNoteChange,
+  onSaveNote,
+  theme = 'light',
+}) {
+  const isDark = theme === 'dark'
+
+  return (
+    <div className={`rounded-[1.9rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-stone-50'}`}>
+      <div className="flex items-center gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'}`}>
+          {icon}
+        </div>
+        <div>
+          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{title}</p>
+          <p className={`mt-1 text-sm ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}>{activities.length} logged</p>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-4">
+        {activities.length > 0 ? activities.map((activity) => (
+          <ActivityLogItem
+            key={activity.activity_key}
+            activity={activity}
+            noteValue={noteDrafts[activity.activity_key] ?? activity.note ?? ''}
+            saveState={noteSaveState[activity.activity_key] || 'idle'}
+            onNoteChange={onNoteChange}
+            onSaveNote={onSaveNote}
+            theme={theme}
+          />
+        )) : (
+          <p className={`rounded-[1.4rem] border px-4 py-4 text-sm leading-7 ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-400' : 'border-neutral-200 bg-white text-neutral-500'}`}>
+            No workouts synced here yet.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ActivityLogItem({
+  activity,
+  noteValue,
+  saveState,
+  onNoteChange,
+  onSaveNote,
+  theme = 'light',
+}) {
+  const isDark = theme === 'dark'
+  const isRun = /run/i.test(String(activity.name || '')) || /run/i.test(String(activity.sport || ''))
+  const title = isRun
+    ? `${trimNumber(activity.distance_miles || 0)} mi run`
+    : calendarLiftFocus(activity) || humanizeActivityLabel(activity.name || activity.sport || 'Workout')
+  const subtitleParts = [
+    formatDate(activity.day),
+    isRun ? calendarPace(activity) : activity.duration_minutes ? `${activity.duration_minutes} min` : '',
+    !isRun && activity.strain ? `Strain ${activity.strain}` : '',
+  ].filter(Boolean)
+  const buttonLabel = saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save note'
+
+  return (
+    <div className={`rounded-[1.4rem] border p-4 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+      <p className={`text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{title}</p>
+      <p className={`mt-1 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{subtitleParts.join(' · ')}</p>
+      <textarea
+        value={noteValue}
+        onChange={(event) => onNoteChange(activity.activity_key, event.target.value)}
+        placeholder="Add context for this workout: how it felt, what went well, pain, fatigue, lift quality, anything the coach should remember."
+        className={`mt-4 min-h-[7rem] w-full rounded-[1.1rem] border px-4 py-3 text-sm leading-6 outline-none transition ${isDark ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500' : 'border-neutral-200 bg-stone-50 text-neutral-900 placeholder:text-neutral-400'}`}
+      />
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+          Saved notes are reused the next time the model evaluates your training.
+        </p>
+        <button
+          type="button"
+          onClick={() => onSaveNote(activity.activity_key)}
+          disabled={saveState === 'saving'}
+          className={`rounded-full px-4 py-2 text-sm font-semibold ${isDark ? 'bg-white text-neutral-950 disabled:bg-neutral-700 disabled:text-neutral-400' : 'bg-neutral-950 text-white disabled:bg-neutral-200 disabled:text-neutral-500'}`}
+        >
+          {buttonLabel}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [theme, setTheme] = useState(() => {
     try {
@@ -1929,6 +2079,8 @@ export default function App() {
   const [profileSettings, setProfileSettings] = useState(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [activityNoteDrafts, setActivityNoteDrafts] = useState({})
+  const [activityNoteSaveState, setActivityNoteSaveState] = useState({})
   const isDark = theme === 'dark'
 
   useEffect(() => {
@@ -1938,6 +2090,16 @@ export default function App() {
       // ignore storage issues in local/dev contexts
     }
   }, [theme])
+
+  useEffect(() => {
+    const nextDrafts = {}
+    flattenActivityLog(summaryData?.activity_log).forEach((activity) => {
+      nextDrafts[activity.activity_key] = activity.note || ''
+    })
+    if (summaryData?.activity_log) {
+      setActivityNoteDrafts(nextDrafts)
+    }
+  }, [summaryData?.activity_log])
 
   async function loadDashboard(signal) {
     const response = await fetch('/api/dashboard', signal ? { signal } : undefined)
@@ -2021,6 +2183,36 @@ export default function App() {
       setError(err.message || 'Unknown error')
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  async function handleSaveActivityNote(activityKey) {
+    setActivityNoteSaveState((current) => ({ ...current, [activityKey]: 'saving' }))
+    setError('')
+    try {
+      const response = await fetch('/api/activity-notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          activity_key: activityKey,
+          note: activityNoteDrafts[activityKey] ?? '',
+        }),
+      })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.error || `Activity note save failed with status ${response.status}`)
+      }
+      setSummaryData(payload)
+      setProfileSettings(payload.profile_settings ?? null)
+      setActivityNoteSaveState((current) => ({ ...current, [activityKey]: 'saved' }))
+      window.setTimeout(() => {
+        setActivityNoteSaveState((current) => ({ ...current, [activityKey]: 'idle' }))
+      }, 1400)
+    } catch (err) {
+      setActivityNoteSaveState((current) => ({ ...current, [activityKey]: 'idle' }))
+      setError(err.message || 'Unknown error')
     }
   }
 
@@ -2191,6 +2383,18 @@ export default function App() {
           cards={summaryData.activity_calendar}
           weeklyFocus={summaryData.weekly_focus}
           weeks={summaryData.training_roadmap}
+          theme={theme}
+        />
+
+        <ActivityLogSection
+          activityLog={summaryData.activity_log}
+          noteDrafts={activityNoteDrafts}
+          noteSaveState={activityNoteSaveState}
+          onNoteChange={(activityKey, value) => {
+            setActivityNoteDrafts((current) => ({ ...current, [activityKey]: value }))
+            setActivityNoteSaveState((current) => ({ ...current, [activityKey]: 'idle' }))
+          }}
+          onSaveNote={handleSaveActivityNote}
           theme={theme}
         />
       </div>

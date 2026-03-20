@@ -296,3 +296,25 @@ def load_weekly_plans() -> dict[str, Any]:
 
 def save_weekly_plans(plans: dict[str, Any]) -> None:
     _set_namespace_values("weekly_plans", plans)
+
+
+def load_activity_notes() -> dict[str, Any]:
+    return _get_namespace_values("activity_notes")
+
+
+def save_activity_notes(notes: dict[str, Any]) -> None:
+    _set_namespace_values("activity_notes", notes)
+
+
+def save_activity_note(activity_key: str, note: str) -> dict[str, Any]:
+    notes = load_activity_notes()
+    key = str(activity_key or "").strip()
+    if not key:
+        return notes
+    text = str(note or "").strip()
+    if text:
+        notes[key] = {"note": text}
+    else:
+        notes.pop(key, None)
+    save_activity_notes(notes)
+    return notes

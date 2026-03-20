@@ -3,7 +3,10 @@ from datetime import date
 from unittest import mock
 
 from app import (
+    _activity_key,
+    _activity_notes_context,
     _apply_clarification_answers_to_settings,
+    _attach_activity_notes,
     _generate_weekly_plan,
     _current_day_status,
     _pace_text_for_type,
@@ -117,6 +120,23 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(len(preview), 1)
         self.assertEqual(preview[0]["distance_miles"], 4.0)
 
+    def test_strava_fast_5k_effort_is_marked_hard_in_preview(self) -> None:
+        activities = [
+            {
+                "type": "Run",
+                "sport_type": "Run",
+                "start_date_local": "2026-03-18T07:30:00Z",
+                "distance": 5310.0,
+                "moving_time": 1458,
+                "name": "Morning Run",
+            }
+        ]
+
+        preview = strava_activity_preview(activities)
+
+        self.assertEqual(len(preview), 1)
+        self.assertEqual(preview[0]["intensity"], "hard")
+
     @mock.patch.dict("os.environ", {"APP_TIMEZONE": "America/New_York"}, clear=False)
     def test_whoop_workout_preview_uses_local_timezone_for_day(self) -> None:
         snapshot = {
@@ -197,6 +217,48 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(len(friday["activities"]), 2)
         self.assertTrue(any(activity.get("name") == "Run" for activity in friday["activities"]))
         self.assertTrue(any(activity.get("name") == "Weightlifting" for activity in friday["activities"]))
+
+    def test_attach_activity_notes_annotates_activity(self) -> None:
+        activity = {
+            "source": "Strava",
+            "name": "Run",
+            "day": "2026-03-19",
+            "sport": "Run",
+            "distance_miles": 4.0,
+            "duration_minutes": 31,
+        }
+        activity_key = _activity_key(activity)
+
+        annotated = _attach_activity_notes([activity], {activity_key: {"note": "Felt smooth until the last mile."}})
+
+        self.assertEqual(annotated[0]["activity_key"], activity_key)
+        self.assertEqual(annotated[0]["note"], "Felt smooth until the last mile.")
+
+    def test_activity_notes_context_includes_recent_noted_workouts(self) -> None:
+        context = _activity_notes_context(
+            {
+                "runs": [
+                    {
+                        "day": "2026-03-19",
+                        "name": "Run",
+                        "distance_miles": 4.0,
+                        "duration_minutes": 31,
+                        "note": "Fast finish and a little calf tightness.",
+                    }
+                ],
+                "strength": [
+                    {
+                        "day": "2026-03-18",
+                        "name": "Weightlifting",
+                        "duration_minutes": 38,
+                        "note": "Left hip felt better after warm-up.",
+                    }
+                ],
+            }
+        )
+
+        self.assertIn("2026-03-19 Run (4.0 mi, 31 min): Fast finish", context)
+        self.assertIn("2026-03-18 Weightlifting (38 min): Left hip felt better", context)
 
     @mock.patch.dict("os.environ", {}, clear=False)
     def test_llm_recommendation_reports_unavailable_without_key(self) -> None:
