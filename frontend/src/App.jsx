@@ -352,10 +352,10 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
         <h1 className={`text-6xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
           Good morning, {name || 'Athlete'}
         </h1>
-        <p className={`mt-3 text-2xl ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{formatDate(today)}</p>
-        <p className={`mt-12 text-xs font-medium uppercase tracking-[0.28em] ${isDark ? 'text-neutral-600' : 'text-neutral-400/90'}`}>
+        <p className={`mt-7 text-sm font-semibold uppercase tracking-[0.24em] ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
           Adaptive Running Coach
         </p>
+        <p className={`mt-3 text-xl ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{formatDate(today)}</p>
       </div>
 
       <div className="flex flex-col items-end gap-6 pt-1 text-right">
@@ -603,7 +603,7 @@ function PromptButton({ active, onClick, children, theme = 'light' }) {
   )
 }
 
-function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = false }) {
+function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = false, isGenerating = false }) {
   const isDark = theme === 'dark'
   if (hasRecommendation) return null
 
@@ -613,8 +613,13 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
         <button
           type="button"
           onClick={onOpen}
+          disabled={isGenerating}
           className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-6 text-center text-2xl font-semibold tracking-tight transition duration-200 ${
-            isDark
+            isGenerating
+              ? isDark
+                ? 'cursor-not-allowed border-neutral-700 bg-neutral-900 text-neutral-400 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]'
+                : 'cursor-not-allowed border-neutral-200 bg-neutral-900 text-neutral-300 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]'
+              : isDark
               ? 'border-violet-500/50 bg-neutral-950 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.24),0_0_42px_rgba(168,85,247,0.28)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.35),0_0_56px_rgba(168,85,247,0.34)]'
               : 'border-violet-300 bg-white text-neutral-950 shadow-[0_0_0_1px_rgba(216,180,254,0.8),0_0_46px_rgba(196,181,253,0.42)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.9),0_0_58px_rgba(192,132,252,0.48)]'
           }`}
@@ -625,11 +630,17 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
               : 'bg-[radial-gradient(circle_at_top,_rgba(216,180,254,0.35),_transparent_60%)]'
           }`} />
           <span className={`relative flex h-11 w-11 items-center justify-center rounded-2xl ${
-            isDark ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-50 text-violet-600'
+            isGenerating
+              ? isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-neutral-800 text-neutral-300'
+              : isDark ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-50 text-violet-600'
           }`}>
-            <SparkleIcon />
+            {isGenerating ? (
+              <span className="h-6 w-6 animate-spin rounded-full border-2 border-current/40 border-t-current" />
+            ) : (
+              <SparkleIcon />
+            )}
           </span>
-          <span className="relative">{hasRecommendation ? 'Update Today’s Recommendation' : 'Generate Today’s Recommendation'}</span>
+          <span className="relative">{isGenerating ? 'Generating Recommendation...' : 'Generate Today’s Recommendation'}</span>
         </button>
       </div>
     </section>
@@ -1268,9 +1279,15 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
                 <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                   Current Week
                 </p>
-                <h3 className={`mt-3 text-3xl font-semibold tracking-tight md:text-[2.65rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                  {weeklyFocus.phase || 'Weekly focus'}
-                </h3>
+                <div className={`mt-4 inline-flex items-center rounded-[1.15rem] border px-5 py-3 ${
+                  isDark
+                    ? 'border-violet-800/70 bg-violet-950/35 shadow-[inset_4px_0_0_0_rgba(168,85,247,0.9)]'
+                    : 'border-violet-200 bg-violet-50/85 shadow-[inset_4px_0_0_0_rgba(124,58,237,0.85)]'
+                }`}>
+                  <h3 className={`text-2xl font-semibold tracking-tight md:text-[2.2rem] ${isDark ? 'text-violet-100' : 'text-violet-900'}`}>
+                    {weeklyFocus.phase || 'Weekly focus'}
+                  </h3>
+                </div>
                 <p className={`mt-4 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
                   {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
                 </p>
@@ -2195,6 +2212,7 @@ export default function App() {
   async function handleGenerateRecommendation() {
     setIsGenerating(true)
     setError('')
+    setIsCheckInModalOpen(false)
     try {
       const response = await fetch('/api/recommendation', {
         method: 'POST',
@@ -2222,7 +2240,6 @@ export default function App() {
         ?? payload.recommendation
         ?? null
       setRecommendationData(initialRecommendation)
-      setIsCheckInModalOpen(false)
     } catch (err) {
       setError(err.message || 'Unknown error')
     } finally {
@@ -2308,6 +2325,7 @@ export default function App() {
           onOpen={() => setIsCheckInModalOpen(true)}
           theme={theme}
           hasRecommendation={Boolean(recommendationData)}
+          isGenerating={isGenerating}
         />
 
         <CheckInModal
