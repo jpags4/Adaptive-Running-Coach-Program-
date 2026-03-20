@@ -325,7 +325,7 @@ def fetch_whoop_snapshot(
         profile = {}
     try:
         recoveries = _get_json(
-            "https://api.prod.whoop.com/developer/v2/recovery?limit=50",
+            "https://api.prod.whoop.com/developer/v2/recovery?limit=25",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
@@ -334,7 +334,7 @@ def fetch_whoop_snapshot(
         raise RuntimeError(f"WHOOP recovery request failed with HTTP {exc.code}. Check that read:recovery is enabled in your WHOOP app.") from exc
     try:
         sleeps = _get_json(
-            "https://api.prod.whoop.com/developer/v2/activity/sleep?limit=50",
+            "https://api.prod.whoop.com/developer/v2/activity/sleep?limit=25",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
@@ -343,7 +343,7 @@ def fetch_whoop_snapshot(
         raise RuntimeError(f"WHOOP sleep request failed with HTTP {exc.code}. Check that read:sleep is enabled in your WHOOP app.") from exc
     try:
         cycles = _get_json(
-            "https://api.prod.whoop.com/developer/v2/cycle?limit=50",
+            "https://api.prod.whoop.com/developer/v2/cycle?limit=25",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
@@ -352,7 +352,7 @@ def fetch_whoop_snapshot(
         raise RuntimeError(f"WHOOP cycle request failed with HTTP {exc.code}. Check that read:cycles is enabled in your WHOOP app.") from exc
     try:
         workouts = _get_json(
-            "https://api.prod.whoop.com/developer/v2/activity/workout?limit=50",
+            "https://api.prod.whoop.com/developer/v2/activity/workout?limit=25",
             access_token,
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
