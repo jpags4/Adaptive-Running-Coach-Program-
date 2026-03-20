@@ -87,9 +87,9 @@ function RunningShoeIcon({ className = 'h-5 w-5' }) {
       className={className}
       aria-hidden="true"
     >
-      <path d="M3 16.5h8.6l2.2-3.1 2.6 1 3.6 2.1H21" />
-      <path d="M6 16.5v-2.7l2.1-1.8h2.7l1.8-3.7h1.7l1.9 1.8" />
-      <path d="M13.9 10.7l1.8 1.4" />
+      <path d="M3.5 16.5h16.2a.8.8 0 0 0 .8-.8v-1l-4.8-1.3-2.6-3.9-2.3.2-.6 2.8-2.9 1.5H4.3a.8.8 0 0 0-.8.8v1.9Z" />
+      <path d="M9.2 13.9l1.1 1.1" />
+      <path d="M12.1 13.1l1.1 1.1" />
     </svg>
   )
 }
@@ -155,8 +155,9 @@ function KeyIcon({ className = 'h-5 w-5' }) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
       <circle cx="8" cy="15" r="3" />
       <path d="M10.5 13.5L20 4" />
-      <path d="M17 4h3v3" />
-      <path d="M14 7l3 3" />
+      <path d="M16 8h2" />
+      <path d="M18 6v2" />
+      <path d="M14 10h2" />
     </svg>
   )
 }
@@ -954,67 +955,38 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
   if (!weeklyFocus) return null
 
   const isDark = theme === 'dark'
-  const paceModel = weeklyFocus.pace_model ?? {}
-  const paceRows = [
-    ['Easy', paceModel.easy?.pace_range, paceModel.easy?.confidence],
-    ['Steady', paceModel.steady?.pace_range, paceModel.steady?.confidence],
-    ['Threshold', paceModel.threshold?.pace_range, paceModel.threshold?.confidence],
-    ['Long Run', paceModel.long_run?.pace_range, paceModel.long_run?.confidence],
-    ['Race Pace', paceModel.race_pace?.pace_range, paceModel.race_pace?.confidence],
-  ]
 
   return (
-    <section className={`mt-8 rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div>
-          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Current Week
-          </p>
-          <h2 className={`mt-3 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-            {weeklyFocus.phase || 'Weekly focus'}
-          </h2>
-          <p className={`mt-3 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-            {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
-          </p>
-        </div>
-        <div className={`rounded-[1.5rem] border px-5 py-4 ${isDark ? 'border-violet-900/40 bg-violet-950/40' : 'border-violet-100 bg-violet-50/70'}`}>
-          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-violet-200' : 'text-violet-800'}`}>
-            Primary Adaptation
-          </p>
-          <p className={`mt-2 text-xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-            {capitalize(weeklyFocus.primary_adaptation || '') || 'TBD'}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-4">
-        <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
-        <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
-        <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
-        <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <FocusList title="Risk Control" items={weeklyFocus.strain_constraints} theme={theme} />
-        <FocusList title="Must Not Change" items={weeklyFocus.non_negotiables} theme={theme} />
-        <FocusList title="Can Adapt Daily" items={weeklyFocus.flex_points} theme={theme} />
-      </div>
-
-      <div className={`mt-6 rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
-        <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          Pace Ranges This Week
-        </p>
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-          {paceRows.map(([label, value, confidence]) => (
-            <div key={label} className={`rounded-2xl border px-4 py-3 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
-              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{label}</p>
-              <p className={`mt-2 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{value || '-'}</p>
-              <p className={`mt-1 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{confidence ? `${capitalize(confidence)} confidence` : ''}</p>
+    <details open className={`group mt-8 overflow-hidden rounded-[2rem] border shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+      <summary className="list-none cursor-pointer px-6 py-5 md:px-7">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              Current Week
+            </p>
+            <div className={`mt-3 inline-flex rounded-[1.5rem] border px-5 py-3 ${isDark ? 'border-violet-800/60 bg-violet-950/50 text-white' : 'border-violet-100 bg-violet-50/80 text-neutral-950'}`}>
+              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                {weeklyFocus.phase || 'Weekly focus'}
+              </h2>
             </div>
-          ))}
+          </div>
+          <span className={`text-2xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
+        </div>
+      </summary>
+
+      <div className="px-6 pb-6 md:px-7 md:pb-7">
+        <p className={`max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+          {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
+        </p>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
+          <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
+          <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
+          <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
+          <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
         </div>
       </div>
-    </section>
+    </details>
   )
 }
 
