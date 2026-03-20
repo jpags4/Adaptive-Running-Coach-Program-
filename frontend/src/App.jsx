@@ -1268,7 +1268,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
                 <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                   Current Week
                 </p>
-                <h3 className={`mt-3 text-4xl font-semibold tracking-tight md:text-[3.2rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                <h3 className={`mt-3 text-3xl font-semibold tracking-tight md:text-[2.65rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                   {weeklyFocus.phase || 'Weekly focus'}
                 </h3>
                 <p className={`mt-4 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
