@@ -605,6 +605,7 @@ function PromptButton({ active, onClick, children, theme = 'light' }) {
 
 function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = false }) {
   const isDark = theme === 'dark'
+  if (hasRecommendation) return null
 
   return (
     <section className="py-8">
@@ -662,8 +663,7 @@ function CheckInModal({
       <section className={`relative z-10 max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border p-8 shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
         isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
       }`}>
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="max-w-3xl">
+        <div className="max-w-3xl">
             <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
               Recommendation Prompts
             </p>
@@ -674,19 +674,6 @@ function CheckInModal({
               Your biometrics and recent running load are already on the page. These prompts let the model account
               for how your legs feel, how your head feels, and anything else you want it to weigh.
             </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className={`inline-flex h-12 w-12 items-center justify-center rounded-full border text-xl transition ${
-              isDark
-                ? 'border-neutral-700 bg-neutral-950 text-neutral-300 hover:border-violet-500 hover:text-white'
-                : 'border-neutral-200 bg-white text-neutral-500 hover:border-violet-300 hover:text-neutral-950'
-            }`}
-          >
-            ×
-          </button>
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -785,7 +772,11 @@ function TrainingCard({ recommendation, today, onUpdateCheckIn, theme = 'light' 
           <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
             Today’s Training
           </p>
-          <span className={`rounded-full px-4 py-2 text-sm font-semibold ${intensityPillClass(intensityLabel)}`}>
+          <span className={`inline-flex items-center rounded-xl border px-4 py-2 text-sm font-semibold ${
+            isDark
+              ? 'border-violet-800/60 bg-violet-950/45 text-violet-200'
+              : 'border-violet-200 bg-violet-50 text-violet-700'
+          }`}>
             {shortWorkoutTitle(recommendation.workout)}
           </span>
         </div>
@@ -1119,7 +1110,9 @@ function RecommendationOptions({ options, selectedKey, onSelect, theme = 'light'
       <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
         Today&apos;s Recommendation Path
       </p>
-      <div className="mt-3 flex flex-wrap gap-3">
+      <div className={`mt-3 inline-flex flex-wrap gap-2 rounded-[1.3rem] border p-2 ${
+        isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white/80'
+      }`}>
         {options.map((option) => (
           <button
             key={option.key}
@@ -1128,11 +1121,11 @@ function RecommendationOptions({ options, selectedKey, onSelect, theme = 'light'
             className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
               selectedKey === option.key
                 ? isDark
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-neutral-950 text-white'
+                  ? 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.22)]'
+                  : 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.18)]'
                 : isDark
-                  ? 'border border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-violet-500 hover:text-white'
-                  : 'border border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
+                  ? 'bg-transparent text-neutral-300 hover:text-white'
+                  : 'bg-transparent text-neutral-600 hover:text-neutral-950'
             }`}
           >
             {option.label}
@@ -2311,13 +2304,6 @@ export default function App() {
           </div>
         ) : null}
 
-        <MasterTrainingCalendar
-          cards={summaryData.activity_calendar}
-          weeklyFocus={summaryData.weekly_focus}
-          weeks={summaryData.training_roadmap}
-          theme={theme}
-        />
-
         <section className="grid grid-cols-1 gap-6 py-10 md:grid-cols-2 xl:grid-cols-3">
           <StatCard
             icon={<Icon path="M12 6v6l4 2M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0Z" />}
@@ -2400,6 +2386,13 @@ export default function App() {
             <p className="mt-2 max-w-4xl text-base leading-7">{currentDayStatus.detail}</p>
           </section>
         ) : null}
+
+        <MasterTrainingCalendar
+          cards={summaryData.activity_calendar}
+          weeklyFocus={summaryData.weekly_focus}
+          weeks={summaryData.training_roadmap}
+          theme={theme}
+        />
 
         <ActivityLogSection
           activityLog={summaryData.activity_log}
