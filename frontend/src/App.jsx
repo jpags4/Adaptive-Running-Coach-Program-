@@ -1933,10 +1933,10 @@ function ActivityLogSection({
           Activity Log
         </p>
         <h2 className={`mt-3 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-          Full Workout History
+          Previous Workouts
         </h2>
         <p className={`mt-3 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-          This is your running and lifting record. Add notes to any workout and the model will include that context in future recommendations.
+          Review your completed workouts and add notes for future reference. More recent workout notes are weighted most heavily when the model builds your next recommendation.
         </p>
       </div>
 
@@ -2022,39 +2022,85 @@ function ActivityLogItem({
   const isDark = theme === 'dark'
   const isRun = /run/i.test(String(activity.name || '')) || /run/i.test(String(activity.sport || ''))
   const title = isRun
-    ? `${trimNumber(activity.distance_miles || 0)} mi run`
+    ? humanizeActivityLabel(activity.workout_type || activity.name || 'Run')
     : calendarLiftFocus(activity) || humanizeActivityLabel(activity.name || activity.sport || 'Workout')
-  const subtitleParts = [
-    formatDate(activity.day),
-    isRun ? calendarPace(activity) : activity.duration_minutes ? `${activity.duration_minutes} min` : '',
-    !isRun && activity.strain ? `Strain ${activity.strain}` : '',
-  ].filter(Boolean)
   const buttonLabel = saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save note'
+  const intensity = simplifyIntensity(activity.intensity || activity.workout_type || '')
+  const stripClass = intensity.toLowerCase().includes('hard')
+    ? 'bg-rose-500'
+    : intensity.toLowerCase().includes('moderate')
+      ? 'bg-amber-400'
+      : intensity.toLowerCase().includes('easy') || intensity.toLowerCase().includes('recovery')
+        ? 'bg-emerald-500'
+        : isRun
+          ? 'bg-neutral-300'
+          : 'bg-violet-500'
+  const defaultOpen = Boolean(String(noteValue || '').trim())
+  const runMetrics = [
+    { label: 'Distance', value: activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-' },
+    { label: 'Pace', value: calendarPace(activity) },
+    { label: 'Time', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
+  ]
+  const strengthMetrics = [
+    { label: 'Workout', value: title },
+    { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
+    ...(activity.strain ? [{ label: 'Strain', value: String(activity.strain) }] : []),
+  ]
+  const metrics = isRun ? runMetrics : strengthMetrics
 
   return (
-    <div className={`rounded-[1.4rem] border p-4 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
-      <p className={`text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{title}</p>
-      <p className={`mt-1 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{subtitleParts.join(' · ')}</p>
-      <textarea
-        value={noteValue}
-        onChange={(event) => onNoteChange(activity.activity_key, event.target.value)}
-        placeholder="Add context for this workout: how it felt, what went well, pain, fatigue, lift quality, anything the coach should remember."
-        className={`mt-4 min-h-[7rem] w-full rounded-[1.1rem] border px-4 py-3 text-sm leading-6 outline-none transition ${isDark ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500' : 'border-neutral-200 bg-stone-50 text-neutral-900 placeholder:text-neutral-400'}`}
-      />
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-          Saved notes are reused the next time the model evaluates your training.
+    <details
+      open={defaultOpen}
+      className={`overflow-hidden rounded-[1.4rem] border ${isDark ? 'border-neutral-800 bg-neutral-900/90 text-white' : 'border-neutral-200 bg-white text-neutral-950'}`}
+    >
+      <summary className="list-none cursor-pointer">
+        <div className="flex items-center gap-5 px-4 py-5">
+          <div className={`h-16 w-1.5 rounded-full ${stripClass}`} />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0">
+                <p className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{formatDate(activity.day)}</p>
+                <p className={`mt-1 text-lg font-semibold ${isDark ? 'text-neutral-200' : 'text-neutral-900'}`}>{title}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 text-sm xl:grid-cols-3 xl:gap-6">
+                {metrics.map((item) => (
+                  <div key={`${activity.activity_key}-${item.label}`} className="whitespace-nowrap">
+                    <span className={`${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{item.label} </span>
+                    <span className={`font-semibold ${isDark ? 'text-neutral-200' : 'text-neutral-900'}`}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className={`text-xl ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>⌄</div>
+        </div>
+      </summary>
+
+      <div className={`border-t px-4 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+        <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          Workout Notes
         </p>
-        <button
-          type="button"
-          onClick={() => onSaveNote(activity.activity_key)}
-          disabled={saveState === 'saving'}
-          className={`rounded-full px-4 py-2 text-sm font-semibold ${isDark ? 'bg-white text-neutral-950 disabled:bg-neutral-700 disabled:text-neutral-400' : 'bg-neutral-950 text-white disabled:bg-neutral-200 disabled:text-neutral-500'}`}
-        >
-          {buttonLabel}
-        </button>
+        <textarea
+          value={noteValue}
+          onChange={(event) => onNoteChange(activity.activity_key, event.target.value)}
+          placeholder="How did this workout feel? Any observations, adjustments, soreness, or wins the coach should remember?"
+          className={`mt-4 min-h-[7rem] w-full rounded-[1.1rem] border px-4 py-3 text-sm leading-6 outline-none transition ${isDark ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500' : 'border-neutral-200 bg-stone-50 text-neutral-900 placeholder:text-neutral-400'}`}
+        />
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+            Saved notes are reused the next time the model evaluates your training.
+          </p>
+          <button
+            type="button"
+            onClick={() => onSaveNote(activity.activity_key)}
+            disabled={saveState === 'saving'}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${isDark ? 'bg-white text-neutral-950 disabled:bg-neutral-700 disabled:text-neutral-400' : 'bg-neutral-950 text-white disabled:bg-neutral-200 disabled:text-neutral-500'}`}
+          >
+            {buttonLabel}
+          </button>
+        </div>
       </div>
-    </div>
+    </details>
   )
 }
 

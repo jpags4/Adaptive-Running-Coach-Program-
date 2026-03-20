@@ -851,6 +851,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     live_preview = {"mode": "sample"}
     activity_feed = sample_activity_preview(runs)
     all_activities = list(activity_feed)
+    logged_activities: list[dict] = []
 
     try:
         live_strava = None
@@ -890,8 +891,9 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
                 runs = merged["runs"]
                 metrics = merged["metrics"]
                 all_activities = strava_activity_preview(live_strava.get("activities", [])) + whoop_workout_preview(live_whoop)
+                logged_activities = list(all_activities)
                 activity_feed = list(all_activities)
-                activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))[:20]
+                activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))
                 live_preview = {
                     "mode": "live",
                     "strava_runs_found": len(runs),
@@ -901,19 +903,22 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             if live_strava:
                 runs = strava_runs_to_model(live_strava.get("activities", [])) or runs
                 all_activities = strava_activity_preview(live_strava.get("activities", []))
+                logged_activities = list(all_activities)
                 activity_feed = list(all_activities)
             if live_whoop:
                 metrics = whoop_metrics_to_model(live_whoop) or metrics
                 whoop_activities = whoop_workout_preview(live_whoop)
                 if live_strava:
                     all_activities = all_activities + whoop_activities
+                    logged_activities = logged_activities + whoop_activities
                     activity_feed = activity_feed + whoop_activities
                 elif whoop_activities:
                     all_activities = whoop_activities
+                    logged_activities = whoop_activities
                     activity_feed = whoop_activities
 
             if live_strava or live_whoop:
-                activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))[:20]
+                activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))
                 live_preview = {
                     "mode": "mixed",
                     "strava_runs_found": len(runs) if live_strava else 0,
@@ -935,8 +940,9 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     recommendation_feedback = dict(subjective_feedback or {})
     activity_notes = load_activity_notes()
     full_activity_feed = _filter_calendar_activities(sorted(all_activities, key=lambda item: item.get("day", ""), reverse=True))
-    annotated_activity_feed = _attach_activity_notes(activity_feed, activity_notes)
-    annotated_activity_log = _activity_log_payload(_attach_activity_notes(full_activity_feed, activity_notes))
+    full_logged_activity_feed = _filter_calendar_activities(sorted(logged_activities, key=lambda item: item.get("day", ""), reverse=True))
+    annotated_activity_feed = _attach_activity_notes(full_activity_feed, activity_notes)
+    annotated_activity_log = _activity_log_payload(_attach_activity_notes(full_logged_activity_feed, activity_notes))
     recommendation_feedback.update(_recommendation_training_context(annotated_activity_feed, today_iso))
     notes_context = _activity_notes_context(annotated_activity_log)
     if notes_context:
