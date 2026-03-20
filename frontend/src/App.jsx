@@ -353,7 +353,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           Good morning, {name || 'Athlete'}
         </h1>
         <p className={`mt-3 text-2xl ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{formatDate(today)}</p>
-        <p className={`mt-10 text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+        <p className={`mt-12 text-xs font-medium uppercase tracking-[0.28em] ${isDark ? 'text-neutral-600' : 'text-neutral-400/90'}`}>
           Adaptive Running Coach
         </p>
       </div>
@@ -750,7 +750,15 @@ function CheckInModal({
   )
 }
 
-function TrainingCard({ recommendation, today, onUpdateCheckIn, theme = 'light' }) {
+function TrainingCard({
+  recommendation,
+  today,
+  onUpdateCheckIn,
+  recommendationOptions = [],
+  selectedRecommendationKey,
+  onSelectRecommendationOption,
+  theme = 'light',
+}) {
   if (!recommendation) return null
 
   const isDark = theme === 'dark'
@@ -764,22 +772,51 @@ function TrainingCard({ recommendation, today, onUpdateCheckIn, theme = 'light' 
   const liftBlocks = isLiftOffDay ? [] : formatLiftBlocks(recommendation.lift_guidance)
   const intensityLabel = simplifyIntensity(recommendation.intensity)
   const intensityClass = intensityColorClass(intensityLabel)
+  const hasOptions = Array.isArray(recommendationOptions) && recommendationOptions.length > 0
 
   return (
     <section className={`rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Today’s Training
-          </p>
-          <span className={`inline-flex items-center rounded-xl border px-4 py-2 text-sm font-semibold ${
-            isDark
-              ? 'border-violet-800/60 bg-violet-950/45 text-violet-200'
-              : 'border-violet-200 bg-violet-50 text-violet-700'
-          }`}>
-            {shortWorkoutTitle(recommendation.workout)}
-          </span>
+      <div className="flex flex-wrap items-start justify-between gap-5">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <p className={`text-xs font-medium uppercase tracking-[0.24em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              Today&apos;s Recommendation
+            </p>
+            <span className={`inline-flex items-center rounded-xl border px-4 py-2 text-sm font-semibold ${
+              isDark
+                ? 'border-violet-800/60 bg-violet-950/45 text-violet-200'
+                : 'border-violet-200 bg-violet-50 text-violet-700'
+            }`}>
+              {shortWorkoutTitle(recommendation.workout)}
+            </span>
+          </div>
+
+          {hasOptions ? (
+            <div className={`inline-flex w-fit flex-wrap gap-2 rounded-[1.2rem] border p-2 ${
+              isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white/80'
+            }`}>
+              {recommendationOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => onSelectRecommendationOption?.(option.key)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    selectedRecommendationKey === option.key
+                      ? isDark
+                        ? 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.22)]'
+                        : 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.18)]'
+                      : isDark
+                        ? 'bg-transparent text-neutral-300 hover:text-white'
+                        : 'bg-transparent text-neutral-600 hover:text-neutral-950'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
+
         <button
           type="button"
           onClick={onUpdateCheckIn}
@@ -2289,16 +2326,13 @@ export default function App() {
 
         {recommendationData ? (
           <div className="mt-2">
-            <RecommendationOptions
-              options={recommendationOptions}
-              selectedKey={selectedRecommendationKey}
-              onSelect={handleSelectRecommendationOption}
-              theme={theme}
-            />
             <TrainingCard
               recommendation={recommendationData}
               today={summaryData.today}
               onUpdateCheckIn={() => setIsCheckInModalOpen(true)}
+              recommendationOptions={recommendationOptions}
+              selectedRecommendationKey={selectedRecommendationKey}
+              onSelectRecommendationOption={handleSelectRecommendationOption}
               theme={theme}
             />
           </div>
