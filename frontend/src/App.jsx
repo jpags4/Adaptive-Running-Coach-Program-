@@ -1940,9 +1940,10 @@ function ActivityLogSection({
         </p>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ActivityLogColumn
-          title="Runs"
+      <div className="mt-10 space-y-8">
+        <ActivityLogList
+          title="Running"
+          countLabel={`${runs.length} workouts`}
           icon={<RouteIcon />}
           activities={runs}
           noteDrafts={noteDrafts}
@@ -1951,8 +1952,9 @@ function ActivityLogSection({
           onSaveNote={onSaveNote}
           theme={theme}
         />
-        <ActivityLogColumn
-          title="Weight Training"
+        <ActivityLogList
+          title="Weightlifting"
+          countLabel={`${strength.length} workouts`}
           icon={<TrendUpIcon />}
           activities={strength}
           noteDrafts={noteDrafts}
@@ -1966,8 +1968,9 @@ function ActivityLogSection({
   )
 }
 
-function ActivityLogColumn({
+function ActivityLogList({
   title,
+  countLabel,
   icon,
   activities,
   noteDrafts,
@@ -1979,14 +1982,12 @@ function ActivityLogColumn({
   const isDark = theme === 'dark'
 
   return (
-    <div className={`rounded-[1.9rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-stone-50'}`}>
+    <div>
       <div className="flex items-center gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'}`}>
-          {icon}
-        </div>
-        <div>
-          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{title}</p>
-          <p className={`mt-1 text-sm ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}>{activities.length} logged</p>
+        <div className={`${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>{icon}</div>
+        <div className="flex items-baseline gap-3">
+          <h3 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{title}</h3>
+          <p className={`text-sm ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>({countLabel})</p>
         </div>
       </div>
 
