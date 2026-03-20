@@ -150,6 +150,17 @@ function TargetIcon({ className = 'h-5 w-5' }) {
   )
 }
 
+function KeyIcon({ className = 'h-5 w-5' }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <circle cx="8" cy="15" r="3" />
+      <path d="M10.5 13.5L20 4" />
+      <path d="M17 4h3v3" />
+      <path d="M14 7l3 3" />
+    </svg>
+  )
+}
+
 function TrendUpIcon({ className = 'h-5 w-5' }) {
   return (
     <svg
@@ -957,7 +968,7 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            This Week
+            Current Week
           </p>
           <h2 className={`mt-3 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
             {weeklyFocus.phase || 'Weekly focus'}
@@ -977,10 +988,10 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-4">
-        <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} theme={theme} />
-        <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} theme={theme} />
-        <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} theme={theme} />
-        <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} theme={theme} />
+        <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
+        <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
+        <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
+        <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-3">
@@ -1007,11 +1018,16 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
   )
 }
 
-function FocusMetric({ label, value, theme = 'light' }) {
+function FocusMetric({ label, value, icon = null, theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
     <div className={`rounded-[1.5rem] border px-5 py-4 ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-stone-50'}`}>
-      <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{label}</p>
+      {icon ? (
+        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'}`}>
+          {icon}
+        </div>
+      ) : null}
+      <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'} ${icon ? 'mt-4' : ''}`}>{label}</p>
       <p className={`mt-2 text-base leading-7 ${isDark ? 'text-white' : 'text-neutral-950'}`}>{value || '-'}</p>
     </div>
   )
@@ -1184,10 +1200,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
-          <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Training Calendar
-          </p>
-          <h2 className={`mt-3 text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
+          <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
         </div>
 
         <div className={`flex items-center gap-5 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
@@ -1198,36 +1211,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
       </div>
 
       <div className="mt-10">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div>
-            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              Current Week
-            </p>
-            <h3 className={`mt-3 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-              {weeklyFocus.phase || 'This Week'}
-            </h3>
-            <p className={`mt-2 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-              {weeklyFocus.progression_note || weeklyFocus.race_connection}
-            </p>
-          </div>
-          <div className={`rounded-[1.4rem] border px-5 py-4 ${isDark ? 'border-violet-900/40 bg-violet-950/40' : 'border-violet-100 bg-violet-50/70'}`}>
-            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-violet-200' : 'text-violet-800'}`}>
-              Primary Adaptation
-            </p>
-            <p className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-              {capitalize(weeklyFocus.primary_adaptation || '') || 'TBD'}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
-          <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} theme={theme} />
-          <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} theme={theme} />
-          <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} theme={theme} />
-          <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} theme={theme} />
-        </div>
-
-        <div className={`mt-6 rounded-[1.8rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+        <div className={`rounded-[1.8rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -2306,6 +2290,8 @@ export default function App() {
           onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
           onOpenProfile={() => setIsProfileOpen(true)}
         />
+
+        <WeeklyFocusCard weeklyFocus={summaryData.weekly_focus} theme={theme} />
 
         <section className="grid grid-cols-1 gap-6 py-10 md:grid-cols-2 xl:grid-cols-3">
           <StatCard
