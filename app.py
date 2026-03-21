@@ -993,8 +993,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     recommendation_feedback.update(_recommendation_training_context(annotated_activity_feed, today_iso))
     notes_context = _activity_notes_context(annotated_activity_log, reference_day=today_iso)
     if notes_context:
-        existing_notes = str(recommendation_feedback.get("notes") or "").strip()
-        recommendation_feedback["notes"] = f"{existing_notes}\n\nRecent workout notes:\n{notes_context}".strip()
+        recommendation_feedback["recent_workout_notes"] = notes_context
 
     if include_recommendation:
         recommendation, recommendation_meta = llm_recommendation(

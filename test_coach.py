@@ -35,7 +35,7 @@ from integrations import (
     strava_runs_to_model,
     whoop_workout_preview,
 )
-from llm_coach import _apply_guardrails, _finalize_daily_adaptation, llm_recommendation
+from llm_coach import _apply_guardrails, _finalize_daily_adaptation, _safety_and_progression_context, llm_recommendation
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 
 
@@ -289,6 +289,25 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertIn("2026-03-20 Run", context)
         self.assertNotIn("2026-03-15", context)
         self.assertNotIn("felt sick", context.lower())
+
+    def test_old_workout_notes_do_not_become_todays_illness_checkin(self) -> None:
+        context = _safety_and_progression_context(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            "2026-03-21",
+            {
+                "physical_feeling": "fresh",
+                "mental_feeling": "sharp",
+                "notes": "",
+                "recent_workout_notes": "2026-03-18 Run (3.3 mi, 24 min): I felt sick and dizzy after this run.",
+            },
+        )
+
+        self.assertFalse(context["illness_noted_in_checkin"])
+        self.assertEqual(context["subjective_physical"], "fresh")
+        self.assertEqual(context["subjective_mental"], "sharp")
+        self.assertIn("felt sick", context["recent_workout_notes"].lower())
 
     @mock.patch.dict("os.environ", {}, clear=False)
     def test_llm_recommendation_reports_unavailable_without_key(self) -> None:
