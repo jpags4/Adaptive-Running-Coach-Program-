@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 
 from coach import (
     Recommendation,
+    WeeklyIntent,
     assess_recommendation_uncertainty,
     average_easy_pace,
     build_recommendation_options,
@@ -621,18 +622,38 @@ def _week_plan_key(day_value) -> str:
     return week_start.isoformat()
 
 
-def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict]]:
-    metric_dates = sorted(
-        (datetime.strptime(item.day, "%Y-%m-%d").date() for item in metrics if getattr(item, "day", "")),
-        reverse=True,
+def _week_start(day_value):
+    return day_value - timedelta(days=day_value.weekday())
+
+
+def _runs_through_day(runs, cutoff_day):
+    return [run for run in runs if datetime.strptime(run.day, "%Y-%m-%d").date() <= cutoff_day]
+
+
+def _metrics_through_day(metrics, cutoff_day):
+    return [metric for metric in metrics if datetime.strptime(metric.day, "%Y-%m-%d").date() <= cutoff_day]
+
+
+def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict:
+    week_start = _week_start(anchor)
+    prior_week_cutoff = week_start - timedelta(days=1)
+    historical_runs = _runs_through_day(runs, prior_week_cutoff)
+    historical_metrics = _metrics_through_day(metrics, prior_week_cutoff)
+    planning_runs = historical_runs or _runs_through_day(runs, anchor) or runs
+    planning_metrics = historical_metrics or _metrics_through_day(metrics, anchor) or metrics
+
+    weekly_intent = build_weekly_intent(profile, planning_runs, planning_metrics, today=week_start)
+    baseline_recommendation = coach_recommendation(
+        profile,
+        planning_runs,
+        planning_metrics,
+        today=week_start,
+        weekly_intent=weekly_intent,
     )
-    planning_day = next((day for day in metric_dates if day <= anchor), metric_dates[0] if metric_dates else anchor)
-    weekly_intent = build_weekly_intent(profile, runs, metrics, today=planning_day)
-    baseline_recommendation = coach_recommendation(profile, runs, metrics, today=planning_day, weekly_intent=weekly_intent)
     if baseline_recommendation.run_distance_miles <= 0:
-        easy_pace = average_easy_pace(runs)
+        easy_pace = average_easy_pace(planning_runs or runs)
         baseline_recommendation = Recommendation(
-            date=anchor.isoformat(),
+            date=week_start.isoformat(),
             workout="Baseline aerobic run",
             intensity="easy",
             duration_minutes=48,
@@ -653,16 +674,24 @@ def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict
             confidence="medium",
             weekly_intent=weekly_intent.to_dict(),
         )
-    end_day = (anchor - timedelta(days=anchor.weekday())) + timedelta(days=6)
-    plan = projected_calendar_entries(anchor, baseline_recommendation, end_day, profile)
-    return plan
+    end_day = week_start + timedelta(days=6)
+    plan = projected_calendar_entries(week_start, baseline_recommendation, end_day, profile)
+    monday_entries = _today_plan_entries(week_start, baseline_recommendation)
+    if monday_entries:
+        plan = {week_start.isoformat(): monday_entries, **plan}
+    return {
+        "week_start": week_start.isoformat(),
+        "planned_from_day": prior_week_cutoff.isoformat(),
+        "weekly_intent": weekly_intent.to_dict(),
+        "activities": plan,
+    }
 
 
-def _load_or_create_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict]]:
+def _load_or_create_weekly_plan(anchor, profile, runs, metrics) -> dict:
     plans = load_weekly_plans()
     key = _week_plan_key(anchor)
     plan = plans.get(key)
-    if isinstance(plan, dict) and plan:
+    if isinstance(plan, dict) and plan and isinstance(plan.get("activities"), dict) and isinstance(plan.get("weekly_intent"), dict):
         return plan
 
     plan = _generate_weekly_plan(anchor, profile, runs, metrics)
@@ -930,8 +959,9 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
 
     today_iso = safe_iso_today()
     today_date = datetime.strptime(today_iso, "%Y-%m-%d").date()
-    weekly_intent = build_weekly_intent(profile, runs, metrics, today=today_date)
-    weekly_plan = _load_or_create_weekly_plan(today_date, profile, runs, metrics)
+    weekly_plan_bundle = _load_or_create_weekly_plan(today_date, profile, runs, metrics)
+    weekly_intent = WeeklyIntent(**weekly_plan_bundle["weekly_intent"])
+    weekly_plan = weekly_plan_bundle["activities"]
     roadmap = build_training_roadmap(today_date, profile, runs, metrics)
     recommendation = None
     recommendation_options: list[dict] = []
@@ -995,6 +1025,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         "weekly_focus": weekly_intent.to_dict(),
         "training_roadmap": roadmap,
         "weekly_plan_key": _week_plan_key(today_date),
+        "weekly_plan_generated_from_day": weekly_plan_bundle.get("planned_from_day"),
         "activity_feed": annotated_activity_feed,
         "activity_log": annotated_activity_log,
         "activity_calendar": calendar_days(

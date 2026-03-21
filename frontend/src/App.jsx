@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
 
+const DARK_HOVER_GLOW = 'transition duration-200 hover:border-violet-500/55 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.18),0_0_34px_rgba(168,85,247,0.18)]'
+
+function darkGlow(enabled) {
+  return enabled ? DARK_HOVER_GLOW : ''
+}
+
 function ThemeToggle({ theme, onToggle }) {
   const isDark = theme === 'dark'
 
@@ -430,7 +436,7 @@ function ProfileSettingsPanel({
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/45" onClick={onClose} />
-      <aside className={`absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l px-6 py-6 shadow-2xl ${isDark ? 'border-neutral-800 bg-neutral-950 text-white' : 'border-neutral-200 bg-stone-50 text-neutral-950'}`}>
+      <aside className={`absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l px-6 py-6 shadow-2xl ${isDark ? `border-neutral-800 bg-neutral-950 text-white ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50 text-neutral-950'}`}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>Profile</p>
@@ -457,7 +463,7 @@ function ProfileSettingsPanel({
         ) : null}
 
         <div className="mt-8 space-y-8">
-          <section className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
             <h3 className="text-2xl font-semibold tracking-tight">Athlete</h3>
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               {renderInput('Name', 'athlete_name')}
@@ -467,7 +473,7 @@ function ProfileSettingsPanel({
             </div>
           </section>
 
-          <section className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
             <h3 className="text-2xl font-semibold tracking-tight">Training Preferences</h3>
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               {renderInput('Preferred Long Run Day', 'preferred_long_run_day')}
@@ -494,14 +500,14 @@ function ProfileSettingsPanel({
             </label>
           </section>
 
-          <section className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
             <h3 className="text-2xl font-semibold tracking-tight">Integrations</h3>
             <div className="mt-5 grid grid-cols-1 gap-5">
               {[
                 ['Strava', profileSettings.strava],
                 ['WHOOP', profileSettings.whoop],
               ].map(([label, provider]) => (
-                <div key={label} className={`rounded-[1.4rem] border p-4 ${isDark ? 'border-neutral-800 bg-neutral-950/90' : 'border-neutral-200 bg-stone-50'}`}>
+                <div key={label} className={`rounded-[1.4rem] border p-4 ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-lg font-semibold tracking-tight">{label}</p>
@@ -531,7 +537,7 @@ function ProfileSettingsPanel({
 
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               {renderInput('Public Base URL', 'public_base_url', 'text', 'https://your-app.onrender.com')}
-              <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-white'}`}>
+              <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
                 <input
                   type="checkbox"
                   checked={Boolean(profileSettings.allow_insecure_ssl)}
@@ -905,7 +911,7 @@ function TrainingCard({
   const hasOptions = Array.isArray(recommendationOptions) && recommendationOptions.length > 0
 
   return (
-    <section className={`rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`rounded-[2rem] border p-8 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-4">
@@ -969,7 +975,7 @@ function TrainingCard({
       </div>
 
       <div className="mt-10 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(22rem,1.1fr)]">
-        <div className={`self-start rounded-[1.75rem] border p-5 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-white'}`}>
+        <div className={`self-start rounded-[1.75rem] border p-5 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
           <div className={`flex items-center gap-2.5 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
               <RouteIcon />
@@ -1017,7 +1023,7 @@ function TrainingCard({
           </div>
         </div>
 
-        <div className={`rounded-[1.75rem] border p-6 ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-stone-50'}`}>
+        <div className={`rounded-[1.75rem] border p-6 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
           <div className="flex items-center gap-3">
             <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-violet-950/70 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
               <DumbbellIcon />
@@ -1055,7 +1061,7 @@ function TrainingCard({
         </div>
       </div>
 
-      <details className={`mt-8 rounded-2xl border ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-white'}`}>
+      <details className={`mt-8 rounded-2xl border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
         <summary className={`cursor-pointer list-none px-5 py-4 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
           Detailed Reasoning
         </summary>
@@ -1167,7 +1173,7 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
   const isDark = theme === 'dark'
 
   return (
-    <details open className={`group mt-8 overflow-hidden rounded-[2rem] border shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+    <details open className={`group mt-8 overflow-hidden rounded-[2rem] border shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
       <summary className="list-none cursor-pointer px-6 py-5 md:px-7">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -1203,7 +1209,7 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
 function FocusMetric({ label, value, icon = null, theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
-    <div className={`rounded-[1.5rem] border px-5 py-4 ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-stone-50'}`}>
+    <div className={`rounded-[1.5rem] border px-5 py-4 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
       {icon ? (
         <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'}`}>
           {icon}
@@ -1218,7 +1224,7 @@ function FocusMetric({ label, value, icon = null, theme = 'light' }) {
 function FocusList({ title, items = [], theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
-    <div className={`rounded-[1.5rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-stone-50'}`}>
+    <div className={`rounded-[1.5rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
       <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{title}</p>
       <ul className={`mt-3 space-y-3 text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
         {(items || []).filter(Boolean).map((item, index) => (
@@ -1308,7 +1314,7 @@ function TrainingRoadmap({ weeks, theme = 'light' }) {
   const isDark = theme === 'dark'
 
   return (
-    <section className={`mt-8 rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`mt-8 rounded-[2rem] border p-8 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -1325,7 +1331,7 @@ function TrainingRoadmap({ weeks, theme = 'light' }) {
 
       <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-2">
         {weeks.map((week) => (
-          <div key={week.week_start} className={`rounded-[1.6rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950/85' : 'border-neutral-200 bg-stone-50'}`}>
+          <div key={week.week_start} className={`rounded-[1.6rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950/85 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
@@ -1353,7 +1359,7 @@ function TrainingRoadmap({ weeks, theme = 'light' }) {
               <FocusMetric label="Key Session Shape" value={week.quality_session_target} theme={theme} />
             </div>
 
-            <div className={`mt-4 rounded-[1.35rem] border px-4 py-4 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
+            <div className={`mt-4 rounded-[1.35rem] border px-4 py-4 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
               <p className={`text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
                 {week.progression_note}
               </p>
@@ -1374,7 +1380,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
   const weekdayHeadings = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
   return (
-    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
@@ -1388,7 +1394,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
       </div>
 
       <div className="mt-10">
-        <details className={`group rounded-[1.6rem] border ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+        <details className={`group rounded-[1.6rem] border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
           <summary className="list-none cursor-pointer px-5 py-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -1422,7 +1428,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
           </div>
         </details>
 
-        <div className={`mt-6 rounded-[1.8rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+        <div className={`mt-6 rounded-[1.8rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -1460,7 +1466,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
                       ? isDark ? 'border-emerald-800/70 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
                       : week.certainty === 'light'
                         ? isDark ? 'border-amber-800/70 bg-amber-950/15' : 'border-amber-200 bg-amber-50/35'
-                        : isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white'
+                        : isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-white'
                   }`}
                 >
                   <summary className="cursor-pointer list-none px-5 py-5">
@@ -1576,10 +1582,10 @@ function CalendarCard({ card, theme = 'light' }) {
       className={`relative min-h-[15rem] overflow-hidden rounded-[1.3rem] border px-2.5 pb-3 pt-2.5 shadow-sm xl:min-h-[17rem] ${
         card.is_today
           ? isDark
-            ? 'border-2 border-white bg-neutral-900'
+            ? `border-2 border-white bg-neutral-900 ${darkGlow(true)}`
             : 'border-2 border-neutral-950 bg-white'
           : isDark
-            ? 'border-neutral-800 bg-neutral-900/90'
+            ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}`
             : 'border-neutral-200 bg-white'
       }`}
     >
@@ -1696,7 +1702,7 @@ function ReasonCard({ title, text, tone = 'neutral', icon = null, fullWidth = fa
   }
 
   return (
-    <div className={`rounded-[1.75rem] border p-5 ${toneMap[tone]} ${fullWidth ? 'w-full' : ''}`}>
+    <div className={`rounded-[1.75rem] border p-5 ${toneMap[tone]} ${fullWidth ? 'w-full' : ''} ${isDark ? darkGlow(true) : ''}`}>
       <div className="flex items-center gap-2.5">
         {icon ? (
           <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isDark ? 'bg-black/20 text-current' : 'bg-white/90 text-current'}`}>
@@ -2104,7 +2110,7 @@ function ActivityLogSection({
   const strength = Array.isArray(activityLog?.strength) ? activityLog.strength : []
 
   return (
-    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
       <div>
         <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
           Activity Log
@@ -2180,7 +2186,7 @@ function ActivityLogList({
             theme={theme}
           />
         )) : (
-          <p className={`rounded-[1.4rem] border px-4 py-4 text-sm leading-7 ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-400' : 'border-neutral-200 bg-white text-neutral-500'}`}>
+          <p className={`rounded-[1.4rem] border px-4 py-4 text-sm leading-7 ${isDark ? `border-neutral-800 bg-neutral-900 text-neutral-400 ${darkGlow(true)}` : 'border-neutral-200 bg-white text-neutral-500'}`}>
             No workouts synced here yet.
           </p>
         )}
@@ -2226,7 +2232,7 @@ function ActivityLogItem({
   const metrics = isRun ? runMetrics : strengthMetrics
 
   return (
-    <details className={`overflow-hidden rounded-[1.4rem] border ${isDark ? 'border-neutral-800 bg-neutral-900/90 text-white' : 'border-neutral-200 bg-white text-neutral-950'}`}>
+    <details className={`overflow-hidden rounded-[1.4rem] border ${isDark ? `border-neutral-800 bg-neutral-900/90 text-white ${darkGlow(true)}` : 'border-neutral-200 bg-white text-neutral-950'}`}>
       <summary className="list-none cursor-pointer">
         <div className="flex items-center gap-5 px-4 py-5">
           <div className={`h-16 w-1.5 rounded-full ${stripClass}`} />

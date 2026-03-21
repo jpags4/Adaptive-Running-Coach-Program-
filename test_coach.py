@@ -20,6 +20,7 @@ from storage import load_tokens
 from coach import (
     AthleteProfile,
     Recommendation,
+    Run,
     assess_recommendation_uncertainty,
     build_pace_model,
     build_recommendation_options,
@@ -412,13 +413,43 @@ class CoachRecommendationTests(unittest.TestCase):
 
         future_runs = [
             activity
-            for iso_day, activities in plan.items()
+            for iso_day, activities in plan["activities"].items()
             if iso_day > "2026-03-14"
             for activity in activities
             if activity.get("name") == "Run"
         ]
 
         self.assertTrue(future_runs)
+
+    def test_weekly_plan_is_established_from_prior_week_data(self) -> None:
+        midweek_runs = SAMPLE_RUNS + [
+            Run(
+                day="2026-03-18",
+                distance_miles=9.0,
+                duration_minutes=67,
+                effort="moderate",
+                workout_type="steady",
+                average_pace_min_per_mile=7.45,
+            )
+        ]
+
+        monday_plan = _generate_weekly_plan(
+            anchor=date(2026, 3, 16),
+            profile=SAMPLE_PROFILE,
+            runs=SAMPLE_RUNS,
+            metrics=SAMPLE_METRICS,
+        )
+        wednesday_plan = _generate_weekly_plan(
+            anchor=date(2026, 3, 18),
+            profile=SAMPLE_PROFILE,
+            runs=midweek_runs,
+            metrics=SAMPLE_METRICS,
+        )
+
+        self.assertEqual(monday_plan["planned_from_day"], "2026-03-15")
+        self.assertEqual(wednesday_plan["planned_from_day"], "2026-03-15")
+        self.assertEqual(monday_plan["weekly_intent"], wednesday_plan["weekly_intent"])
+        self.assertEqual(monday_plan["activities"], wednesday_plan["activities"])
 
     def test_calendar_days_only_returns_current_week(self) -> None:
         cards = calendar_days(
