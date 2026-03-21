@@ -20,6 +20,7 @@ from storage import load_tokens
 from coach import (
     AthleteProfile,
     Recommendation,
+    RecoveryMetrics,
     Run,
     assess_recommendation_uncertainty,
     build_pace_model,
@@ -859,6 +860,50 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertEqual(guarded.lift_focus, "Light durability work only")
         self.assertIn("short lift", guarded.lift_guidance.lower())
+
+    def test_llm_guardrails_do_not_force_rest_for_heavy_legs_when_recovery_is_good(self) -> None:
+        metrics = list(SAMPLE_METRICS)
+        metrics[-1] = RecoveryMetrics(
+            day=metrics[-1].day,
+            recovery_score=78,
+            sleep_hours=6.5,
+            resting_hr=53,
+            hrv_ms=metrics[-1].hrv_ms,
+            strain=metrics[-1].strain,
+        )
+        recommendation = Recommendation(
+            date=metrics[-1].day,
+            workout="Tempo session",
+            intensity="hard",
+            duration_minutes=55,
+            run_distance_miles=5.5,
+            run_pace_guidance="8:05-8:25/mi",
+            lift_focus="Posterior Chain",
+            lift_guidance="Romanian deadlifts 3x8",
+            recap=[],
+            explanation=[],
+            explanation_sections={
+                "overall": "",
+                "run": "",
+                "pace": "",
+                "lift": "",
+                "recovery": "",
+            },
+            warnings=[],
+            confidence="medium",
+        )
+
+        guarded = _apply_guardrails(
+            recommendation,
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            subjective_feedback={"physical_feeling": "heavy", "mental_feeling": "steady"},
+        )
+
+        self.assertNotEqual(guarded.workout, "Rest and recovery")
+        self.assertGreater(guarded.run_distance_miles, 0.0)
+        self.assertEqual(guarded.intensity, "easy")
 
     def test_planned_rest_day_is_not_mislabeled_as_readiness_failure(self) -> None:
         weekly_intent = build_weekly_intent(SAMPLE_PROFILE, SAMPLE_RUNS, SAMPLE_METRICS, today=date(2026, 3, 21))

@@ -231,21 +231,15 @@ def _apply_guardrails(
 
     physical = context["subjective_physical"]
     mental = context["subjective_mental"]
-    low_readiness = (
-        context["latest_recovery_score"] < 50
-        or context["latest_sleep_hours"] < 6.0
-        or (context["latest_sleep_hours"] < 6.5 and context["latest_recovery_score"] < 45)
-        or context["elevated_resting_hr"]
-        or physical in {"heavy", "sore"}
-        or mental in {"stressed", "drained"}
-    )
-    severe_block = (
-        physical == "sick"
-        or context["illness_noted_in_checkin"]
-        or context["latest_recovery_score"] < 35
-        or context["latest_sleep_hours"] < 5.5
-        or context["severely_elevated_resting_hr"]
-    )
+    low_recovery = context["latest_recovery_score"] < 45
+    poor_sleep = context["latest_sleep_hours"] < 6.0
+    elevated_rhr = context["elevated_resting_hr"]
+    soreness = physical in {"heavy", "sore", "injured"}
+    mental_drag = mental in {"stressed", "drained"}
+    illness = physical == "sick" or context["illness_noted_in_checkin"]
+
+    low_readiness = low_recovery or poor_sleep or elevated_rhr or soreness or mental_drag
+    severe_block = illness or (low_recovery and poor_sleep) or (soreness and mental_drag and elevated_rhr)
     no_quality = low_readiness or context["hard_runs_last_3_days"] >= 1 or context["high_strain_days_last_3_days"] >= 2
 
     if severe_block:
