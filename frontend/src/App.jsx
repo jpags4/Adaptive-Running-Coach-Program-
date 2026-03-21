@@ -899,10 +899,6 @@ function TrainingCard({
 
   const isDark = theme === 'dark'
   const sections = recommendation.explanation_sections ?? {}
-  const summary = stripReasonPrefix(
-    Array.isArray(recommendation.explanation) ? recommendation.explanation[0] : '',
-    'overall'
-  )
   const adaptation = recommendation.daily_adaptation ?? {}
   const isLiftOffDay = /lifting off-day|no lifting/i.test(String(recommendation.lift_focus || ''))
   const liftBlocks = isLiftOffDay ? [] : formatLiftBlocks(recommendation.lift_guidance)
@@ -926,31 +922,6 @@ function TrainingCard({
               {shortWorkoutTitle(recommendation.workout)}
             </span>
           </div>
-
-          {hasOptions ? (
-            <div className={`inline-flex w-fit flex-wrap gap-2 rounded-[1.2rem] border p-2 ${
-              isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white/80'
-            }`}>
-              {recommendationOptions.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => onSelectRecommendationOption?.(option.key)}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                    selectedRecommendationKey === option.key
-                      ? isDark
-                        ? 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.22)]'
-                        : 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.18)]'
-                      : isDark
-                        ? 'bg-transparent text-neutral-300 hover:text-white'
-                        : 'bg-transparent text-neutral-600 hover:text-neutral-950'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <button
@@ -966,18 +937,10 @@ function TrainingCard({
         </button>
       </div>
 
-      <div className={`mt-8 rounded-[1.75rem] border px-5 py-4 text-lg leading-8 ${
-        isDark
-          ? 'border-violet-900/40 bg-[linear-gradient(135deg,_rgba(109,40,217,0.22),_rgba(255,255,255,0.015))] text-neutral-100'
-          : 'border-violet-100 bg-[linear-gradient(135deg,_rgba(109,40,217,0.12),_rgba(0,0,0,0.015))] text-neutral-800'
-      }`}>
-        {summary || 'Your recommendation summary will appear here.'}
-      </div>
-
-      <div className="mt-10 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(22rem,1.1fr)]">
-        <div className={`self-start rounded-[1.75rem] border p-5 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+      <div className="mt-8 grid grid-cols-1 items-start gap-7 xl:grid-cols-[minmax(0,1.02fr)_minmax(24rem,1fr)]">
+        <div className={`self-start rounded-[1.9rem] border p-7 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
           <div className={`flex items-center gap-2.5 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
               <RouteIcon />
             </div>
             <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -985,12 +948,12 @@ function TrainingCard({
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
             <div className="min-w-0">
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                 Distance
               </p>
-              <p className={`mt-2 text-6xl font-semibold leading-none tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              <p className={`mt-3 text-7xl font-semibold leading-none tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {recommendation.run_distance_miles ?? '-'} mi
               </p>
             </div>
@@ -999,55 +962,55 @@ function TrainingCard({
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                 Pace
               </p>
-              <p className={`mt-2 text-3xl font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              <p className={`mt-3 text-4xl font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {paceHeadline(recommendation.run_pace_guidance)}
               </p>
-              <p className={`mt-2 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              <p className={`mt-3 text-base ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                 {paceSupportText(recommendation.run_pace_guidance)}
               </p>
             </div>
           </div>
 
-          <div className={`mt-6 border-t pt-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+          <div className={`mt-8 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
             <div className="min-w-0">
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                 Intensity
               </p>
-              <p className={`mt-2 break-words text-4xl font-semibold leading-tight tracking-tight ${intensityClass}`}>
+              <p className={`mt-3 break-words text-5xl font-semibold leading-tight tracking-tight ${intensityClass}`}>
                 {intensityLabel}
               </p>
-              <p className={`mt-2 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              <p className={`mt-3 text-base ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                 {recommendation.duration_minutes ? `${recommendation.duration_minutes} min total` : ''}
               </p>
             </div>
           </div>
         </div>
 
-        <div className={`rounded-[1.75rem] border p-6 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+        <div className={`rounded-[1.9rem] border p-7 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
           <div className="flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-violet-950/70 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
+            <div className={`flex h-11 w-11 items-center justify-center rounded-full ${isDark ? 'bg-violet-950/70 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
               <DumbbellIcon />
             </div>
             <div>
               <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                 Lift
               </p>
-              <h3 className={`mt-1 text-3xl font-semibold leading-[1.05] tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              <h3 className={`mt-2 text-5xl font-semibold leading-[1.02] tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {shortLiftTitle(recommendation.lift_focus)}
               </h3>
             </div>
           </div>
 
           {isLiftOffDay ? (
-            <p className={`mt-6 text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+            <p className={`mt-8 text-xl leading-9 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
               No lift today. Keep all training stress in the run so recovery stays on track.
             </p>
           ) : (
-            <div className="mt-6 space-y-3">
+            <div className="mt-8 space-y-4">
               {liftBlocks.map((block, index) => (
                 <div
                   key={`${block.name}-${index}`}
-                  className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-300' : 'border-neutral-200 bg-white text-neutral-700'}`}
+                  className={`rounded-2xl border px-5 py-4 text-base leading-7 ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-300' : 'border-neutral-200 bg-white text-neutral-700'}`}
                 >
                   <span className={`mr-3 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${isDark ? 'bg-violet-950/80 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
                     {index + 1}
@@ -1060,6 +1023,33 @@ function TrainingCard({
           )}
         </div>
       </div>
+
+      {hasOptions ? (
+        <div className="mt-8 flex justify-start">
+          <div className={`inline-flex w-fit flex-wrap gap-2 rounded-[1.2rem] border p-2 ${
+            isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white/80'
+          }`}>
+            {recommendationOptions.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => onSelectRecommendationOption?.(option.key)}
+                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+                  selectedRecommendationKey === option.key
+                    ? isDark
+                      ? 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.22)]'
+                      : 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.18)]'
+                    : isDark
+                      ? 'bg-transparent text-neutral-300 hover:text-white'
+                      : 'bg-transparent text-neutral-600 hover:text-neutral-950'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <details className={`mt-8 rounded-2xl border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
         <summary className={`cursor-pointer list-none px-5 py-4 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
