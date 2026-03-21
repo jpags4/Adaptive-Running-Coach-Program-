@@ -28,8 +28,6 @@ services:
         sync: false
       - key: GOAL_RACE_DATE
         sync: false
-      - key: WEEKLY_MILEAGE_TARGET
-        value: "28"
       - key: PREFERRED_LONG_RUN_DAY
         value: Sunday
       - key: ALLOW_INSECURE_SSL

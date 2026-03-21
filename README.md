@@ -133,7 +133,6 @@ The hosted app expects:
 - `WHOOP_CLIENT_SECRET`
 - `ATHLETE_NAME`
 - `GOAL_RACE_DATE`
-- `WEEKLY_MILEAGE_TARGET`
 - `PREFERRED_LONG_RUN_DAY`
 
 You can see an example in `.env.example`.

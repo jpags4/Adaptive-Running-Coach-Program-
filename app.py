@@ -84,7 +84,6 @@ def _profile_settings_payload(settings: dict, tokens: dict) -> dict:
     return {
         "athlete_name": _string_value(settings.get("athlete_name")),
         "goal_race_date": _string_value(settings.get("goal_race_date")),
-        "weekly_mileage_target": _string_value(settings.get("weekly_mileage_target"), "28") or "28",
         "preferred_long_run_day": _string_value(settings.get("preferred_long_run_day"), "Sunday") or "Sunday",
         "goal_half_marathon_time": _string_value(settings.get("goal_half_marathon_time")),
         "recent_race_result": _string_value(settings.get("recent_race_result")),
@@ -122,7 +121,6 @@ def _settings_from_json_payload(existing_settings: dict, payload: dict) -> dict:
     settings = dict(existing_settings)
     settings["athlete_name"] = _string_value(payload.get("athlete_name"), settings.get("athlete_name", ""))
     settings["goal_race_date"] = _string_value(payload.get("goal_race_date"), settings.get("goal_race_date", ""))
-    settings["weekly_mileage_target"] = _string_value(payload.get("weekly_mileage_target"), settings.get("weekly_mileage_target", "28")) or "28"
     settings["preferred_long_run_day"] = _string_value(payload.get("preferred_long_run_day"), settings.get("preferred_long_run_day", "Sunday")) or "Sunday"
     settings["goal_half_marathon_time"] = _string_value(payload.get("goal_half_marathon_time"), settings.get("goal_half_marathon_time", ""))
     settings["recent_race_result"] = _string_value(payload.get("recent_race_result"), settings.get("recent_race_result", ""))
@@ -540,9 +538,11 @@ def projected_calendar_entries(anchor, recommendation, end_day, profile) -> dict
     run_blueprints = _run_blueprints(long_run_day, recommendation, weekly_intent=weekly_intent)
     current_week_start = anchor - timedelta(days=anchor.weekday())
     if weekly_intent:
-        base_weekly_target = max(20.0, float(weekly_intent.get("mileage_target") or getattr(profile, "weekly_mileage_target", 0) or 0))
+        base_weekly_target = max(20.0, float(weekly_intent.get("mileage_target") or 0))
     else:
-        base_weekly_target = max(30.0, float(getattr(profile, "weekly_mileage_target", 0) or 0))
+        long_run_anchor = float(getattr(profile, "max_comfortable_long_run_miles", 0) or 0)
+        desired_runs = max(3, int(getattr(profile, "desired_runs_per_week", 5) or 5))
+        base_weekly_target = max(30.0, recommendation.run_distance_miles * 6.0, long_run_anchor * 3.0, desired_runs * 4.5)
     projection_date = anchor + timedelta(days=1)
 
     while projection_date <= end_day:
@@ -636,7 +636,7 @@ def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict[str, list[dict
             workout="Baseline aerobic run",
             intensity="easy",
             duration_minutes=48,
-            run_distance_miles=round(max(4.0, min(6.0, float(getattr(profile, "weekly_mileage_target", 28) or 28) * 0.18)), 1),
+            run_distance_miles=round(max(4.0, min(6.0, float(getattr(weekly_intent, "mileage_target", 24) or 24) * 0.18)), 1),
             run_pace_guidance=pace_window(easy_pace, slower=0.7),
             lift_focus="Single-Leg Strength + Core",
             lift_guidance="Baseline weekly structure only.",
@@ -687,9 +687,9 @@ def build_training_roadmap(anchor, profile, runs, metrics, weeks: int = 4) -> li
         elif intent.week_type == "absorb":
             projected_miles = round(max(16.0, projected_miles * 0.9), 1)
         elif intent.week_type == "build":
-            projected_miles = round(min(float(profile.weekly_mileage_target), projected_miles * 1.06), 1)
+            projected_miles = round(max(projected_miles * 1.04, float(intent.mileage_target or projected_miles)), 1)
         else:
-            projected_miles = round(min(float(profile.weekly_mileage_target), projected_miles * 1.03), 1)
+            projected_miles = round(max(projected_miles * 0.99, float(intent.mileage_target or projected_miles)), 1)
         hard_days = 1 if intent.primary_adaptation in {"threshold", "race-specific stamina"} else 0
         rest_days = 3 if intent.week_type in {"absorb", "taper"} else 2
         summary = (
@@ -968,7 +968,6 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         "profile": {
             "name": profile.name,
             "goal_race_date": profile.goal_race_date,
-            "weekly_mileage_target": profile.weekly_mileage_target,
             "preferred_long_run_day": profile.preferred_long_run_day,
             "goal_half_marathon_time": profile.goal_half_marathon_time,
             "recent_race_result": profile.recent_race_result,
@@ -1105,9 +1104,6 @@ def setup_form(settings: dict, message: str = "") -> str:
           </label>
           <label>Goal race date (example: 2026-05-10)
             <input name="goal_race_date" value="{escape(settings.get("goal_race_date", ""))}" />
-          </label>
-          <label>Weekly mileage target
-            <input name="weekly_mileage_target" value="{escape(str(settings.get("weekly_mileage_target", "28")))}" />
           </label>
           <label>Preferred long run day
             <input name="preferred_long_run_day" value="{escape(settings.get("preferred_long_run_day", "Sunday"))}" />
@@ -1356,7 +1352,6 @@ class CoachHandler(BaseHTTPRequestHandler):
             {
                 "athlete_name": form.get("athlete_name", ""),
                 "goal_race_date": form.get("goal_race_date", ""),
-                "weekly_mileage_target": form.get("weekly_mileage_target", "28"),
                 "preferred_long_run_day": form.get("preferred_long_run_day", "Sunday"),
                 "goal_half_marathon_time": form.get("goal_half_marathon_time", ""),
                 "recent_race_result": form.get("recent_race_result", ""),

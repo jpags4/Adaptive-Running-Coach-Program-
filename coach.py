@@ -455,6 +455,23 @@ def recent_longest_run(runs: list[Run], days: int = 28) -> float:
     return round(max(eligible), 1) if eligible else 0.0
 
 
+def adaptive_weekly_reference(profile: AthleteProfile, runs: list[Run]) -> float:
+    seven_day_miles = recent_mileage(runs, days=7)
+    longest_recent_run = recent_longest_run(runs, days=28)
+    desired_runs = max(3, int(profile.desired_runs_per_week or 5))
+
+    if seven_day_miles > 0:
+        return round(max(16.0, seven_day_miles), 1)
+
+    if longest_recent_run > 0:
+        return round(max(16.0, longest_recent_run * max(2.8, min(4.2, desired_runs * 0.72))), 1)
+
+    if profile.max_comfortable_long_run_miles:
+        return round(max(16.0, float(profile.max_comfortable_long_run_miles) * 3.2), 1)
+
+    return round(max(16.0, desired_runs * 5.0), 1)
+
+
 def _training_phase(days_to_race: int, week_type: str) -> str:
     if days_to_race <= 14:
         return "Race taper"
@@ -544,6 +561,7 @@ def build_weekly_intent(
     future_weeks = max(0, (week_start - freshest_week_start).days // 7)
     seven_day_miles = recent_mileage(runs, days=7)
     longest_recent_run = recent_longest_run(runs, days=28)
+    adaptive_target = adaptive_weekly_reference(profile, runs)
     pace_model = build_pace_model(profile, runs)
     days_to_race = days_until_race(profile.goal_race_date, today)
 
@@ -553,7 +571,7 @@ def build_weekly_intent(
         and not stale_metrics
         and (latest_metric.recovery_score < 50 or latest_metric.sleep_hours < 6.2 or latest_metric.strain >= 15)
     )
-    build_trigger = seven_day_miles >= max(8.0, profile.weekly_mileage_target * 0.8)
+    build_trigger = seven_day_miles >= max(8.0, adaptive_target * 0.8)
     if days_to_race <= 14:
         week_type = "taper"
     elif low_recovery:
@@ -569,17 +587,17 @@ def build_weekly_intent(
     primary_adaptation = _primary_adaptation(phase, profile.preferred_adaptation_emphasis, week_type)
 
     if week_type == "taper":
-        mileage_target = round(max(12.0, min(profile.weekly_mileage_target * 0.72, seven_day_miles * 0.85 or profile.weekly_mileage_target * 0.72)), 1)
+        mileage_target = round(max(12.0, min(adaptive_target * 0.72, seven_day_miles * 0.85 or adaptive_target * 0.72)), 1)
     elif week_type == "absorb":
-        mileage_target = round(max(14.0, min(profile.weekly_mileage_target * 0.9, max(seven_day_miles * 0.9, profile.weekly_mileage_target * 0.75))), 1)
+        mileage_target = round(max(14.0, min(adaptive_target * 0.9, max(seven_day_miles * 0.9, adaptive_target * 0.75))), 1)
     elif week_type == "build":
-        mileage_target = round(min(profile.weekly_mileage_target, max(seven_day_miles * 1.05, profile.weekly_mileage_target * 0.94)), 1)
+        mileage_target = round(max(adaptive_target * 0.94, seven_day_miles * 1.05 or adaptive_target * 0.94), 1)
     else:
-        mileage_target = round(min(profile.weekly_mileage_target, max(seven_day_miles, profile.weekly_mileage_target * 0.88)), 1)
+        mileage_target = round(max(seven_day_miles, adaptive_target * 0.88), 1)
 
     long_run_cap = profile.max_comfortable_long_run_miles or max(8.0, mileage_target * 0.35)
-    if profile.max_comfortable_long_run_miles and long_run_cap < mileage_target * 0.25:
-        mileage_target = round(min(mileage_target, max(16.0, long_run_cap * 3.2)), 1)
+    if profile.max_comfortable_long_run_miles and long_run_cap < mileage_target * 0.32:
+        mileage_target = round(min(mileage_target, max(16.0, long_run_cap * 3.25)), 1)
 
     if week_type == "taper":
         long_run_target_miles = max(6.0, min(long_run_cap, longest_recent_run * 0.8 if longest_recent_run else 8.0))
@@ -996,7 +1014,10 @@ def build_recommendation_options(
     delta_cap = round(min(0.8, max(0.4, planned_distance * 0.12 if planned_distance else 0.4)), 1)
     strength_room = completed_strength < max(1, profile.desired_strength_frequency)
     allow_support_lift = strength_room and strength_recently == 0 and not strength_today and readiness_status != "not supported"
-    easy_day_distance_cap = max(3.5, profile.weekly_mileage_target * 0.16)
+    weekly_reference = float((recommendation.weekly_intent or {}).get("mileage_target") or 0.0)
+    if weekly_reference <= 0:
+        weekly_reference = max(recommendation.run_distance_miles * 4.5, 20.0)
+    easy_day_distance_cap = max(3.5, weekly_reference * 0.16)
 
     if readiness_status == "not supported":
         conservative = recommendation_from_dict(base_payload)

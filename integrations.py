@@ -600,7 +600,9 @@ def _safe_float(value, default: float) -> float:
 
 def profile_from_settings(settings: dict) -> AthleteProfile:
     goal_race_date = settings.get("goal_race_date") or (date.today().replace(month=5, day=10).isoformat())
-    weekly_target = _safe_int(settings.get("weekly_mileage_target") or 28, 28)
+    desired_runs = _safe_int(settings.get("desired_runs_per_week") or 5, 5)
+    comfortable_long_run = _safe_float(settings.get("max_comfortable_long_run_miles") or 0.0, 0.0)
+    weekly_target = int(round(max(comfortable_long_run * 3.0 if comfortable_long_run else 0.0, desired_runs * 5.0, 20.0)))
     return AthleteProfile(
         name=settings.get("athlete_name") or "Runner",
         goal_race_date=goal_race_date,

@@ -177,7 +177,6 @@ def load_settings() -> dict[str, Any]:
             "allow_insecure_ssl": False,
             "app_user_agent": "AdaptiveRunningCoach/0.1 (+https://adaptive-running-coach-program.onrender.com)",
             "goal_race_date": "",
-            "weekly_mileage_target": "28",
             "preferred_long_run_day": "Sunday",
             "athlete_name": "",
             "goal_half_marathon_time": "",
@@ -205,10 +204,6 @@ def load_settings() -> dict[str, Any]:
 
     settings["athlete_name"] = os.environ.get("ATHLETE_NAME", settings.get("athlete_name", "")).strip()
     settings["goal_race_date"] = os.environ.get("GOAL_RACE_DATE", settings.get("goal_race_date", "")).strip()
-    settings["weekly_mileage_target"] = os.environ.get(
-        "WEEKLY_MILEAGE_TARGET",
-        str(settings.get("weekly_mileage_target", "28")),
-    ).strip()
     settings["preferred_long_run_day"] = os.environ.get(
         "PREFERRED_LONG_RUN_DAY",
         settings.get("preferred_long_run_day", "Sunday"),

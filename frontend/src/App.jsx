@@ -281,7 +281,7 @@ function DashboardLoading({ theme = 'light' }) {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_rgba(110,64,201,0.22),_transparent_34%),radial-gradient(circle_at_50%_42%,_rgba(91,33,182,0.16),_transparent_32%),linear-gradient(180deg,_#26193c_0%,_#1a1523_24%,_#221734_48%,_#18141f_72%,_#211736_100%)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(72,28,135,0.42),_transparent_34%),radial-gradient(circle_at_50%_32%,_rgba(88,28,135,0.24),_transparent_28%),radial-gradient(circle_at_50%_72%,_rgba(56,26,120,0.18),_transparent_36%),linear-gradient(180deg,_#17131f_0%,_#1c1530_18%,_#241942_38%,_#191420_60%,_#241942_82%,_#15121b_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
@@ -332,7 +332,7 @@ function ErrorScreen({ message, theme = 'light' }) {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_rgba(110,64,201,0.22),_transparent_34%),radial-gradient(circle_at_50%_42%,_rgba(91,33,182,0.16),_transparent_32%),linear-gradient(180deg,_#26193c_0%,_#1a1523_24%,_#221734_48%,_#18141f_72%,_#211736_100%)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(72,28,135,0.42),_transparent_34%),radial-gradient(circle_at_50%_32%,_rgba(88,28,135,0.24),_transparent_28%),radial-gradient(circle_at_50%_72%,_rgba(56,26,120,0.18),_transparent_36%),linear-gradient(180deg,_#17131f_0%,_#1c1530_18%,_#241942_38%,_#191420_60%,_#241942_82%,_#15121b_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
@@ -355,7 +355,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const isDark = theme === 'dark'
   const greeting = timeOfDayGreeting()
   return (
-    <header className={`flex items-start justify-between gap-8 border-b pb-8 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+    <header className="flex items-start justify-between gap-8 pb-6">
       <div>
         <h1 className={`text-6xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
           {greeting}, {name || 'Athlete'}
@@ -470,12 +470,16 @@ function ProfileSettingsPanel({
           <section className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-white'}`}>
             <h3 className="text-2xl font-semibold tracking-tight">Training Preferences</h3>
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-              {renderInput('Weekly Mileage Target', 'weekly_mileage_target')}
               {renderInput('Preferred Long Run Day', 'preferred_long_run_day')}
               {renderInput('Max Comfortable Long Run', 'max_comfortable_long_run_miles')}
               {renderInput('Desired Runs Per Week', 'desired_runs_per_week')}
               {renderInput('Strength Sessions Per Week', 'desired_strength_frequency')}
               {renderInput('Adaptation Emphasis', 'preferred_adaptation_emphasis', 'text', 'threshold')}
+            </div>
+            <div className={`mt-4 rounded-2xl border px-4 py-4 text-sm leading-7 ${
+              isDark ? 'border-violet-900/50 bg-violet-950/30 text-violet-100' : 'border-violet-200 bg-violet-50 text-violet-900'
+            }`}>
+              Weekly mileage is adaptive. The coach now adjusts it week to week based on your recent training, recovery, and progression, instead of treating it as a fixed setting.
             </div>
             <label className="mt-4 block">
               <span className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>Injury / Niggle Flags</span>
@@ -575,7 +579,13 @@ function StatCard({
   const resolvedAccent =
     isDark && !/(emerald|amber|red|sky|violet|white)/.test(accent) ? 'text-white' : accent
   return (
-    <div className={`min-h-[14rem] rounded-[1.9rem] border px-6 py-6 shadow-sm ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/90'}`}>
+    <div
+      className={`min-h-[14rem] rounded-[1.9rem] border px-6 py-6 shadow-sm transition duration-200 ${
+        isDark
+          ? 'border-neutral-800 bg-neutral-900/95 hover:border-violet-500/55 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.18),0_0_34px_rgba(168,85,247,0.18)]'
+          : 'border-neutral-200 bg-white/90 hover:border-violet-300 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.4),0_0_24px_rgba(196,181,253,0.26)]'
+      }`}
+    >
       <div className={`flex items-start gap-3 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
         <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${iconTone}`}>
           {icon}
@@ -616,13 +626,13 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
   if (hasRecommendation) return null
 
   return (
-    <section className="py-8">
+    <section className="py-5">
       <div className="mx-auto flex max-w-5xl justify-center">
         <button
           type="button"
           onClick={onOpen}
           disabled={isGenerating}
-          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-6 text-center text-2xl font-semibold tracking-tight transition duration-200 ${
+          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-5 text-center text-2xl font-semibold tracking-tight transition duration-200 ${
             isGenerating
               ? isDark
                 ? 'cursor-not-allowed border-neutral-700 bg-neutral-900 text-neutral-400 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]'
@@ -2466,8 +2476,9 @@ export default function App() {
   const summary = summaryData.summary ?? {}
   const previousRun = summary.previous_run ?? {}
   const currentDayStatus = summary.current_day_status ?? null
+  const adaptiveWeeklyTarget = Number(summaryData.weekly_focus?.mileage_target || 0)
   const recoveryAccent = whoopRecoveryColor(summary.latest_recovery)
-  const loadAccent = loadColor(summary.recent_mileage, profile.weekly_mileage_target)
+  const loadAccent = loadColor(summary.recent_mileage, adaptiveWeeklyTarget)
   const handleSelectRecommendationOption = (key) => {
     setSelectedRecommendationKey(key)
     const option = recommendationOptions.find((item) => item.key === key)
@@ -2489,7 +2500,7 @@ export default function App() {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_rgba(110,64,201,0.22),_transparent_34%),radial-gradient(circle_at_50%_42%,_rgba(91,33,182,0.16),_transparent_32%),linear-gradient(180deg,_#26193c_0%,_#1a1523_24%,_#221734_48%,_#18141f_72%,_#211736_100%)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(72,28,135,0.42),_transparent_34%),radial-gradient(circle_at_50%_32%,_rgba(88,28,135,0.24),_transparent_28%),radial-gradient(circle_at_50%_72%,_rgba(56,26,120,0.18),_transparent_36%),linear-gradient(180deg,_#17131f_0%,_#1c1530_18%,_#241942_38%,_#191420_60%,_#241942_82%,_#15121b_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
@@ -2606,13 +2617,13 @@ export default function App() {
             icon={<Icon path="M5 19h4V9H5zm5 0h4V5h-4zm5 0h4v-7h-4z" />}
             label="Weekly Mileage Progress"
             value={
-              summary.recent_mileage && profile.weekly_mileage_target
-                ? `${summary.recent_mileage.toFixed(1)} / ${profile.weekly_mileage_target} mi`
+              summary.recent_mileage && adaptiveWeeklyTarget
+                ? `${summary.recent_mileage.toFixed(1)} / ${adaptiveWeeklyTarget.toFixed(1)} mi`
                 : summary.recent_mileage
                   ? `${summary.recent_mileage.toFixed(1)} mi`
                   : '-'
             }
-            subtext="Mileage completed toward your weekly target"
+            subtext="Mileage completed toward this week's adaptive target"
             accent={loadAccent}
             iconTone={
               theme === 'dark'

@@ -9,6 +9,7 @@ from coach import (
     Recommendation,
     RecoveryMetrics,
     Run,
+    adaptive_weekly_reference,
     average_easy_pace,
     build_pace_model,
     coach_recommendation,
@@ -148,6 +149,7 @@ def _safety_and_progression_context(
     hard_runs_last_3 = _recent_hard_run_count(runs, today_str, days=3)
     high_strain_days_last_3 = _recent_high_strain_days(metrics, threshold=12.0, days=3)
     easy_pace = average_easy_pace(runs)
+    adaptive_target = adaptive_weekly_reference(profile, runs)
     feedback = subjective_feedback or {}
     physical = str(feedback.get("physical_feeling") or "").strip().lower()
     mental = str(feedback.get("mental_feeling") or "").strip().lower()
@@ -189,7 +191,7 @@ def _safety_and_progression_context(
         "elevated_resting_hr": elevated_rhr,
         "severely_elevated_resting_hr": severe_elevated_rhr,
         "recent_mileage_7_day": recent_miles,
-        "weekly_mileage_target": profile.weekly_mileage_target,
+        "adaptive_weekly_target": adaptive_target,
         "recent_longest_run_21_day": longest_recent_run,
         "hard_runs_last_3_days": hard_runs_last_3,
         "high_strain_days_last_3_days": high_strain_days_last_3,
@@ -222,6 +224,7 @@ def _apply_guardrails(
     subjective_feedback: dict | None = None,
 ) -> Recommendation:
     context = _safety_and_progression_context(profile, runs, metrics, recommendation.date, subjective_feedback)
+    weekly_reference = max(float(context.get("adaptive_weekly_target") or 0.0), 20.0)
     warnings = list(recommendation.warnings)
     explanation = list(recommendation.explanation)
     sections = dict(recommendation.explanation_sections)
@@ -274,7 +277,7 @@ def _apply_guardrails(
         recommendation.workout = "Easy aerobic run"
         recommendation.intensity = "easy"
         recommendation.duration_minutes = min(recommendation.duration_minutes, 45)
-        recommendation.run_distance_miles = round(min(recommendation.run_distance_miles, max(3.0, profile.weekly_mileage_target * 0.16)), 1)
+        recommendation.run_distance_miles = round(min(recommendation.run_distance_miles, max(3.0, weekly_reference * 0.16)), 1)
         recommendation.run_pace_guidance = pace_window(easy_pace, slower=0.8)
         recommendation.lift_focus = "Light durability work only"
         recommendation.lift_guidance = "Keep strength short and light today: 2-3 simple exercises, no grinding reps, and skip it entirely if the legs feel worse during warm-up."
@@ -288,7 +291,7 @@ def _apply_guardrails(
         low_readiness
         or context["hard_runs_last_3_days"] >= 1
         or context["high_strain_days_last_3_days"] >= 2
-        or recommendation.run_distance_miles >= profile.weekly_mileage_target * 0.22
+        or recommendation.run_distance_miles >= weekly_reference * 0.22
         or _intensity_rank(recommendation.intensity) >= 2
     )
     if lift_off_day:
@@ -298,7 +301,7 @@ def _apply_guardrails(
     else:
         strength_room = context["weekly_strength_sessions_completed"] < max(1, profile.desired_strength_frequency)
         no_recent_strength_stack = context["strength_sessions_last_2_days"] == 0 and not context["has_strength_activity_today"]
-        easy_day = _intensity_rank(recommendation.intensity) <= 1 and recommendation.run_distance_miles <= max(3.5, profile.weekly_mileage_target * 0.16)
+        easy_day = _intensity_rank(recommendation.intensity) <= 1 and recommendation.run_distance_miles <= max(3.5, weekly_reference * 0.16)
 
         if strength_room and no_recent_strength_stack and easy_day:
             if recommendation.run_distance_miles > 0:
@@ -319,8 +322,8 @@ def _apply_guardrails(
                 )
 
     longest_recent_run = context["recent_longest_run_21_day"]
-    target_cap = profile.weekly_mileage_target * 0.35
-    recent_cap = longest_recent_run * 1.10 if longest_recent_run else max(4.0, profile.weekly_mileage_target * 0.18)
+    target_cap = weekly_reference * 0.35
+    recent_cap = longest_recent_run * 1.10 if longest_recent_run else max(4.0, weekly_reference * 0.18)
     max_safe_distance = round(max(3.0, min(target_cap, recent_cap)), 1)
 
     if recommendation.run_distance_miles > max_safe_distance:
@@ -509,7 +512,7 @@ def llm_recommendation(
             "name": profile.name,
             "goal_race_date": profile.goal_race_date,
             "preferred_long_run_day": profile.preferred_long_run_day,
-            "weekly_mileage_target": profile.weekly_mileage_target,
+            "adaptive_weekly_target": safety_context.get("adaptive_weekly_target"),
         },
         "recent_runs": _recent_runs_payload(runs),
         "recent_recovery_metrics": _recent_metrics_payload(metrics),
