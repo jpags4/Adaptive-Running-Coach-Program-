@@ -345,6 +345,82 @@ def _apply_guardrails(
     return recommendation
 
 
+def _finalize_daily_adaptation(
+    recommendation: Recommendation,
+    profile: AthleteProfile,
+    runs: list[Run],
+    metrics: list[RecoveryMetrics],
+    planned: dict[str, str | float],
+    weekly_intent,
+    subjective_feedback: dict | None = None,
+) -> Recommendation:
+    context = _safety_and_progression_context(profile, runs, metrics, recommendation.date, subjective_feedback)
+    physical = context["subjective_physical"]
+    mental = context["subjective_mental"]
+    severe_block = (
+        physical == "sick"
+        or context["illness_noted_in_checkin"]
+        or context["latest_recovery_score"] < 35
+        or context["latest_sleep_hours"] < 5.5
+        or context["severely_elevated_resting_hr"]
+    )
+    planned_workout = str(planned["workout"])
+    planned_distance = float(planned["distance_miles"])
+    planned_rest_slot = planned_distance <= 0 or "rest" in planned_workout.lower() or "mobility" in planned_workout.lower()
+    actual_rest_slot = recommendation.run_distance_miles <= 0 and "rest" in str(recommendation.workout or "").lower()
+
+    if planned_rest_slot and actual_rest_slot and not severe_block:
+        recommendation.workout = planned_workout
+        recommendation.intensity = "rest"
+        recommendation.run_distance_miles = 0.0
+        recommendation.duration_minutes = 0
+        recommendation.run_pace_guidance = "Rest day"
+        recommendation.lift_focus = "No lifting"
+        recommendation.lift_guidance = "No lift today. Keep the day light so you stay fresher for the next key session."
+        recommendation.explanation = [
+            item for item in recommendation.explanation if not str(item).startswith("Guardrail:")
+        ]
+        recommendation.warnings = [
+            item for item in recommendation.warnings if "Guardrail triggered" not in str(item)
+        ]
+        recommendation.explanation_sections = {
+            **recommendation.explanation_sections,
+            "overall": "Today stays light because the weekly structure is protecting recovery and the next important run, not because your readiness is unusually poor.",
+            "run": "This is a planned low-stress slot in the week, so the best call is rest or optional light mobility rather than forcing extra mileage.",
+            "pace": "No pace target today because the plan intentionally keeps the day easy and low-cost.",
+            "lift": recommendation.lift_guidance,
+            "recovery": (
+                f"Recovery is {context['latest_recovery_score']}% with {context['latest_sleep_hours']:.1f} hours of sleep, "
+                "which is compatible with training, but the weekly plan still benefits from a lighter day here."
+            ),
+        }
+        readiness_status = "supported"
+        adjustment_reason = "This is a planned low-stress day that helps preserve the week's structure and protect the next key session."
+    else:
+        readiness_status = "supported"
+        if severe_block or recommendation.workout == "Rest and recovery":
+            readiness_status = "not supported"
+        elif recommendation.workout != recommendation.planned_workout:
+            readiness_status = "partly supported"
+
+        if readiness_status == "supported":
+            adjustment_reason = recommendation.explanation_sections.get("overall") or "Recovery and subjective signals support the planned work."
+        elif readiness_status == "partly supported":
+            adjustment_reason = recommendation.explanation_sections.get("overall") or "The original plan was scaled down to match today's readiness."
+        else:
+            adjustment_reason = recommendation.explanation_sections.get("overall") or "Training stress is not well supported today."
+
+    recommendation.daily_adaptation = {
+        "planned_session": recommendation.planned_workout or planned_workout,
+        "readiness_status": readiness_status,
+        "adjustment_reason": adjustment_reason,
+        "adjusted_session": recommendation.workout,
+        "weekly_goal_remains": _weekly_goal_phrase(weekly_intent),
+        "reschedule_suggestion": _reschedule_guidance(weekly_intent, readiness_status),
+    }
+    return recommendation
+
+
 def _recommendation_schema() -> dict:
     return {
         "type": "object",
@@ -610,19 +686,15 @@ def llm_recommendation(
             metrics,
             subjective_feedback=subjective_feedback,
         )
-        readiness_status = "supported"
-        if recommendation.workout == "Rest and recovery":
-            readiness_status = "not supported"
-        elif recommendation.workout != recommendation.planned_workout:
-            readiness_status = "partly supported"
-        recommendation.daily_adaptation = {
-            "planned_session": recommendation.planned_workout or str(planned["workout"]),
-            "readiness_status": readiness_status,
-            "adjustment_reason": recommendation.explanation_sections.get("overall") or "",
-            "adjusted_session": recommendation.workout,
-            "weekly_goal_remains": _weekly_goal_phrase(weekly_intent),
-            "reschedule_suggestion": _reschedule_guidance(weekly_intent, readiness_status),
-        }
+        recommendation = _finalize_daily_adaptation(
+            recommendation,
+            profile,
+            runs,
+            metrics,
+            planned,
+            weekly_intent,
+            subjective_feedback=subjective_feedback,
+        )
         return recommendation, {"source": "openai", "model": model, "reason": None}
     except Exception as exc:
         return _model_unavailable_recommendation(

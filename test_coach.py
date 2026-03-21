@@ -34,7 +34,7 @@ from integrations import (
     strava_runs_to_model,
     whoop_workout_preview,
 )
-from llm_coach import _apply_guardrails, llm_recommendation
+from llm_coach import _apply_guardrails, _finalize_daily_adaptation, llm_recommendation
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 
 
@@ -859,6 +859,51 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertEqual(guarded.lift_focus, "Light durability work only")
         self.assertIn("short lift", guarded.lift_guidance.lower())
+
+    def test_planned_rest_day_is_not_mislabeled_as_readiness_failure(self) -> None:
+        weekly_intent = build_weekly_intent(SAMPLE_PROFILE, SAMPLE_RUNS, SAMPLE_METRICS, today=date(2026, 3, 21))
+        recommendation = Recommendation(
+            date="2026-03-21",
+            workout="Rest and recovery",
+            intensity="rest",
+            duration_minutes=0,
+            run_distance_miles=0.0,
+            run_pace_guidance="Rest day",
+            lift_focus="No lifting",
+            lift_guidance="Rest today.",
+            recap=[],
+            explanation=["Guardrail: readiness is too low for productive training, so the plan was downshifted to recovery."],
+            explanation_sections={
+                "overall": "Today is better used as a recovery day because your readiness signals and/or subjective feedback do not support training stress.",
+                "run": "",
+                "pace": "",
+                "lift": "",
+                "recovery": "",
+            },
+            warnings=["Guardrail triggered: today should be a rest or recovery-focused day, not a training day."],
+            confidence="high",
+            planned_workout="Rest or optional mobility",
+            planned_run_distance_miles=0.0,
+            planned_pace_guidance="Rest day",
+            pace_model=build_pace_model(SAMPLE_PROFILE, SAMPLE_RUNS).to_dict(),
+            weekly_intent=weekly_intent.to_dict(),
+        )
+
+        finalized = _finalize_daily_adaptation(
+            recommendation,
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            {"workout": "Rest or optional mobility", "distance_miles": 0.0, "pace_guidance": "Rest day"},
+            weekly_intent,
+            subjective_feedback={"physical_feeling": "heavy", "mental_feeling": "steady", "notes": "legs felt tired yesterday"},
+        )
+
+        self.assertEqual(finalized.workout, "Rest or optional mobility")
+        self.assertEqual(finalized.daily_adaptation["readiness_status"], "supported")
+        self.assertNotIn("Guardrail:", " ".join(finalized.explanation))
+        self.assertFalse(any("Guardrail triggered" in item for item in finalized.warnings))
+        self.assertIn("week", finalized.daily_adaptation["adjustment_reason"].lower())
 
     def test_recommendation_options_keep_aggressive_variant_more_demanding(self) -> None:
         recommendation = Recommendation(
