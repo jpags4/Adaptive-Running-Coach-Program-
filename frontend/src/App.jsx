@@ -1337,6 +1337,65 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
             ))}
           </div>
         </div>
+
+        {Array.isArray(weeks) && weeks.length > 0 ? (
+          <div className="mt-6">
+            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              Upcoming Training Blocks
+            </p>
+            <div className="mt-4 space-y-4">
+              {weeks.map((week, index) => (
+                <details
+                  key={week.week_start}
+                  className={`group rounded-[1.8rem] border ${
+                    week.certainty === 'moderate'
+                      ? isDark ? 'border-emerald-800/70 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
+                      : week.certainty === 'light'
+                        ? isDark ? 'border-amber-800/70 bg-amber-950/15' : 'border-amber-200 bg-amber-50/35'
+                        : isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white'
+                  }`}
+                >
+                  <summary className="cursor-pointer list-none px-5 py-5">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                          Week {index + 2} · {formatRoadmapWeekSpan(week)}
+                        </p>
+                        <h4 className={`mt-3 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                          {week.phase}
+                        </h4>
+                        <p className={`mt-2 max-w-4xl text-base leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                          {week.summary || week.progression_note}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-5">
+                        <span className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] ${certaintyPillClass(week.certainty, theme)}`}>
+                          {week.certainty}
+                        </span>
+                        <span className={`text-xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
+                      </div>
+                    </div>
+                  </summary>
+
+                  <div className={`border-t px-5 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+                      <FocusMetric label="Primary Adaptation" value={capitalize(week.primary_adaptation || '')} theme={theme} />
+                      <FocusMetric label="Mileage Shape" value={week.mileage_range} theme={theme} />
+                      <FocusMetric label="Long Run Shape" value={week.long_run_target} theme={theme} />
+                      <FocusMetric label="Key Session Shape" value={week.quality_session_target} theme={theme} />
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      <ReasonCard title="Why This Week Exists" text={week.progression_note} tone="neutral" theme={theme} />
+                      <ReasonCard title="How It Builds Toward The Race" text={week.race_connection} tone="violet" theme={theme} />
+                    </div>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   )
