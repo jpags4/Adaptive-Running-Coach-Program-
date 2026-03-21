@@ -257,7 +257,7 @@ def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
     }
 
 
-def _activity_notes_context(activity_log: dict[str, list[dict]], limit: int = 8) -> str:
+def _activity_notes_context(activity_log: dict[str, list[dict]], limit: int = 4, reference_day: str | None = None) -> str:
     noted_items = [
         item
         for bucket in ("runs", "strength")
@@ -265,6 +265,23 @@ def _activity_notes_context(activity_log: dict[str, list[dict]], limit: int = 8)
         if str(item.get("note") or "").strip()
     ]
     noted_items.sort(key=lambda item: str(item.get("day") or ""), reverse=True)
+    if reference_day:
+        try:
+            reference_date = datetime.strptime(reference_day, "%Y-%m-%d").date()
+        except ValueError:
+            reference_date = None
+    else:
+        reference_date = None
+
+    if reference_date is not None:
+        recent_cutoff = reference_date - timedelta(days=3)
+        noted_items = [
+            item
+            for item in noted_items
+            if str(item.get("day") or "").strip()
+            and datetime.strptime(str(item.get("day") or "").strip(), "%Y-%m-%d").date() >= recent_cutoff
+        ]
+
     context_lines: list[str] = []
     for item in noted_items[:limit]:
         label = str(item.get("name") or item.get("sport") or "Workout").strip()
@@ -974,7 +991,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     annotated_activity_feed = _attach_activity_notes(full_activity_feed, activity_notes)
     annotated_activity_log = _activity_log_payload(_attach_activity_notes(full_logged_activity_feed, activity_notes))
     recommendation_feedback.update(_recommendation_training_context(annotated_activity_feed, today_iso))
-    notes_context = _activity_notes_context(annotated_activity_log)
+    notes_context = _activity_notes_context(annotated_activity_log, reference_day=today_iso)
     if notes_context:
         existing_notes = str(recommendation_feedback.get("notes") or "").strip()
         recommendation_feedback["notes"] = f"{existing_notes}\n\nRecent workout notes:\n{notes_context}".strip()

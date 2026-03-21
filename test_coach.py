@@ -262,6 +262,34 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertIn("2026-03-19 Run (4.0 mi, 31 min): Fast finish", context)
         self.assertIn("2026-03-18 Weightlifting (38 min): Left hip felt better", context)
 
+    def test_activity_notes_context_excludes_stale_notes_from_model_prompt(self) -> None:
+        context = _activity_notes_context(
+            {
+                "runs": [
+                    {
+                        "day": "2026-03-15",
+                        "name": "Run",
+                        "distance_miles": 5.0,
+                        "duration_minutes": 40,
+                        "note": "I felt sick and dizzy after this run.",
+                    },
+                    {
+                        "day": "2026-03-20",
+                        "name": "Run",
+                        "distance_miles": 4.0,
+                        "duration_minutes": 31,
+                        "note": "Legs were heavy but loosened up after warm-up.",
+                    },
+                ],
+                "strength": [],
+            },
+            reference_day="2026-03-21",
+        )
+
+        self.assertIn("2026-03-20 Run", context)
+        self.assertNotIn("2026-03-15", context)
+        self.assertNotIn("felt sick", context.lower())
+
     @mock.patch.dict("os.environ", {}, clear=False)
     def test_llm_recommendation_reports_unavailable_without_key(self) -> None:
         recommendation, meta = llm_recommendation(
