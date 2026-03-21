@@ -281,7 +281,7 @@ function DashboardLoading({ theme = 'light' }) {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_rgba(72,28,135,0.42),_transparent_34%),radial-gradient(circle_at_50%_32%,_rgba(88,28,135,0.24),_transparent_28%),radial-gradient(circle_at_50%_72%,_rgba(56,26,120,0.18),_transparent_36%),linear-gradient(180deg,_#17131f_0%,_#1c1530_18%,_#241942_38%,_#191420_60%,_#241942_82%,_#15121b_100%)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(58,28,112,0.26),_transparent_34%),radial-gradient(circle_at_50%_28%,_rgba(76,29,149,0.14),_transparent_30%),radial-gradient(circle_at_50%_72%,_rgba(49,25,97,0.12),_transparent_38%),linear-gradient(180deg,_#17131d_0%,_#1c1628_18%,_#241c37_38%,_#1b1725_60%,_#241c37_82%,_#151219_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
@@ -332,7 +332,7 @@ function ErrorScreen({ message, theme = 'light' }) {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_rgba(72,28,135,0.42),_transparent_34%),radial-gradient(circle_at_50%_32%,_rgba(88,28,135,0.24),_transparent_28%),radial-gradient(circle_at_50%_72%,_rgba(56,26,120,0.18),_transparent_36%),linear-gradient(180deg,_#17131f_0%,_#1c1530_18%,_#241942_38%,_#191420_60%,_#241942_82%,_#15121b_100%)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(58,28,112,0.26),_transparent_34%),radial-gradient(circle_at_50%_28%,_rgba(76,29,149,0.14),_transparent_30%),radial-gradient(circle_at_50%_72%,_rgba(49,25,97,0.12),_transparent_38%),linear-gradient(180deg,_#17131d_0%,_#1c1628_18%,_#241c37_38%,_#1b1725_60%,_#241c37_82%,_#151219_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
@@ -2500,7 +2500,7 @@ export default function App() {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_rgba(72,28,135,0.42),_transparent_34%),radial-gradient(circle_at_50%_32%,_rgba(88,28,135,0.24),_transparent_28%),radial-gradient(circle_at_50%_72%,_rgba(56,26,120,0.18),_transparent_36%),linear-gradient(180deg,_#17131f_0%,_#1c1530_18%,_#241942_38%,_#191420_60%,_#241942_82%,_#15121b_100%)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(58,28,112,0.26),_transparent_34%),radial-gradient(circle_at_50%_28%,_rgba(76,29,149,0.14),_transparent_30%),radial-gradient(circle_at_50%_72%,_rgba(49,25,97,0.12),_transparent_38%),linear-gradient(180deg,_#17131d_0%,_#1c1628_18%,_#241c37_38%,_#1b1725_60%,_#241c37_82%,_#151219_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
