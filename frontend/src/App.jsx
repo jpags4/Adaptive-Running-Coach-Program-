@@ -907,7 +907,7 @@ function TrainingCard({
   const hasOptions = Array.isArray(recommendationOptions) && recommendationOptions.length > 0
 
   return (
-    <section className={`rounded-[2rem] border p-8 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`mx-auto max-w-[90rem] rounded-[2rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-4">
@@ -937,8 +937,8 @@ function TrainingCard({
         </button>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 items-start gap-7 xl:grid-cols-[minmax(0,1.02fr)_minmax(24rem,1fr)]">
-        <div className={`self-start rounded-[1.9rem] border p-7 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+      <div className="mt-6 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(23rem,0.95fr)]">
+        <div className={`self-start rounded-[1.9rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
           <div className={`flex items-center gap-2.5 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
               <RouteIcon />
@@ -948,12 +948,12 @@ function TrainingCard({
             </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
             <div className="min-w-0">
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                 Distance
               </p>
-              <p className={`mt-3 text-7xl font-semibold leading-none tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              <p className={`mt-3 text-6xl font-semibold leading-none tracking-tight xl:text-[5rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {recommendation.run_distance_miles ?? '-'} mi
               </p>
             </div>
@@ -962,7 +962,7 @@ function TrainingCard({
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                 Pace
               </p>
-              <p className={`mt-3 text-4xl font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              <p className={`mt-3 text-[2.45rem] font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {paceHeadline(recommendation.run_pace_guidance)}
               </p>
               <p className={`mt-3 text-base ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -971,12 +971,12 @@ function TrainingCard({
             </div>
           </div>
 
-          <div className={`mt-8 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+          <div className={`mt-6 border-t pt-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
             <div className="min-w-0">
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                 Intensity
               </p>
-              <p className={`mt-3 break-words text-5xl font-semibold leading-tight tracking-tight ${intensityClass}`}>
+              <p className={`mt-3 break-words text-4xl font-semibold leading-tight tracking-tight ${intensityClass}`}>
                 {intensityLabel}
               </p>
               <p className={`mt-3 text-base ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -986,7 +986,7 @@ function TrainingCard({
           </div>
         </div>
 
-        <div className={`rounded-[1.9rem] border p-7 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+        <div className={`rounded-[1.9rem] border p-6 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
           <div className="flex items-center gap-3">
             <div className={`flex h-11 w-11 items-center justify-center rounded-full ${isDark ? 'bg-violet-950/70 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
               <DumbbellIcon />
@@ -995,18 +995,18 @@ function TrainingCard({
               <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                 Lift
               </p>
-              <h3 className={`mt-2 text-5xl font-semibold leading-[1.02] tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              <h3 className={`mt-2 text-4xl font-semibold leading-[1.02] tracking-tight xl:text-[3.4rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {shortLiftTitle(recommendation.lift_focus)}
               </h3>
             </div>
           </div>
 
           {isLiftOffDay ? (
-            <p className={`mt-8 text-xl leading-9 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+            <p className={`mt-6 text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
               No lift today. Keep all training stress in the run so recovery stays on track.
             </p>
           ) : (
-            <div className="mt-8 space-y-4">
+            <div className="mt-6 space-y-3">
               {liftBlocks.map((block, index) => (
                 <div
                   key={`${block.name}-${index}`}
@@ -1025,7 +1025,7 @@ function TrainingCard({
       </div>
 
       {hasOptions ? (
-        <div className="mt-8 flex justify-start">
+        <div className="mt-6 flex justify-start">
           <div className={`inline-flex w-fit flex-wrap gap-2 rounded-[1.2rem] border p-2 ${
             isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white/80'
           }`}>
