@@ -319,6 +319,13 @@ function DashboardLoading({ theme = 'light' }) {
   )
 }
 
+function timeOfDayGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
 function ErrorScreen({ message, theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
@@ -346,11 +353,12 @@ function ErrorScreen({ message, theme = 'light' }) {
 
 function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile }) {
   const isDark = theme === 'dark'
+  const greeting = timeOfDayGreeting()
   return (
     <header className={`flex items-start justify-between gap-8 border-b pb-8 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
       <div>
         <h1 className={`text-6xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-          Good morning, {name || 'Athlete'}
+          {greeting}, {name || 'Athlete'}
         </h1>
         <p className={`mt-7 text-sm font-semibold uppercase tracking-[0.24em] ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
           Adaptive Running Coach
