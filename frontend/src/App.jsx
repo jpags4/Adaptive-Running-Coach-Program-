@@ -281,7 +281,7 @@ function DashboardLoading({ theme = 'light' }) {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_#2b1f3f,_#111111_45%,_#111111)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(110,64,201,0.22),_transparent_34%),radial-gradient(circle_at_50%_42%,_rgba(91,33,182,0.16),_transparent_32%),linear-gradient(180deg,_#26193c_0%,_#1a1523_24%,_#221734_48%,_#18141f_72%,_#211736_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
@@ -332,7 +332,7 @@ function ErrorScreen({ message, theme = 'light' }) {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_#2b1f3f,_#111111_45%,_#111111)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(110,64,201,0.22),_transparent_34%),radial-gradient(circle_at_50%_42%,_rgba(91,33,182,0.16),_transparent_32%),linear-gradient(180deg,_#26193c_0%,_#1a1523_24%,_#221734_48%,_#18141f_72%,_#211736_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
@@ -763,6 +763,107 @@ function CheckInModal({
               'Generate Recommendation'
             )}
           </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function TodayActivityButton({ onOpen, currentDayStatus, theme = 'light' }) {
+  const isDark = theme === 'dark'
+  const statusText = currentDayStatus?.headline || 'No activity logged yet'
+
+  return (
+    <div className="mt-2 mb-3">
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`inline-flex items-center gap-3 rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
+          isDark
+            ? 'border-sky-900/70 bg-sky-950/40 text-sky-200 hover:border-sky-700 hover:bg-sky-950/60'
+            : 'border-sky-200 bg-sky-50 text-sky-800 hover:border-sky-300 hover:bg-sky-100'
+        }`}
+      >
+        <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isDark ? 'bg-sky-400' : 'bg-sky-500'}`} />
+        <span>Today&apos;s Activity</span>
+        <span className={`${isDark ? 'text-sky-300/80' : 'text-sky-700/80'}`}>•</span>
+        <span className={`font-medium ${isDark ? 'text-sky-100/85' : 'text-sky-900/80'}`}>{statusText}</span>
+      </button>
+    </div>
+  )
+}
+
+function TodayActivityModal({ isOpen, onClose, currentDayStatus, recommendation, theme = 'light' }) {
+  const isDark = theme === 'dark'
+  if (!isOpen) return null
+
+  const noActivityYet = !currentDayStatus
+  const headline = currentDayStatus?.headline || 'Nothing logged yet today.'
+  const detail =
+    currentDayStatus?.detail ||
+    'You have not logged a run or workout yet today.'
+
+  let planRelationship = 'Today has not started yet.'
+  if (recommendation && noActivityYet) {
+    planRelationship = `Today’s recommendation is ${shortWorkoutTitle(recommendation.workout)}. You still have the full session ahead of you.`
+  } else if (recommendation && currentDayStatus?.status === 'completed') {
+    planRelationship = 'You have already covered today’s work, so the recommendation is effectively complete.'
+  } else if (recommendation && currentDayStatus?.status === 'on_track') {
+    planRelationship = 'You are essentially on plan for today and have already hit the day’s goal.'
+  } else if (recommendation && currentDayStatus?.status === 'in_progress') {
+    planRelationship = 'You have started today’s plan, but there is still some work left to finish.'
+  } else if (recommendation && currentDayStatus?.status === 'cross_trained') {
+    planRelationship = 'You have logged activity today, but the recommended run is still pending unless you intentionally swap the day.'
+  } else if (!recommendation && noActivityYet) {
+    planRelationship = 'Once a recommendation is generated, this will compare your logged activity against the day’s plan.'
+  } else if (!recommendation) {
+    planRelationship = 'Generate today’s recommendation to see how your logged activity compares to the plan.'
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <button
+        type="button"
+        aria-label="Close today's activity"
+        onClick={onClose}
+        className="absolute inset-0 bg-neutral-950/45 backdrop-blur-sm"
+      />
+      <section className={`relative z-10 w-full max-w-3xl rounded-[2rem] border p-8 shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
+        isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
+      }`}>
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-sky-300/80' : 'text-sky-700'}`}>
+              Today&apos;s Activity
+            </p>
+            <h2 className={`mt-3 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              {headline}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={`rounded-full border px-4 py-2 text-sm font-semibold ${
+              isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-sky-500' : 'border-neutral-200 bg-white text-neutral-700 hover:border-sky-300'
+            }`}
+          >
+            Close
+          </button>
+        </div>
+
+        <div className={`mt-6 rounded-[1.5rem] border px-5 py-4 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+          <p className={`text-base leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>{detail}</p>
+        </div>
+
+        <div className={`mt-5 rounded-[1.5rem] border px-5 py-4 ${
+          isDark ? 'border-sky-900/60 bg-sky-950/25' : 'border-sky-200 bg-sky-50/80'
+        }`}>
+          <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-300/80' : 'text-sky-700'}`}>
+            Status Against Plan
+          </p>
+          <p className={`mt-3 text-base leading-8 ${isDark ? 'text-neutral-200' : 'text-neutral-800'}`}>
+            {planRelationship}
+          </p>
         </div>
       </section>
     </div>
@@ -1266,9 +1367,6 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? 'border-neutral-800 bg-neutral-900/95' : 'border-neutral-200 bg-white/95'}`}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
-          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Training Calendar
-          </p>
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
         </div>
 
@@ -1280,31 +1378,31 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
       </div>
 
       <div className="mt-10">
-        <details open className={`group rounded-[1.8rem] border ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
-          <summary className="list-none cursor-pointer px-5 py-5">
+        <details className={`group rounded-[1.6rem] border ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+          <summary className="list-none cursor-pointer px-5 py-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                   Current Week
                 </p>
-                <div className={`mt-4 inline-flex items-center rounded-[1.15rem] border px-5 py-3 ${
+                <div className={`mt-3 inline-flex items-center rounded-[1rem] border px-4 py-2 ${
                   isDark
                     ? 'border-violet-800/70 bg-violet-950/35 shadow-[inset_4px_0_0_0_rgba(168,85,247,0.9)]'
                     : 'border-violet-200 bg-violet-50/85 shadow-[inset_4px_0_0_0_rgba(124,58,237,0.85)]'
                 }`}>
-                  <h3 className={`text-2xl font-semibold tracking-tight md:text-[2.2rem] ${isDark ? 'text-violet-100' : 'text-violet-900'}`}>
+                  <h3 className={`text-xl font-semibold tracking-tight md:text-[1.9rem] ${isDark ? 'text-violet-100' : 'text-violet-900'}`}>
                     {weeklyFocus.phase || 'Weekly focus'}
                   </h3>
                 </div>
-                <p className={`mt-4 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                  {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
-                </p>
               </div>
               <span className={`mt-1 text-2xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
             </div>
           </summary>
 
           <div className={`border-t px-5 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            <p className={`max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+              {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
+            </p>
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
               <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
               <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
@@ -2188,6 +2286,7 @@ export default function App() {
   const [mentalFeeling, setMentalFeeling] = useState('steady')
   const [notes, setNotes] = useState('')
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
+  const [isTodayActivityOpen, setIsTodayActivityOpen] = useState(false)
   const [profileSettings, setProfileSettings] = useState(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
@@ -2250,6 +2349,22 @@ export default function App() {
       window.removeEventListener('keydown', handleEscape)
     }
   }, [isCheckInModalOpen])
+
+  useEffect(() => {
+    if (!isTodayActivityOpen) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setIsTodayActivityOpen(false)
+    }
+    window.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isTodayActivityOpen])
 
   async function persistProfileSettings(nextSettings, { closeAfterSave = false } = {}) {
     setIsSavingProfile(true)
@@ -2374,7 +2489,7 @@ export default function App() {
     <main
       className={`min-h-screen ${
         isDark
-          ? 'bg-[radial-gradient(circle_at_top,_#2b1f3f,_#111111_45%,_#111111)] text-neutral-50'
+          ? 'bg-[radial-gradient(circle_at_top,_rgba(110,64,201,0.22),_transparent_34%),radial-gradient(circle_at_50%_42%,_rgba(91,33,182,0.16),_transparent_32%),linear-gradient(180deg,_#26193c_0%,_#1a1523_24%,_#221734_48%,_#18141f_72%,_#211736_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
@@ -2406,6 +2521,14 @@ export default function App() {
           onMentalChange={setMentalFeeling}
           onNotesChange={setNotes}
           onGenerate={handleGenerateRecommendation}
+          theme={theme}
+        />
+
+        <TodayActivityModal
+          isOpen={isTodayActivityOpen}
+          onClose={() => setIsTodayActivityOpen(false)}
+          currentDayStatus={currentDayStatus}
+          recommendation={recommendationData}
           theme={theme}
         />
 
@@ -2481,9 +2604,15 @@ export default function App() {
           />
           <StatCard
             icon={<Icon path="M5 19h4V9H5zm5 0h4V5h-4zm5 0h4v-7h-4z" />}
-            label="7-Day Load"
-            value={summary.recent_mileage ? `${summary.recent_mileage.toFixed(1)} mi` : '-'}
-            subtext="Running load this week"
+            label="Weekly Mileage Progress"
+            value={
+              summary.recent_mileage && profile.weekly_mileage_target
+                ? `${summary.recent_mileage.toFixed(1)} / ${profile.weekly_mileage_target} mi`
+                : summary.recent_mileage
+                  ? `${summary.recent_mileage.toFixed(1)} mi`
+                  : '-'
+            }
+            subtext="Mileage completed toward your weekly target"
             accent={loadAccent}
             iconTone={
               theme === 'dark'
@@ -2498,13 +2627,11 @@ export default function App() {
           />
         </section>
 
-        {currentDayStatus ? (
-          <section className={`mb-2 rounded-[1.7rem] border px-6 py-5 ${currentDayStatusTone(currentDayStatus.status, theme)}`}>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-current/70">Today So Far</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight">{currentDayStatus.headline}</p>
-            <p className="mt-2 max-w-4xl text-base leading-7">{currentDayStatus.detail}</p>
-          </section>
-        ) : null}
+        <TodayActivityButton
+          onOpen={() => setIsTodayActivityOpen(true)}
+          currentDayStatus={currentDayStatus}
+          theme={theme}
+        />
 
         <MasterTrainingCalendar
           cards={summaryData.activity_calendar}
