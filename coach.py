@@ -1018,6 +1018,7 @@ def build_recommendation_options(
     if weekly_reference <= 0:
         weekly_reference = max(recommendation.run_distance_miles * 4.5, 20.0)
     easy_day_distance_cap = max(3.5, weekly_reference * 0.16)
+    is_rest_slot = base_distance <= 0 and "rest" in str(recommendation.workout or "").lower()
 
     if readiness_status == "not supported":
         conservative = recommendation_from_dict(base_payload)
@@ -1036,7 +1037,15 @@ def build_recommendation_options(
             conservative.lift_focus = "Today is a lifting off-day" if conservative.run_distance_miles > 0 else "No lifting"
             conservative.lift_guidance = "Today is a lifting off-day." if conservative.run_distance_miles > 0 else "No lifting today."
 
-        if aggressive.workout != "Rest and recovery":
+        if is_rest_slot:
+            aggressive.workout = "Short recovery shakeout"
+            aggressive.intensity = "easy"
+            aggressive.run_distance_miles = round(max(2.0, min(3.0, easy_day_distance_cap * 0.75)), 1)
+            aggressive.duration_minutes = max(20, int(round(aggressive.run_distance_miles * 10.4)))
+            aggressive.run_pace_guidance = str(aggressive.pace_model.get("easy", {}).get("pace_range") or aggressive.run_pace_guidance)
+            aggressive.lift_focus = "No lifting"
+            aggressive.lift_guidance = "Keep this to a light shakeout only. Skip lifting so the legs stay fresher for the next key run."
+        elif aggressive.workout != "Rest and recovery":
             if readiness_status == "partly supported":
                 aggressive_target = min(planned_distance, base_distance + delta_cap)
             else:

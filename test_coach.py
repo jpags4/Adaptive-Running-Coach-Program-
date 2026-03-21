@@ -358,6 +358,28 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertAlmostEqual(recommendation.run_distance_miles + current_week_future, 30.0, delta=0.6)
         self.assertAlmostEqual(next_week, 33.0, delta=0.6)
 
+    def test_rest_day_offers_aggressive_shakeout_option_when_readiness_is_not_supported_false(self) -> None:
+        recommendation = coach_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            today=date(2026, 3, 21),
+            subjective_feedback={"physical_feeling": "heavy", "mental_feeling": "steady", "notes": "legs felt tired yesterday"},
+        )
+
+        self.assertEqual(recommendation.run_distance_miles, 0.0)
+        options, default_key = build_recommendation_options(
+            recommendation,
+            SAMPLE_PROFILE,
+            subjective_feedback={"physical_feeling": "heavy", "mental_feeling": "steady", "notes": "legs felt tired yesterday"},
+        )
+
+        aggressive = next(option for option in options if option["key"] == "aggressive")["recommendation"]
+        self.assertEqual(default_key, "conservative")
+        self.assertGreater(aggressive["run_distance_miles"], 0.0)
+        self.assertEqual(aggressive["intensity"], "easy")
+        self.assertIn("shakeout", aggressive["workout"].lower())
+
     def test_projected_calendar_uses_pace_text_for_all_run_days(self) -> None:
         recommendation = Recommendation(
             date="2026-03-16",

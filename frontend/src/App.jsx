@@ -1787,6 +1787,7 @@ function formatRoadmapWeekSpan(week) {
 
 function shortWorkoutTitle(value) {
   const text = String(value || '').trim().toLowerCase()
+  if (text.includes('rest')) return 'Rest / Mobility'
   if (text.includes('easy')) return 'Easy Run'
   if (text.includes('recovery')) return 'Recovery Run'
   if (text.includes('tempo')) return 'Tempo Run'
