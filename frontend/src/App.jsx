@@ -2097,96 +2097,186 @@ function ActivityLogSection({
   theme = 'light',
 }) {
   const isDark = theme === 'dark'
-  const runs = Array.isArray(activityLog?.runs) ? activityLog.runs : []
-  const strength = Array.isArray(activityLog?.strength) ? activityLog.strength : []
+  const [filter, setFilter] = useState('all')
+  const [selectedActivityKey, setSelectedActivityKey] = useState(null)
+  const allActivities = flattenActivityLog(activityLog)
+    .slice()
+    .sort((a, b) => String(b.day || '').localeCompare(String(a.day || '')))
+  const filterOptions = [
+    { key: 'all', label: 'All Workouts', icon: <SparkleIcon className="h-4 w-4" /> },
+    { key: 'runs', label: 'Running', icon: <RouteIcon className="h-4 w-4" /> },
+    { key: 'strength', label: 'Weightlifting', icon: <DumbbellIcon className="h-4 w-4" /> },
+  ]
+  const filteredActivities = allActivities.filter((activity) => {
+    if (filter === 'runs') return isRunActivity(activity)
+    if (filter === 'strength') return !isRunActivity(activity)
+    return true
+  })
+  const selectedActivity =
+    filteredActivities.find((activity) => activity.activity_key === selectedActivityKey) || null
+  const currentFilterLabel = filterOptions.find((option) => option.key === filter)?.label || 'All Workouts'
+
+  function handleFilterChange(nextFilter) {
+    setFilter(nextFilter)
+    setSelectedActivityKey(null)
+  }
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
       <div>
         <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          Activity Log
+          Training Log
         </p>
         <h2 className={`mt-3 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-          Previous Workouts
+          Workout Catalog
         </h2>
         <p className={`mt-3 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-          Review your completed workouts and add notes for future reference. More recent workout notes are weighted most heavily when the model builds your next recommendation.
+          Review your completed workouts and add notes for future reference.
         </p>
       </div>
 
-      <div className="mt-10 space-y-8">
-        <ActivityLogList
-          title="Running"
-          countLabel={`${runs.length} workouts`}
-          icon={<RouteIcon />}
-          activities={runs}
-          noteDrafts={noteDrafts}
-          noteSaveState={noteSaveState}
-          onNoteChange={onNoteChange}
-          onSaveNote={onSaveNote}
-          theme={theme}
-        />
-        <ActivityLogList
-          title="Weightlifting"
-          countLabel={`${strength.length} workouts`}
-          icon={<TrendUpIcon />}
-          activities={strength}
-          noteDrafts={noteDrafts}
-          noteSaveState={noteSaveState}
-          onNoteChange={onNoteChange}
-          onSaveNote={onSaveNote}
-          theme={theme}
-        />
+      <div className="mt-8">
+        <div className={`inline-flex flex-wrap items-center gap-2 rounded-[1.2rem] border p-2 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+          {filterOptions.map((option) => {
+            const selected = option.key === filter
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => handleFilterChange(option.key)}
+                className={`inline-flex items-center gap-2 rounded-[0.95rem] px-4 py-3 text-sm font-semibold transition ${
+                  selected
+                    ? isDark
+                      ? 'bg-white text-neutral-950'
+                      : 'bg-neutral-950 text-white'
+                    : isDark
+                      ? 'text-neutral-300 hover:bg-neutral-900 hover:text-white'
+                      : 'text-neutral-600 hover:bg-white hover:text-neutral-950'
+                }`}
+              >
+                {option.icon}
+                <span>{option.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className={`mt-6 overflow-hidden rounded-[2rem] border ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+        <div className="grid min-h-[42rem] grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div className={`min-h-0 border-b xl:border-b-0 xl:border-r ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            <div className={`sticky top-0 z-10 border-b px-6 py-5 backdrop-blur ${isDark ? 'border-neutral-800 bg-neutral-950/95' : 'border-neutral-200 bg-white/95'}`}>
+              <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                {currentFilterLabel}
+              </p>
+              <p className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                {filteredActivities.length} workouts
+              </p>
+            </div>
+
+            <div className="max-h-[34rem] overflow-y-auto">
+              {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
+                <WorkoutCatalogListItem
+                  key={activity.activity_key}
+                  activity={activity}
+                  isSelected={activity.activity_key === selectedActivityKey}
+                  onSelect={() => setSelectedActivityKey(activity.activity_key)}
+                  theme={theme}
+                />
+              )) : (
+                <div className="px-6 py-10">
+                  <p className={`text-base leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                    No workouts match this filter yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="min-h-0">
+            <div className="max-h-[42rem] overflow-y-auto px-6 py-6 md:px-8">
+              {selectedActivity ? (
+                <WorkoutCatalogDetail
+                  activity={selectedActivity}
+                  noteValue={noteDrafts[selectedActivity.activity_key] ?? selectedActivity.note ?? ''}
+                  saveState={noteSaveState[selectedActivity.activity_key] || 'idle'}
+                  onNoteChange={onNoteChange}
+                  onSaveNote={onSaveNote}
+                  theme={theme}
+                />
+              ) : (
+                <WorkoutCatalogEmptyState theme={theme} />
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )
 }
 
-function ActivityLogList({
-  title,
-  countLabel,
-  icon,
-  activities,
-  noteDrafts,
-  noteSaveState,
-  onNoteChange,
-  onSaveNote,
-  theme = 'light',
-}) {
+function isRunActivity(activity) {
+  return /run/i.test(String(activity?.name || '')) || /run/i.test(String(activity?.sport || ''))
+}
+
+function workoutCatalogTitle(activity) {
+  if (isRunActivity(activity)) {
+    return humanizeActivityLabel(activity.workout_type || activity.name || 'Run')
+  }
+  return calendarLiftFocus(activity) || humanizeActivityLabel(activity.name || activity.sport || 'Workout')
+}
+
+function workoutCatalogSummary(activity) {
+  if (isRunActivity(activity)) {
+    const distance = activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-'
+    return `${distance} • ${calendarPace(activity)}`
+  }
+  return activity.duration_minutes ? `${activity.duration_minutes} min` : 'Strength session'
+}
+
+function workoutIntensityIndicator(activity) {
+  const intensity = simplifyIntensity(activity.intensity || activity.workout_type || activity.name || '')
+  const text = intensity.toLowerCase()
+  if (text.includes('hard')) return 'bg-rose-500'
+  if (text.includes('moderate')) return 'bg-amber-400'
+  if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-500'
+  if (isRunActivity(activity)) return 'bg-neutral-300'
+  return 'bg-violet-500'
+}
+
+function WorkoutCatalogListItem({ activity, isSelected, onSelect, theme = 'light' }) {
   const isDark = theme === 'dark'
+  const selectedClasses = isSelected
+    ? isDark
+      ? 'border-violet-500/70 bg-violet-950/25 shadow-[inset_4px_0_0_0_rgba(168,85,247,0.95)]'
+      : 'border-violet-300 bg-violet-50 shadow-[inset_4px_0_0_0_rgba(139,92,246,0.95)]'
+    : isDark
+      ? 'border-transparent hover:bg-neutral-900/90'
+      : 'border-transparent hover:bg-stone-50'
 
   return (
-    <div>
-      <div className="flex items-center gap-3">
-        <div className={`${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>{icon}</div>
-        <div className="flex items-baseline gap-3">
-          <h3 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{title}</h3>
-          <p className={`text-sm ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>({countLabel})</p>
-        </div>
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex w-full items-start gap-4 border-b px-6 py-6 text-left transition ${selectedClasses} ${isDark ? 'border-neutral-800 text-white' : 'border-neutral-200 text-neutral-950'}`}
+    >
+      <div className={`mt-1 h-3.5 w-3.5 shrink-0 rounded-full ${workoutIntensityIndicator(activity)}`} />
+      <div className="min-w-0">
+        <p className={`text-sm font-semibold ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          {formatDate(activity.day)}
+        </p>
+        <p className={`mt-2 text-[1.55rem] font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+          {workoutCatalogTitle(activity)}
+        </p>
+        <p className={`mt-2 text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+          {workoutCatalogSummary(activity)}
+        </p>
       </div>
-
-      <div className="mt-5 space-y-4">
-        {activities.length > 0 ? activities.map((activity) => (
-          <ActivityLogItem
-            key={activity.activity_key}
-            activity={activity}
-            noteValue={noteDrafts[activity.activity_key] ?? activity.note ?? ''}
-            saveState={noteSaveState[activity.activity_key] || 'idle'}
-            onNoteChange={onNoteChange}
-            onSaveNote={onSaveNote}
-            theme={theme}
-          />
-        )) : (
-          <p className={`rounded-[1.4rem] border px-4 py-4 text-sm leading-7 ${isDark ? `border-neutral-800 bg-neutral-900 text-neutral-400 ${darkGlow(true)}` : 'border-neutral-200 bg-white text-neutral-500'}`}>
-            No workouts synced here yet.
-          </p>
-        )}
-      </div>
-    </div>
+    </button>
   )
 }
 
-function ActivityLogItem({
+function WorkoutCatalogDetail({
   activity,
   noteValue,
   saveState,
@@ -2195,83 +2285,109 @@ function ActivityLogItem({
   theme = 'light',
 }) {
   const isDark = theme === 'dark'
-  const isRun = /run/i.test(String(activity.name || '')) || /run/i.test(String(activity.sport || ''))
-  const title = isRun
-    ? humanizeActivityLabel(activity.workout_type || activity.name || 'Run')
-    : calendarLiftFocus(activity) || humanizeActivityLabel(activity.name || activity.sport || 'Workout')
+  const isRun = isRunActivity(activity)
+  const title = workoutCatalogTitle(activity)
   const buttonLabel = saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save note'
-  const intensity = simplifyIntensity(activity.intensity || activity.workout_type || '')
-  const stripClass = intensity.toLowerCase().includes('hard')
-    ? 'bg-rose-500'
-    : intensity.toLowerCase().includes('moderate')
-      ? 'bg-amber-400'
-      : intensity.toLowerCase().includes('easy') || intensity.toLowerCase().includes('recovery')
-        ? 'bg-emerald-500'
-        : isRun
-          ? 'bg-neutral-300'
-          : 'bg-violet-500'
-  const runMetrics = [
-    { label: 'Distance', value: activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-' },
-    { label: 'Pace', value: calendarPace(activity) },
-    { label: 'Time', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
-  ]
-  const strengthMetrics = [
-    { label: 'Workout', value: title },
-    { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
-    ...(activity.strain ? [{ label: 'Strain', value: String(activity.strain) }] : []),
-  ]
-  const metrics = isRun ? runMetrics : strengthMetrics
+  const intensity = simplifyIntensity(activity.intensity || activity.workout_type || activity.name || '')
+  const metrics = isRun
+    ? [
+        { label: 'Distance', value: activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-' },
+        { label: 'Pace', value: calendarPace(activity) },
+        { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
+        { label: 'Intensity', value: intensity || '-' },
+      ]
+    : [
+        { label: 'Workout', value: title },
+        { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
+        ...(activity.strain ? [{ label: 'Strain', value: String(activity.strain) }] : []),
+        ...(activity.lift_focus ? [{ label: 'Focus', value: calendarLiftFocus(activity) || '-' }] : []),
+      ]
+  const supportingText = isRun
+    ? activity.duration_minutes
+      ? `${activity.duration_minutes} min total`
+      : 'Logged run'
+    : activity.strain
+      ? `WHOOP strain ${activity.strain}`
+      : 'Logged lift'
 
   return (
-    <details className={`overflow-hidden rounded-[1.4rem] border ${isDark ? `border-neutral-800 bg-neutral-900/90 text-white ${darkGlow(true)}` : 'border-neutral-200 bg-white text-neutral-950'}`}>
-      <summary className="list-none cursor-pointer">
-        <div className="flex items-center gap-5 px-4 py-5">
-          <div className={`h-16 w-1.5 rounded-full ${stripClass}`} />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-              <div className="min-w-0">
-                <p className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>{formatDate(activity.day)}</p>
-                <p className={`mt-1 text-lg font-semibold ${isDark ? 'text-neutral-200' : 'text-neutral-900'}`}>{title}</p>
-              </div>
-              <div className="grid grid-cols-1 gap-2 text-sm xl:grid-cols-3 xl:gap-6">
-                {metrics.map((item) => (
-                  <div key={`${activity.activity_key}-${item.label}`} className="whitespace-nowrap">
-                    <span className={`${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{item.label} </span>
-                    <span className={`font-semibold ${isDark ? 'text-neutral-200' : 'text-neutral-900'}`}>{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className={`text-xl ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>⌄</div>
-        </div>
-      </summary>
+    <div>
+      <div className="flex items-center gap-3">
+        <div className={`h-3.5 w-3.5 rounded-full ${workoutIntensityIndicator(activity)}`} />
+        <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          {isRun ? 'Running' : 'Weightlifting'}
+        </p>
+      </div>
 
-      <div className={`border-t px-4 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+      <h3 className={`mt-4 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+        {title}
+      </h3>
+      <p className={`mt-2 text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{formatDate(activity.day)}</p>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {metrics.map((item) => (
+          <div
+            key={`${activity.activity_key}-${item.label}`}
+            className={`rounded-[1.35rem] border px-5 py-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}
+          >
+            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+              {item.label}
+            </p>
+            <p className={`mt-3 text-2xl font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className={`mt-6 rounded-[1.5rem] border px-5 py-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
         <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          Workout Notes
+          Notes & Reflection
+        </p>
+        <p className={`mt-3 text-sm leading-7 ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+          Capture how it felt, what went well, anything to adjust next time, and any signals the coach should remember.
         </p>
         <textarea
           value={noteValue}
           onChange={(event) => onNoteChange(activity.activity_key, event.target.value)}
           placeholder="How did this workout feel? Any observations, adjustments, soreness, or wins the coach should remember?"
-          className={`mt-4 min-h-[7rem] w-full rounded-[1.1rem] border px-4 py-3 text-sm leading-6 outline-none transition ${isDark ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500' : 'border-neutral-200 bg-stone-50 text-neutral-900 placeholder:text-neutral-400'}`}
+          className={`mt-5 min-h-[16rem] w-full rounded-[1.2rem] border px-4 py-4 text-base leading-7 outline-none transition ${isDark ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500' : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'}`}
         />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-            Saved notes are reused the next time the model evaluates your training.
+        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <p className={`text-sm ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+            Saved notes are reused the next time the model evaluates your training. {supportingText}
           </p>
           <button
             type="button"
             onClick={() => onSaveNote(activity.activity_key)}
             disabled={saveState === 'saving'}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${isDark ? 'bg-white text-neutral-950 disabled:bg-neutral-700 disabled:text-neutral-400' : 'bg-neutral-950 text-white disabled:bg-neutral-200 disabled:text-neutral-500'}`}
+            className={`rounded-full px-5 py-3 text-sm font-semibold ${isDark ? 'bg-white text-neutral-950 disabled:bg-neutral-700 disabled:text-neutral-400' : 'bg-neutral-950 text-white disabled:bg-neutral-200 disabled:text-neutral-500'}`}
           >
             {buttonLabel}
           </button>
         </div>
       </div>
-    </details>
+    </div>
+  )
+}
+
+function WorkoutCatalogEmptyState({ theme = 'light' }) {
+  const isDark = theme === 'dark'
+
+  return (
+    <div className={`flex min-h-[30rem] items-center justify-center rounded-[1.6rem] border border-dashed text-center ${isDark ? 'border-neutral-800 bg-neutral-900/50 text-neutral-500' : 'border-neutral-200 bg-stone-50 text-neutral-400'}`}>
+      <div className="max-w-sm px-6">
+        <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${isDark ? 'bg-neutral-900 text-neutral-600' : 'bg-white text-neutral-300'}`}>
+          <SparkleIcon className="h-7 w-7" />
+        </div>
+        <p className={`mt-6 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+          Select a workout
+        </p>
+        <p className={`mt-3 text-base leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          Choose a workout from the left page to view full details and write notes.
+        </p>
+      </div>
+    </div>
   )
 }
 
