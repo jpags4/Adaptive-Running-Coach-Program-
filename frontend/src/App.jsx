@@ -2129,6 +2129,31 @@ function ActivityLogSection({
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
+      <style>{`
+        .workout-catalog-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(115, 115, 115, 0.7) transparent;
+        }
+        .workout-catalog-scroll::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+        }
+        .workout-catalog-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .workout-catalog-scroll::-webkit-scrollbar-thumb {
+          background: rgba(115, 115, 115, 0.55);
+          border-radius: 999px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        .workout-catalog-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(139, 92, 246, 0.55);
+          border-radius: 999px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+      `}</style>
       <div>
         <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
           Training Log
@@ -2141,35 +2166,8 @@ function ActivityLogSection({
         </p>
       </div>
 
-      <div className="mt-8">
-        <div className={`inline-flex flex-wrap items-center gap-2 rounded-[1.2rem] border p-2 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
-          {filterOptions.map((option) => {
-            const selected = option.key === filter
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => handleFilterChange(option.key)}
-                className={`inline-flex items-center gap-2 rounded-[0.95rem] px-4 py-3 text-sm font-semibold transition ${
-                  selected
-                    ? isDark
-                      ? 'bg-white text-neutral-950'
-                      : 'bg-neutral-950 text-white'
-                    : isDark
-                      ? 'text-neutral-300 hover:bg-neutral-900 hover:text-white'
-                      : 'text-neutral-600 hover:bg-white hover:text-neutral-950'
-                }`}
-              >
-                {option.icon}
-                <span>{option.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
       <div className={`mt-6 overflow-hidden rounded-[2rem] border ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
-        <div className="grid min-h-[42rem] grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="grid h-[min(38rem,72vh)] grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className={`min-h-0 border-b xl:border-b-0 xl:border-r ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
             <div className={`sticky top-0 z-10 border-b px-6 py-5 backdrop-blur ${isDark ? 'border-neutral-800 bg-neutral-950/95' : 'border-neutral-200 bg-white/95'}`}>
               <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -2178,9 +2176,33 @@ function ActivityLogSection({
               <p className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {filteredActivities.length} workouts
               </p>
+              <div className={`mt-4 inline-flex flex-wrap items-center gap-2 rounded-[1.05rem] border p-1.5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-stone-50'}`}>
+                {filterOptions.map((option) => {
+                  const selected = option.key === filter
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => handleFilterChange(option.key)}
+                      className={`inline-flex items-center gap-2 rounded-[0.9rem] px-4 py-2.5 text-sm font-semibold transition ${
+                        selected
+                          ? isDark
+                            ? 'bg-white text-neutral-950'
+                            : 'bg-neutral-950 text-white'
+                          : isDark
+                            ? 'text-neutral-300 hover:bg-neutral-950 hover:text-white'
+                            : 'text-neutral-600 hover:bg-white hover:text-neutral-950'
+                      }`}
+                    >
+                      {option.icon}
+                      <span>{option.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
-            <div className="max-h-[34rem] overflow-y-auto">
+            <div className="workout-catalog-scroll h-[calc(min(38rem,72vh)-11rem)] overflow-y-auto">
               {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
                 <WorkoutCatalogListItem
                   key={activity.activity_key}
@@ -2200,7 +2222,7 @@ function ActivityLogSection({
           </div>
 
           <div className="min-h-0">
-            <div className="max-h-[42rem] overflow-y-auto px-6 py-6 md:px-8">
+            <div className="workout-catalog-scroll h-full overflow-y-auto px-6 py-6 md:px-8">
               {selectedActivity ? (
                 <WorkoutCatalogDetail
                   activity={selectedActivity}
