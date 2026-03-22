@@ -1583,7 +1583,7 @@ function CalendarCard({ card, theme = 'light' }) {
 
       {card.is_today ? (
         <div
-          className={`-mx-3 -mt-2.5 mb-2.5 px-3 pb-2.5 pt-2.5 ${
+          className={`-mx-3 -mt-2.5 mb-3 min-h-[5.1rem] px-3 pb-2.5 pt-2.5 ${
             isDark
               ? 'rounded-t-[1.15rem] border-neutral-200 bg-white text-neutral-950'
               : 'rounded-t-[1.15rem] border-neutral-950 bg-neutral-950 text-white'
@@ -1593,7 +1593,7 @@ function CalendarCard({ card, theme = 'light' }) {
           <p className="mt-1.5 text-2xl font-semibold leading-none tracking-tight">{dayNumber}</p>
         </div>
       ) : (
-        <div>
+        <div className="min-h-[5.1rem]">
           <p className={`text-sm font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
             {weekdayShort}
           </p>
@@ -1603,7 +1603,7 @@ function CalendarCard({ card, theme = 'light' }) {
         </div>
       )}
 
-      <div className={`${card.is_today ? '' : 'mt-3'} ${activities.length === 0 ? 'min-h-[8rem]' : 'pt-2.5'}`}>
+      <div className={`${activities.length === 0 ? 'min-h-[8rem]' : 'pt-2.5'}`}>
         {activities.length > 0 ? (
           <div className="space-y-2.5">
             {activities.map((activity, index) => (
@@ -1614,7 +1614,13 @@ function CalendarCard({ card, theme = 'light' }) {
               />
             ))}
           </div>
-        ) : null}
+        ) : (
+          <div className="pt-2.5">
+            <p className={`text-sm italic leading-6 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              Rest day
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
