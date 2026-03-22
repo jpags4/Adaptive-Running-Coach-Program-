@@ -1368,98 +1368,31 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
   if (!Array.isArray(cards) || cards.length === 0 || !weeklyFocus) return null
   const isDark = theme === 'dark'
   const weekdayHeadings = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-  const [showWeekDetails, setShowWeekDetails] = useState(false)
-  const paceRanges = [
-    { label: 'Easy Pace', value: weeklyFocus.pace_model?.easy?.pace_range },
-    { label: 'Steady Pace', value: weeklyFocus.pace_model?.steady?.pace_range },
-    { label: 'Threshold Pace', value: weeklyFocus.pace_model?.threshold?.pace_range },
-    { label: 'Long Run Pace', value: weeklyFocus.pace_model?.long_run?.pace_range },
-    { label: 'Race Pace', value: weeklyFocus.pace_model?.race_pace?.pace_range },
-  ].filter((entry) => entry.value)
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
-        </div>
-
-        <div className={`flex items-center gap-5 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-          <LegendDot color="bg-emerald-500" label="Easy" />
-          <LegendDot color="bg-amber-400" label="Moderate" />
-          <LegendDot color="bg-rose-500" label="Hard" />
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <div className={`inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+              <span>This Week</span>
+            </div>
+            <div className={`flex items-center gap-5 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+              <LegendDot color="bg-emerald-500" label="Easy" />
+              <LegendDot color="bg-amber-400" label="Moderate" />
+              <LegendDot color="bg-rose-500" label="Hard" />
+            </div>
+          </div>
+          <p className={`mt-6 text-lg font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            {formatWeekSpan(cards)}
+          </p>
         </div>
       </div>
 
-      <div className="mt-10">
-        <div className={`rounded-[1.8rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Current Week Schedule
-              </p>
-              <p className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                {formatWeekSpan(cards)}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowWeekDetails((open) => !open)}
-              className={`inline-flex items-center gap-3 rounded-full border px-4 py-2 text-sm font-medium transition ${
-                isDark
-                  ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white'
-                  : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
-              }`}
-            >
-              <span>{showWeekDetails ? 'Hide week details' : 'Show week details'}</span>
-              <span className={`text-lg transition ${showWeekDetails ? 'rotate-180' : ''}`}>⌄</span>
-            </button>
-          </div>
-
-          {showWeekDetails ? (
-            <div className={`mt-6 rounded-[1.5rem] border px-5 py-5 ${isDark ? 'border-neutral-800 bg-neutral-900/80' : 'border-neutral-200 bg-white/90'}`}>
-              <div>
-                <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                  Current Week
-                </p>
-                <div className={`mt-3 inline-flex items-center rounded-[1rem] border px-4 py-2 ${
-                  isDark
-                    ? 'border-violet-800/70 bg-violet-950/35 shadow-[inset_4px_0_0_0_rgba(168,85,247,0.9)]'
-                    : 'border-violet-200 bg-violet-50/85 shadow-[inset_4px_0_0_0_rgba(124,58,237,0.85)]'
-                }`}>
-                  <h3 className={`text-xl font-semibold tracking-tight md:text-[1.9rem] ${isDark ? 'text-violet-100' : 'text-violet-900'}`}>
-                    {weeklyFocus.phase || 'Weekly focus'}
-                  </h3>
-                </div>
-              </div>
-              <p className={`mt-5 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
-              </p>
-
-              <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-4">
-                <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
-                <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
-                <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
-                <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
-              </div>
-
-              {paceRanges.length > 0 ? (
-                <div className="mt-5">
-                  <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                    Estimated Pace Ranges
-                  </p>
-                  <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-5">
-                    {paceRanges.map((entry) => (
-                      <FocusMetric key={entry.label} label={entry.label} value={entry.value} theme={theme} />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="mt-6 grid grid-cols-7 gap-2 xl:gap-3">
+      <div className={`mt-8 rounded-[1.8rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+        <div className="mt-2 grid grid-cols-7 gap-2 xl:gap-3">
             {weekdayHeadings.map((heading) => (
               <p key={heading} className={`text-center text-sm font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
                 {heading}
@@ -1468,68 +1401,64 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
             {cards.map((card) => (
               <CalendarCard key={card.day} card={card} theme={theme} />
             ))}
+        </div>
+      </div>
+
+      <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+        <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          Weekly Focus
+        </p>
+        <h3 className={`mt-3 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+          {weeklyFocus.phase || 'Weekly focus'}
+        </h3>
+        <p className={`mt-3 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+          {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
+        </p>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
+          <FocusMetric label="Mileage" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
+          <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
+          <FocusMetric label="Long Run" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
+          <FocusMetric label="Strength" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
+        </div>
+      </div>
+
+      {Array.isArray(weeks) && weeks.length > 0 ? (
+        <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Upcoming Training Blocks
+          </p>
+          <div className="mt-4 space-y-4">
+            {weeks.map((week, index) => (
+              <div
+                key={week.week_start}
+                className={`rounded-[1.8rem] border p-5 ${
+                  isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-white'
+                }`}
+              >
+                <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                  Week {index + 2} · {formatRoadmapWeekSpan(week)}
+                </p>
+                <h4 className={`mt-3 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                  {week.phase}
+                </h4>
+                <p className={`mt-3 max-w-4xl text-base leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                  {week.summary || week.progression_note}
+                </p>
+
+                <div className={`mt-5 border-t pt-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+                    <FocusMetric label="Mileage" value={week.mileage_range} theme={theme} />
+                    <FocusMetric label="Key Session" value={week.quality_session_target} theme={theme} />
+                    <FocusMetric label="Long Run" value={week.long_run_target} theme={theme} />
+                    <FocusMetric label="Strength" value={week.strength_target || '-'} theme={theme} />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-
-        {Array.isArray(weeks) && weeks.length > 0 ? (
-          <div className="mt-6">
-            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              Upcoming Training Blocks
-            </p>
-            <div className="mt-4 space-y-4">
-              {weeks.map((week, index) => (
-                <details
-                  key={week.week_start}
-                  className={`group rounded-[1.8rem] border ${
-                    week.certainty === 'moderate'
-                      ? isDark ? 'border-emerald-800/70 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
-                      : week.certainty === 'light'
-                        ? isDark ? 'border-amber-800/70 bg-amber-950/15' : 'border-amber-200 bg-amber-50/35'
-                        : isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-white'
-                  }`}
-                >
-                  <summary className="cursor-pointer list-none px-5 py-5">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                          Week {index + 2} · {formatRoadmapWeekSpan(week)}
-                        </p>
-                        <h4 className={`mt-3 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                          {week.phase}
-                        </h4>
-                        <p className={`mt-2 max-w-4xl text-base leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                          {week.summary || week.progression_note}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-5">
-                        <span className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] ${certaintyPillClass(week.certainty, theme)}`}>
-                          {week.certainty}
-                        </span>
-                        <span className={`text-xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
-                      </div>
-                    </div>
-                  </summary>
-
-                  <div className={`border-t px-5 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-                      <FocusMetric label="Primary Adaptation" value={capitalize(week.primary_adaptation || '')} theme={theme} />
-                      <FocusMetric label="Mileage Shape" value={week.mileage_range} theme={theme} />
-                      <FocusMetric label="Long Run Shape" value={week.long_run_target} theme={theme} />
-                      <FocusMetric label="Key Session Shape" value={week.quality_session_target} theme={theme} />
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                      <ReasonCard title="Why This Week Exists" text={week.progression_note} tone="neutral" theme={theme} />
-                      <ReasonCard title="How It Builds Toward The Race" text={week.race_connection} tone="violet" theme={theme} />
-                    </div>
-                  </div>
-                </details>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
     </section>
   )
 }
@@ -2195,6 +2124,31 @@ function ActivityLogSection({
         </p>
       </div>
 
+      <div className={`mt-6 inline-flex flex-wrap items-center gap-2 rounded-[1.1rem] border p-1.5 ${isDark ? 'border-neutral-800 bg-neutral-950/90' : 'border-neutral-200 bg-white'}`}>
+        {filterOptions.map((option) => {
+          const selected = option.key === filter
+          return (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => handleFilterChange(option.key)}
+              className={`inline-flex items-center gap-2 rounded-[0.9rem] px-4 py-2.5 text-sm font-semibold transition ${
+                selected
+                  ? isDark
+                    ? 'bg-white text-neutral-950'
+                    : 'bg-neutral-950 text-white'
+                  : isDark
+                    ? 'text-neutral-300 hover:bg-neutral-900 hover:text-white'
+                    : 'text-neutral-600 hover:bg-stone-50 hover:text-neutral-950'
+              }`}
+            >
+              {option.icon}
+              <span>{option.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
       <div className={`mt-6 overflow-hidden rounded-[2rem] border ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
         <div className="grid h-[min(38rem,72vh)] grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className={`min-h-0 border-b xl:border-b-0 xl:border-r ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
@@ -2205,30 +2159,6 @@ function ActivityLogSection({
               <p className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {filteredActivities.length} workouts
               </p>
-              <div className={`mt-4 inline-flex flex-wrap items-center gap-2 rounded-[1.05rem] border p-1.5 ${isDark ? 'border-neutral-800 bg-neutral-900/90' : 'border-neutral-200 bg-stone-50'}`}>
-                {filterOptions.map((option) => {
-                  const selected = option.key === filter
-                  return (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => handleFilterChange(option.key)}
-                      className={`inline-flex items-center gap-2 rounded-[0.9rem] px-4 py-2.5 text-sm font-semibold transition ${
-                        selected
-                          ? isDark
-                            ? 'bg-white text-neutral-950'
-                            : 'bg-neutral-950 text-white'
-                          : isDark
-                            ? 'text-neutral-300 hover:bg-neutral-950 hover:text-white'
-                            : 'text-neutral-600 hover:bg-white hover:text-neutral-950'
-                      }`}
-                    >
-                      {option.icon}
-                      <span>{option.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
             </div>
 
             <div className="workout-catalog-scroll h-[calc(min(38rem,72vh)-11rem)] overflow-y-auto">
