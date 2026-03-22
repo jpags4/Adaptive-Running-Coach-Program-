@@ -2138,11 +2138,8 @@ function ActivityLogSection({
         }
       `}</style>
       <div>
-        <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          Training Log
-        </p>
-        <h2 className={`mt-3 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-          Workout Catalog
+        <h2 className={`text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+          Workout Log
         </h2>
         <p className={`mt-3 max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
           Review your completed workouts and add notes for future reference.
