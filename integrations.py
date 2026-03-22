@@ -467,7 +467,7 @@ def strava_runs_to_model(activities: list[dict]) -> list[Run]:
 def strava_activity_preview(activities: list[dict]) -> list[dict]:
     previews: list[dict] = []
     duplicate_short_run_days = _likely_duplicate_short_run_days(activities)
-    for activity in activities[:8]:
+    for activity in activities:
         if _skip_strava_run_activity(activity, duplicate_short_run_days):
             continue
         distance_miles = _strava_activity_distance_miles(activity)

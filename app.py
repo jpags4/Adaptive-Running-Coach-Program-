@@ -206,7 +206,7 @@ def previous_run_summary(runs: list) -> dict:
 
 
 def sample_activity_preview(runs: list) -> list[dict]:
-    ordered = sorted(runs, key=lambda item: item.day, reverse=True)[:8]
+    ordered = sorted(runs, key=lambda item: item.day, reverse=True)
     return [
         {
             "source": "Strava",
