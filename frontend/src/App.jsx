@@ -1368,6 +1368,13 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
   if (!Array.isArray(cards) || cards.length === 0 || !weeklyFocus) return null
   const isDark = theme === 'dark'
   const weekdayHeadings = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const paceRanges = [
+    { label: 'Easy Pace', value: weeklyFocus.pace_model?.easy?.pace_range },
+    { label: 'Steady Pace', value: weeklyFocus.pace_model?.steady?.pace_range },
+    { label: 'Threshold Pace', value: weeklyFocus.pace_model?.threshold?.pace_range },
+    { label: 'Long Run Pace', value: weeklyFocus.pace_model?.long_run?.pace_range },
+    { label: 'Race Pace', value: weeklyFocus.pace_model?.race_pace?.pace_range },
+  ].filter((entry) => entry.value)
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
@@ -1391,8 +1398,22 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
         </div>
       </div>
 
-      <div className={`mt-8 rounded-[1.8rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
-        <div className="mt-2 grid grid-cols-7 gap-2 xl:gap-3">
+      <details className={`group mt-8 rounded-[1.8rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+        <summary className="list-none cursor-pointer">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Current Week Schedule
+              </p>
+              <p className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                {formatWeekSpan(cards)}
+              </p>
+            </div>
+            <span className={`mt-1 text-2xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
+          </div>
+        </summary>
+
+        <div className="mt-6 grid grid-cols-7 gap-2 xl:gap-3">
             {weekdayHeadings.map((heading) => (
               <p key={heading} className={`text-center text-sm font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
                 {heading}
@@ -1402,63 +1423,76 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
               <CalendarCard key={card.day} card={card} theme={theme} />
             ))}
         </div>
-      </div>
 
-      <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-        <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          Weekly Focus
-        </p>
-        <h3 className={`mt-3 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-          {weeklyFocus.phase || 'Weekly focus'}
-        </h3>
-        <p className={`mt-3 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-          {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
-        </p>
-
-        <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
-          <FocusMetric label="Mileage" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
-          <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
-          <FocusMetric label="Long Run" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
-          <FocusMetric label="Strength" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
-        </div>
-      </div>
-
-      {Array.isArray(weeks) && weeks.length > 0 ? (
         <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
           <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Upcoming Training Blocks
+            Weekly Focus
           </p>
-          <div className="mt-4 space-y-4">
-            {weeks.map((week, index) => (
-              <div
-                key={week.week_start}
-                className={`rounded-[1.8rem] border p-5 ${
-                  isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-white'
-                }`}
-              >
-                <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                  Week {index + 2} · {formatRoadmapWeekSpan(week)}
-                </p>
-                <h4 className={`mt-3 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                  {week.phase}
-                </h4>
-                <p className={`mt-3 max-w-4xl text-base leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                  {week.summary || week.progression_note}
-                </p>
+          <h3 className={`mt-3 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            {weeklyFocus.phase || 'Weekly focus'}
+          </h3>
+          <p className={`mt-3 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+            {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
+          </p>
 
-                <div className={`mt-5 border-t pt-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-                    <FocusMetric label="Mileage" value={week.mileage_range} theme={theme} />
-                    <FocusMetric label="Key Session" value={week.quality_session_target} theme={theme} />
-                    <FocusMetric label="Long Run" value={week.long_run_target} theme={theme} />
-                    <FocusMetric label="Strength" value={week.strength_target || '-'} theme={theme} />
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
+            <FocusMetric label="Mileage" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
+            <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
+            <FocusMetric label="Long Run" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
+            <FocusMetric label="Strength" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
           </div>
+
+          {paceRanges.length > 0 ? (
+            <div className="mt-6">
+              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Estimated Pace Ranges
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-5">
+                {paceRanges.map((entry) => (
+                  <FocusMetric key={entry.label} label={entry.label} value={entry.value} theme={theme} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {Array.isArray(weeks) && weeks.length > 0 ? (
+            <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Upcoming Training Blocks
+              </p>
+              <div className="mt-4 space-y-4">
+                {weeks.map((week, index) => (
+                  <div
+                    key={week.week_start}
+                    className={`rounded-[1.8rem] border p-5 ${
+                      isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-white'
+                    }`}
+                  >
+                    <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                      Week {index + 2} · {formatRoadmapWeekSpan(week)}
+                    </p>
+                    <h4 className={`mt-3 text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                      {week.phase}
+                    </h4>
+                    <p className={`mt-3 max-w-4xl text-base leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                      {week.summary || week.progression_note}
+                    </p>
+
+                    <div className={`mt-5 border-t pt-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+                        <FocusMetric label="Mileage" value={week.mileage_range} theme={theme} />
+                        <FocusMetric label="Key Session" value={week.quality_session_target} theme={theme} />
+                        <FocusMetric label="Long Run" value={week.long_run_target} theme={theme} />
+                        <FocusMetric label="Strength" value={week.strength_target || '-'} theme={theme} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </details>
     </section>
   )
 }
