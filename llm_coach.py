@@ -155,6 +155,7 @@ def _safety_and_progression_context(
     mental = str(feedback.get("mental_feeling") or "").strip().lower()
     notes = str(feedback.get("notes") or "").strip().lower()
     recent_workout_notes = str(feedback.get("recent_workout_notes") or "").strip()
+    recent_checkin_context = str(feedback.get("recent_checkin_context") or "").strip()
     weekly_strength_sessions_completed = int(feedback.get("weekly_strength_sessions_completed") or 0)
     strength_sessions_last_2_days = int(feedback.get("strength_sessions_last_2_days") or 0)
     has_strength_activity_today = bool(feedback.get("has_strength_activity_today"))
@@ -200,6 +201,7 @@ def _safety_and_progression_context(
         "subjective_physical": physical,
         "subjective_mental": mental,
         "subjective_notes": notes,
+        "recent_checkin_context": recent_checkin_context,
         "recent_workout_notes": recent_workout_notes,
         "weekly_strength_sessions_completed": weekly_strength_sessions_completed,
         "strength_sessions_last_2_days": strength_sessions_last_2_days,
@@ -623,6 +625,7 @@ def llm_recommendation(
         "The athlete often has more cardio fitness than leg durability, and hills create extra muscular load. "
         "If subjective feedback is present, treat it as real signal rather than optional color. "
         "Treat today's direct check-in as higher priority than older workout notes. "
+        "Recent check-ins from the last few days matter more than older workout notes, especially for deciding whether a skipped day should be absorbed rather than made up. "
         "Historical workout notes are supporting context only and should not override a current fresh/normal and sharp/steady check-in unless they describe a clearly unresolved severe safety issue. "
         "Follow the safety and progression context strictly. "
         "Use explicit guardrails: poor readiness, sickness, sore legs, elevated resting heart rate, poor sleep, or stacked hard days must downshift the recommendation. "

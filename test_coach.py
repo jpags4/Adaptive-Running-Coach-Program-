@@ -5,9 +5,12 @@ from unittest import mock
 from app import (
     _activity_key,
     _activity_notes_context,
+    _apply_prior_week_completion_cap,
     _apply_clarification_answers_to_settings,
     _attach_activity_notes,
     _generate_weekly_plan,
+    _planned_skip_today,
+    _recent_checkin_context,
     _current_day_status,
     _pace_text_for_type,
     _profile_settings_payload,
@@ -289,6 +292,54 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertIn("2026-03-20 Run", context)
         self.assertNotIn("2026-03-15", context)
         self.assertNotIn("felt sick", context.lower())
+
+    def test_activity_notes_context_drops_old_health_note_when_today_checkin_is_positive(self) -> None:
+        context = _activity_notes_context(
+            {
+                "runs": [
+                    {
+                        "day": "2026-03-18",
+                        "name": "Run",
+                        "distance_miles": 3.3,
+                        "duration_minutes": 24,
+                        "note": "I felt sick and dizzy after this run.",
+                    },
+                    {
+                        "day": "2026-03-20",
+                        "name": "Run",
+                        "distance_miles": 4.0,
+                        "duration_minutes": 31,
+                        "note": "Felt smooth and controlled.",
+                    },
+                ],
+                "strength": [],
+            },
+            reference_day="2026-03-21",
+            current_feedback={"physical_feeling": "fresh", "mental_feeling": "sharp", "notes": ""},
+        )
+
+        self.assertNotIn("felt sick", context.lower())
+        self.assertIn("felt smooth", context.lower())
+
+    def test_recent_checkin_context_keeps_recent_skip_signal(self) -> None:
+        context = _recent_checkin_context(
+            {
+                "2026-03-20": {
+                    "physical_feeling": "normal",
+                    "mental_feeling": "steady",
+                    "notes": "I am not running today.",
+                    "planned_skip_today": True,
+                }
+            },
+            "2026-03-21",
+        )
+
+        self.assertIn("planned to skip", context.lower())
+        self.assertIn("2026-03-20", context)
+
+    def test_planned_skip_today_detects_skip_phrases(self) -> None:
+        self.assertTrue(_planned_skip_today({"notes": "I am not going to run today."}))
+        self.assertFalse(_planned_skip_today({"notes": "Ready to run tomorrow."}))
 
     def test_old_workout_notes_do_not_become_todays_illness_checkin(self) -> None:
         context = _safety_and_progression_context(
@@ -685,6 +736,19 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertLessEqual(weekly_intent.mileage_target, 26.0)
         self.assertTrue(weekly_intent.long_run_target.startswith("8 miles"))
+
+    def test_prior_week_completion_cap_lowers_unreachable_next_week_target(self) -> None:
+        weekly_intent = build_weekly_intent(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS,
+            today=date(2026, 3, 23),
+        )
+        original_target = weekly_intent.mileage_target
+        capped = _apply_prior_week_completion_cap(weekly_intent, SAMPLE_RUNS, date(2026, 3, 22))
+
+        self.assertLessEqual(capped.mileage_target, original_target)
+        self.assertLessEqual(capped.mileage_target, 27.5)
 
     def test_future_week_labels_follow_realistic_half_marathon_progression(self) -> None:
         threshold_week = build_weekly_intent(

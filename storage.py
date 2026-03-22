@@ -293,6 +293,27 @@ def save_weekly_plans(plans: dict[str, Any]) -> None:
     _set_namespace_values("weekly_plans", plans)
 
 
+def load_daily_checkins() -> dict[str, Any]:
+    return _get_namespace_values("daily_checkins")
+
+
+def save_daily_checkins(checkins: dict[str, Any]) -> None:
+    _set_namespace_values("daily_checkins", checkins)
+
+
+def save_daily_checkin(day: str, payload: dict[str, Any]) -> dict[str, Any]:
+    checkins = load_daily_checkins()
+    key = str(day or "").strip()
+    if not key:
+        return checkins
+    if payload:
+        checkins[key] = payload
+    else:
+        checkins.pop(key, None)
+    save_daily_checkins(checkins)
+    return checkins
+
+
 def load_activity_notes() -> dict[str, Any]:
     return _get_namespace_values("activity_notes")
 

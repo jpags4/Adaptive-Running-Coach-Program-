@@ -46,6 +46,7 @@ from integrations import (
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 from llm_coach import llm_recommendation
 from storage import (
+    load_daily_checkins,
     init_storage,
     load_activity_notes,
     load_settings,
@@ -53,6 +54,7 @@ from storage import (
     load_tokens,
     load_weekly_plans,
     save_activity_note,
+    save_daily_checkin,
     save_settings,
     save_states,
     save_tokens,
@@ -73,6 +75,34 @@ WEEKDAY_NAMES = [
     "saturday",
     "sunday",
 ]
+
+HEALTH_NOTE_TOKENS = (
+    "sick",
+    "ill",
+    "headache",
+    "migraine",
+    "fever",
+    "chills",
+    "nausea",
+    "dizzy",
+    "dizziness",
+    "vomit",
+    "stomach bug",
+    "flu",
+    "cold",
+    "cough",
+    "sore throat",
+    "unwell",
+)
+SEVERE_HEALTH_NOTE_TOKENS = (
+    "chest pain",
+    "shortness of breath",
+    "couldn't breathe",
+    "fainted",
+    "passed out",
+    "blackout",
+    "severe pain",
+)
 
 
 def _string_value(value, default: str = "") -> str:
@@ -257,7 +287,12 @@ def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
     }
 
 
-def _activity_notes_context(activity_log: dict[str, list[dict]], limit: int = 4, reference_day: str | None = None) -> str:
+def _activity_notes_context(
+    activity_log: dict[str, list[dict]],
+    limit: int = 4,
+    reference_day: str | None = None,
+    current_feedback: dict | None = None,
+) -> str:
     noted_items = [
         item
         for bucket in ("runs", "strength")
@@ -282,6 +317,30 @@ def _activity_notes_context(activity_log: dict[str, list[dict]], limit: int = 4,
             and datetime.strptime(str(item.get("day") or "").strip(), "%Y-%m-%d").date() >= recent_cutoff
         ]
 
+    feedback = current_feedback or {}
+    physical = str(feedback.get("physical_feeling") or "").strip().lower()
+    mental = str(feedback.get("mental_feeling") or "").strip().lower()
+    today_notes = str(feedback.get("notes") or "").strip().lower()
+    healthy_checkin = physical in {"fresh", "normal"} and mental in {"sharp", "steady"} and not today_notes
+
+    if healthy_checkin and reference_date is not None:
+        filtered_items: list[dict] = []
+        for item in noted_items:
+            note = str(item.get("note") or "").strip().lower()
+            if not note:
+                continue
+            item_day = datetime.strptime(str(item.get("day") or "").strip(), "%Y-%m-%d").date()
+            days_old = (reference_date - item_day).days
+            has_health_note = any(token in note for token in HEALTH_NOTE_TOKENS)
+            severe_health_note = any(token in note for token in SEVERE_HEALTH_NOTE_TOKENS)
+            if has_health_note and not severe_health_note:
+                if days_old > 0:
+                    continue
+            elif severe_health_note and days_old > 1:
+                continue
+            filtered_items.append(item)
+        noted_items = filtered_items
+
     context_lines: list[str] = []
     for item in noted_items[:limit]:
         label = str(item.get("name") or item.get("sport") or "Workout").strip()
@@ -294,6 +353,89 @@ def _activity_notes_context(activity_log: dict[str, list[dict]], limit: int = 4,
         note = str(item.get("note") or "").strip()
         context_lines.append(f"{day} {label} ({', '.join(details) if details else 'logged workout'}): {note}")
     return "\n".join(context_lines)
+
+
+def _planned_skip_today(feedback: dict | None) -> bool:
+    text = str((feedback or {}).get("notes") or "").strip().lower()
+    if not text:
+        return False
+    phrases = (
+        "not running today",
+        "not going to run today",
+        "won't run today",
+        "will not run today",
+        "skip today",
+        "skipping today",
+        "taking today off",
+        "resting today",
+        "rest day today",
+    )
+    return any(phrase in text for phrase in phrases)
+
+
+def _recent_checkin_context(checkins: dict[str, dict], reference_day: str, limit: int = 3) -> str:
+    if not reference_day or not isinstance(checkins, dict):
+        return ""
+    try:
+        reference_date = datetime.strptime(reference_day, "%Y-%m-%d").date()
+    except ValueError:
+        return ""
+
+    recent_entries: list[tuple[str, dict]] = []
+    for day, payload in checkins.items():
+        try:
+            day_value = datetime.strptime(str(day), "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        days_old = (reference_date - day_value).days
+        if days_old < 0 or days_old > 3:
+            continue
+        recent_entries.append((str(day), payload if isinstance(payload, dict) else {}))
+
+    recent_entries.sort(key=lambda item: item[0], reverse=True)
+    lines: list[str] = []
+    for day, payload in recent_entries[:limit]:
+        physical = str(payload.get("physical_feeling") or "").strip().lower()
+        mental = str(payload.get("mental_feeling") or "").strip().lower()
+        notes = str(payload.get("notes") or "").strip()
+        planned_skip = bool(payload.get("planned_skip_today"))
+        parts = []
+        if physical:
+            parts.append(f"legs: {physical}")
+        if mental:
+            parts.append(f"mind: {mental}")
+        if planned_skip:
+            parts.append("planned to skip that day")
+        if notes:
+            parts.append(f"notes: {notes}")
+        if parts:
+            lines.append(f"{day} check-in: " + "; ".join(parts))
+    return "\n".join(lines)
+
+
+def _apply_prior_week_completion_cap(weekly_intent: WeeklyIntent, runs: list, prior_week_cutoff) -> WeeklyIntent:
+    prior_week_start = prior_week_cutoff - timedelta(days=prior_week_cutoff.weekday())
+    prior_week_miles = round(
+        sum(
+            float(run.distance_miles or 0.0)
+            for run in runs
+            if prior_week_start <= datetime.strptime(run.day, "%Y-%m-%d").date() <= prior_week_cutoff
+        ),
+        1,
+    )
+    if prior_week_miles <= 0:
+        return weekly_intent
+
+    reachable_target = round(max(16.0, min(weekly_intent.mileage_target, max(prior_week_miles * 1.06, prior_week_miles + 1.0))), 1)
+    if reachable_target >= weekly_intent.mileage_target - 0.2:
+        return weekly_intent
+
+    weekly_intent.mileage_target = reachable_target
+    weekly_intent.mileage_range = f"{max(10.0, reachable_target - 1.5):.0f}-{reachable_target + 1.5:.0f} miles"
+    weekly_intent.progression_note = (
+        f"{weekly_intent.progression_note} Next week stays reachable after this week's actual completion came in below target."
+    ).strip()
+    return weekly_intent
 
 
 def _merge_projected_future_activities(recorded: list[dict], projected: list[dict]) -> list[dict]:
@@ -660,6 +802,7 @@ def _generate_weekly_plan(anchor, profile, runs, metrics) -> dict:
     planning_metrics = historical_metrics or _metrics_through_day(metrics, anchor) or metrics
 
     weekly_intent = build_weekly_intent(profile, planning_runs, planning_metrics, today=week_start)
+    weekly_intent = _apply_prior_week_completion_cap(weekly_intent, planning_runs, prior_week_cutoff)
     baseline_recommendation = coach_recommendation(
         profile,
         planning_runs,
@@ -991,9 +1134,16 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     annotated_activity_feed = _attach_activity_notes(full_activity_feed, activity_notes)
     annotated_activity_log = _activity_log_payload(_attach_activity_notes(full_logged_activity_feed, activity_notes))
     recommendation_feedback.update(_recommendation_training_context(annotated_activity_feed, today_iso))
-    notes_context = _activity_notes_context(annotated_activity_log, reference_day=today_iso)
+    notes_context = _activity_notes_context(
+        annotated_activity_log,
+        reference_day=today_iso,
+        current_feedback=recommendation_feedback,
+    )
     if notes_context:
         recommendation_feedback["recent_workout_notes"] = notes_context
+    recent_checkin_context = _recent_checkin_context(load_daily_checkins(), today_iso)
+    if recent_checkin_context:
+        recommendation_feedback["recent_checkin_context"] = recent_checkin_context
 
     if include_recommendation:
         recommendation, recommendation_meta = llm_recommendation(
@@ -1366,6 +1516,19 @@ class CoachHandler(BaseHTTPRequestHandler):
                     "clarification_answers": form.get("clarification_answers", {}) if isinstance(form.get("clarification_answers"), dict) else {},
                 },
                 include_recommendation=True,
+            )
+            save_daily_checkin(
+                safe_iso_today(),
+                {
+                    "physical_feeling": str(form.get("physical_feeling", "")).strip(),
+                    "mental_feeling": str(form.get("mental_feeling", "")).strip(),
+                    "notes": str(form.get("notes", "")).strip(),
+                    "planned_skip_today": _planned_skip_today(
+                        {
+                            "notes": str(form.get("notes", "")).strip(),
+                        }
+                    ),
+                },
             )
             self._send_json(payload)
             return
