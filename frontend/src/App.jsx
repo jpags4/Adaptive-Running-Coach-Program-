@@ -2746,6 +2746,7 @@ export default function App() {
   const previousRun = summary.previous_run ?? {}
   const currentDayStatus = summary.current_day_status ?? null
   const adaptiveWeeklyTarget = Number(summaryData.weekly_focus?.mileage_target || 0)
+  const roundedAdaptiveWeeklyTarget = adaptiveWeeklyTarget ? Math.round(adaptiveWeeklyTarget) : 0
   const recoveryAccent = whoopRecoveryColor(summary.latest_recovery)
   const loadAccent = loadColor(summary.recent_mileage, adaptiveWeeklyTarget)
 
@@ -2892,7 +2893,7 @@ export default function App() {
               label="Weekly Mileage Progress"
               value={
                 summary.recent_mileage && adaptiveWeeklyTarget
-                  ? `${summary.recent_mileage.toFixed(1)} / ${adaptiveWeeklyTarget.toFixed(1)} mi`
+                  ? `${summary.recent_mileage.toFixed(1)} / ${roundedAdaptiveWeeklyTarget} mi`
                   : summary.recent_mileage
                     ? `${summary.recent_mileage.toFixed(1)} mi`
                     : '-'
