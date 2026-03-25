@@ -1129,67 +1129,78 @@ function TrainingCard({
       </div>
 
       {recommendationExplanation?.summary ? (
-        <section className={`mt-6 rounded-[1.9rem] border p-6 ${
+        <details className={`group mt-6 overflow-hidden rounded-[1.9rem] border ${
           isDark ? `border-sky-900/40 bg-sky-950/30 ${darkGlow(true)}` : 'border-sky-200 bg-sky-50/80'
         }`}>
-          <div className="flex items-center gap-3">
-            <div className={`flex h-11 w-11 items-center justify-center rounded-full ${
-              isDark ? 'bg-sky-950/70 text-sky-300' : 'bg-white text-sky-700'
-            }`}>
-              <TargetIcon className="h-5 w-5" />
+          <summary className="list-none cursor-pointer px-6 py-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+                  isDark ? 'bg-sky-950/70 text-sky-300' : 'bg-white text-sky-700'
+                }`}>
+                  <TargetIcon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
+                    Coach Summary
+                  </p>
+                  <p className={`mt-1 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                    Athlete-facing guidance built from the final recommendation
+                  </p>
+                  <p className={`mt-5 max-w-4xl text-xl leading-9 ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                    {recommendationExplanation.summary}
+                  </p>
+                </div>
+              </div>
+              <span
+                aria-hidden="true"
+                className={`mt-1 shrink-0 text-2xl transition duration-200 group-open:rotate-180 ${isDark ? 'text-sky-200/70' : 'text-sky-700'}`}
+              >
+                ⌄
+              </span>
             </div>
-            <div>
-              <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
-                Coach Summary
+          </summary>
+
+          <div className="px-6 pb-6">
+            {Array.isArray(recommendationExplanation.whyBullets) && recommendationExplanation.whyBullets.length > 0 ? (
+              <ul className={`space-y-2 text-base leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                {recommendationExplanation.whyBullets.slice(0, 2).map((bullet, index) => (
+                  <li key={`${bullet}-${index}`} className="flex gap-3">
+                    <span className={`mt-3 inline-block h-1.5 w-1.5 rounded-full ${isDark ? 'bg-sky-300' : 'bg-sky-700'}`} />
+                    <span>{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {recommendationExplanation.decisionDrivers ? (
+              <div className={`mt-5 rounded-[1.25rem] border px-4 py-4 ${
+                isDark ? 'border-neutral-800 bg-neutral-950/70' : 'border-white/80 bg-white/90'
+              }`}>
+                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
+                  What Drove This Decision
+                </p>
+                <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                  {recommendationExplanation.decisionDrivers}
+                </p>
+              </div>
+            ) : null}
+
+            {recommendationExplanation.cautionNote ? (
+              <p className={`mt-5 rounded-[1.25rem] border px-4 py-3 text-sm leading-7 ${
+                isDark ? 'border-amber-900/50 bg-amber-950/35 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'
+              }`}>
+                {recommendationExplanation.cautionNote}
               </p>
-              <p className={`mt-1 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Athlete-facing guidance built from the final recommendation
+            ) : null}
+
+            {recommendationExplanation.encouragement ? (
+              <p className={`mt-5 text-sm italic ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                {recommendationExplanation.encouragement}
               </p>
-            </div>
+            ) : null}
           </div>
-
-          <p className={`mt-5 max-w-4xl text-xl leading-9 ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-            {recommendationExplanation.summary}
-          </p>
-
-          {Array.isArray(recommendationExplanation.whyBullets) && recommendationExplanation.whyBullets.length > 0 ? (
-            <ul className={`mt-5 space-y-2 text-base leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-              {recommendationExplanation.whyBullets.slice(0, 2).map((bullet, index) => (
-                <li key={`${bullet}-${index}`} className="flex gap-3">
-                  <span className={`mt-3 inline-block h-1.5 w-1.5 rounded-full ${isDark ? 'bg-sky-300' : 'bg-sky-700'}`} />
-                  <span>{bullet}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {recommendationExplanation.decisionDrivers ? (
-            <div className={`mt-5 rounded-[1.25rem] border px-4 py-4 ${
-              isDark ? 'border-neutral-800 bg-neutral-950/70' : 'border-white/80 bg-white/90'
-            }`}>
-              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
-                What Drove This Decision
-              </p>
-              <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                {recommendationExplanation.decisionDrivers}
-              </p>
-            </div>
-          ) : null}
-
-          {recommendationExplanation.cautionNote ? (
-            <p className={`mt-5 rounded-[1.25rem] border px-4 py-3 text-sm leading-7 ${
-              isDark ? 'border-amber-900/50 bg-amber-950/35 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'
-            }`}>
-              {recommendationExplanation.cautionNote}
-            </p>
-          ) : null}
-
-          {recommendationExplanation.encouragement ? (
-            <p className={`mt-5 text-sm italic ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              {recommendationExplanation.encouragement}
-            </p>
-          ) : null}
-        </section>
+        </details>
       ) : null}
     </section>
   )
