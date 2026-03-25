@@ -15,7 +15,6 @@ from coach import (
     WeeklyIntent,
     assess_recommendation_uncertainty,
     average_easy_pace,
-    build_recommendation_options,
     build_weekly_intent,
     coach_recommendation,
     days_until_race,
@@ -1125,7 +1124,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     roadmap = build_training_roadmap(today_date, profile, runs, metrics)
     recommendation = None
     recommendation_options: list[dict] = []
-    recommended_option_key = "conservative"
+    recommended_option_key = ""
     recommendation_meta = {"source": None, "model": None, "reason": None}
     recommendation_feedback = dict(subjective_feedback or {})
     activity_notes = load_activity_notes()
@@ -1154,11 +1153,6 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             subjective_feedback=recommendation_feedback,
             weekly_intent=weekly_intent,
         )
-        recommendation_options, recommended_option_key = build_recommendation_options(
-            recommendation,
-            profile,
-            subjective_feedback=recommendation_feedback,
-        )
 
     payload = {
         "profile": {
@@ -1184,6 +1178,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             "current_day_status": _current_day_status(today_iso, annotated_activity_feed, recommendation),
         },
         "recommendation": recommendation.to_dict() if recommendation else None,
+        "recommendation_explanation": recommendation_meta.get("recommendation_explanation") if recommendation_meta else None,
         "recommendation_options": recommendation_options,
         "recommended_option_key": recommended_option_key,
         "clarification_questions": [],
