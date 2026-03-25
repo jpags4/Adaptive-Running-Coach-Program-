@@ -317,9 +317,14 @@ function DashboardLoading({ theme = 'light' }) {
     >
       <style>{`
         @keyframes violetCurrent {
-          0% { background-position: 0% 50%; filter: drop-shadow(0 0 0.18rem rgba(168, 85, 247, 0.08)); }
-          50% { background-position: 100% 50%; filter: drop-shadow(0 0 0.38rem rgba(168, 85, 247, 0.14)); }
-          100% { background-position: 0% 50%; filter: drop-shadow(0 0 0.18rem rgba(168, 85, 247, 0.08)); }
+          0% {
+            background-position: 200% center;
+            filter: drop-shadow(0 0 0.18rem rgba(168, 85, 247, 0.08));
+          }
+          100% {
+            background-position: -200% center;
+            filter: drop-shadow(0 0 0.3rem rgba(168, 85, 247, 0.14));
+          }
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
@@ -392,25 +397,25 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const isDark = theme === 'dark'
   const greeting = timeOfDayGreeting()
   return (
-    <header className="grid gap-8 pb-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.78fr)] lg:items-start">
-      <div className="min-w-0 max-w-[46rem]">
+    <header className="mx-auto flex w-full max-w-[1200px] flex-col justify-between gap-6 pb-8 md:flex-row md:items-start md:gap-8">
+      <div className="min-w-0 flex-1">
         <h1
-          className={`max-w-full text-[clamp(2.85rem,4.9vw,4.75rem)] font-semibold uppercase italic leading-[0.94] tracking-[0.01em] xl:whitespace-nowrap ${
+          className={`max-w-full text-[clamp(2rem,5vw,3.5rem)] font-bold uppercase italic leading-[1.05] tracking-[-0.02em] ${
             isDark
-              ? 'animate-[violetCurrent_10s_ease-in-out_infinite] bg-[linear-gradient(112deg,#f8f7ff_0%,#ffffff_28%,#c4b5fd_42%,#ffffff_57%,#ede9fe_100%)] bg-[length:180%_100%] bg-clip-text text-transparent [text-shadow:0_0_8px_rgba(168,85,247,0.11),0_0_18px_rgba(139,92,246,0.06)]'
+              ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
               : 'text-neutral-950'
           }`}
         >
           {`${greeting}, ${name || 'Athlete'}`}
         </h1>
-        <p className={`mt-8 text-[0.8rem] font-medium uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+        <p className={`mt-2 text-[13px] font-medium uppercase tracking-[0.12em] ${isDark ? 'text-neutral-400/70' : 'text-neutral-500/80'}`}>
           Adaptive Running Coach
         </p>
-        <p className={`mt-4 text-[1.05rem] uppercase tracking-[0.08em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{formatDate(today)}</p>
+        <p className={`mt-1.5 text-[14px] uppercase tracking-[0.06em] ${isDark ? 'text-neutral-400/80' : 'text-neutral-500/90'}`}>{formatDate(today)}</p>
       </div>
 
-      <div className="min-w-0 lg:justify-self-end">
-        <div className="flex flex-wrap items-center justify-start gap-3 lg:justify-end">
+      <div className="flex shrink-0 flex-col gap-4 md:items-end">
+        <div className="flex shrink-0 items-center gap-3 self-start md:self-auto">
           <button
             type="button"
             onClick={onOpenProfile}
@@ -425,13 +430,13 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           </button>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
-        <div className={`mt-5 max-w-[24rem] rounded-[1.6rem] border px-5 py-5 text-left lg:ml-auto lg:text-right ${
+        <div className={`w-full max-w-[220px] rounded-[1.4rem] border px-5 py-4 text-left md:text-right ${
           isDark ? `border-neutral-800 bg-neutral-900/88 ${darkGlow(true)}` : 'border-neutral-200 bg-white/92'
         }`}>
           <p className={`text-[0.78rem] font-medium uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
             Race Goal
           </p>
-          <p className={`mt-4 text-[1.02rem] uppercase leading-[1.5] tracking-[0.08em] ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
+          <p className={`mt-3 text-[0.98rem] uppercase leading-[1.45] tracking-[0.07em] ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
             Half Marathon · {formatRaceGoal(goalRaceDate)}
           </p>
         </div>
