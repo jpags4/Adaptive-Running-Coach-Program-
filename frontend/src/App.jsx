@@ -1498,20 +1498,20 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
-          <div className="mt-4 flex flex-wrap items-center gap-4">
-            <div className={`inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+          <div className={`mt-4 flex items-center gap-5 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+            <LegendDot color="bg-emerald-500" label="Easy" />
+            <LegendDot color="bg-amber-400" label="Moderate" />
+            <LegendDot color="bg-rose-500" label="Hard" />
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-4">
+            <p className={`text-lg font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+              {formatWeekSpan(cards)}
+            </p>
+            <div className={`inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500/85' : 'text-neutral-500/85'}`}>
+              <span className="h-2 w-2 rounded-full bg-violet-500" />
               <span>This Week</span>
             </div>
-            <div className={`flex items-center gap-5 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-              <LegendDot color="bg-emerald-500" label="Easy" />
-              <LegendDot color="bg-amber-400" label="Moderate" />
-              <LegendDot color="bg-rose-500" label="Hard" />
-            </div>
           </div>
-          <p className={`mt-6 text-lg font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            {formatWeekSpan(cards)}
-          </p>
         </div>
       </div>
 
