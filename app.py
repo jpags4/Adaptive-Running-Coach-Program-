@@ -308,6 +308,112 @@ def _attach_activity_notes(activities: list[dict], notes_by_key: dict[str, dict]
     return annotated
 
 
+def _parse_activity_timestamp(value: str | None) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _activity_text_signature(activity: dict) -> str:
+    text = " ".join(
+        str(activity.get(key) or "")
+        for key in ("title", "source_title", "raw_type", "sport", "name")
+    ).lower()
+    return "".join(char for char in text if char.isalnum() or char.isspace()).strip()
+
+
+def _activity_texts_compatible(left: dict, right: dict) -> bool:
+    left_text = _activity_text_signature(left)
+    right_text = _activity_text_signature(right)
+    if not left_text or not right_text:
+        return True
+    return left_text == right_text or left_text in right_text or right_text in left_text
+
+
+def _activity_times_close_or_overlap(left: dict, right: dict) -> bool:
+    left_start = _parse_activity_timestamp(left.get("start_time"))
+    right_start = _parse_activity_timestamp(right.get("start_time"))
+    if left_start is None or right_start is None:
+        return False
+    left_end = _parse_activity_timestamp(left.get("end_time")) or (left_start + timedelta(minutes=int(left.get("duration_minutes") or 0)))
+    right_end = _parse_activity_timestamp(right.get("end_time")) or (right_start + timedelta(minutes=int(right.get("duration_minutes") or 0)))
+    latest_start = max(left_start, right_start)
+    earliest_end = min(left_end, right_end)
+    if latest_start <= earliest_end:
+        return True
+    return abs((left_start - right_start).total_seconds()) <= 15 * 60
+
+
+def _activity_duplicate_match(left: dict, right: dict) -> bool:
+    if str(left.get("category") or "") != str(right.get("category") or ""):
+        return False
+    if str(left.get("day") or "") != str(right.get("day") or ""):
+        return False
+
+    left_duration = int(left.get("duration_minutes") or 0)
+    right_duration = int(right.get("duration_minutes") or 0)
+    if abs(left_duration - right_duration) > 2:
+        return False
+
+    if _activity_times_close_or_overlap(left, right):
+        return True
+
+    return _activity_texts_compatible(left, right)
+
+
+def _activity_richness_score(activity: dict) -> int:
+    score = 0
+    for key in ("strain", "distance_miles", "average_pace_min_per_mile", "source_title", "raw_type", "note", "start_time", "end_time", "source_id"):
+        value = activity.get(key)
+        if value not in (None, "", 0, 0.0):
+            score += 1
+    if str(activity.get("source") or "").upper() == "WHOOP" and activity.get("strain") not in (None, ""):
+        score += 1
+    return score
+
+
+def _merge_activity_records(primary: dict, secondary: dict) -> dict:
+    merged = dict(primary)
+    for key, value in secondary.items():
+        if merged.get(key) in (None, "", 0, 0.0) and value not in (None, "", 0, 0.0):
+            merged[key] = value
+
+    for key in ("strain", "distance_miles", "average_pace_min_per_mile", "duration_minutes", "duration_min", "pace", "raw_type", "source_title", "start_time", "end_time", "source_id", "calories"):
+        primary_value = primary.get(key)
+        secondary_value = secondary.get(key)
+        if primary_value in (None, "", 0, 0.0) and secondary_value not in (None, "", 0, 0.0):
+            merged[key] = secondary_value
+
+    primary_note = str(primary.get("note") or "").strip()
+    secondary_note = str(secondary.get("note") or "").strip()
+    if not primary_note and secondary_note:
+        merged["note"] = secondary_note
+    elif primary_note and secondary_note and secondary_note not in primary_note:
+        merged["note"] = primary_note if len(primary_note) >= len(secondary_note) else secondary_note
+
+    return merged
+
+
+def dedupe_workout_log_items(items: list[dict]) -> list[dict]:
+    deduped: list[dict] = []
+    for item in items:
+        matched_index = next((index for index, existing in enumerate(deduped) if _activity_duplicate_match(existing, item)), None)
+        if matched_index is None:
+            deduped.append(dict(item))
+            continue
+
+        existing = deduped[matched_index]
+        if _activity_richness_score(item) > _activity_richness_score(existing):
+            deduped[matched_index] = _merge_activity_records(item, existing)
+        else:
+            deduped[matched_index] = _merge_activity_records(existing, item)
+    return deduped
+
+
 def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
     def normalize_item(activity: dict) -> dict:
         item = dict(activity)
@@ -330,7 +436,7 @@ def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
         item["pace"] = item.get("pace_text") or item.get("run_pace_guidance")
         return item
 
-    normalized = [normalize_item(item) for item in activities]
+    normalized = dedupe_workout_log_items([normalize_item(item) for item in activities])
     runs = [item for item in normalized if item.get("category") == "running"]
     strength = [item for item in normalized if item.get("category") == "weightlifting"]
     spin = [item for item in normalized if item.get("category") == "spin"]

@@ -5,7 +5,7 @@ import secrets
 import ssl
 import time
 from dataclasses import asdict
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 import os
 from zoneinfo import ZoneInfo
 from urllib.error import HTTPError
@@ -474,12 +474,25 @@ def strava_activity_preview(activities: list[dict]) -> list[dict]:
         duration_minutes = max(1, int(activity.get("moving_time", 0) / 60))
         pace = round(duration_minutes / distance_miles, 2) if distance_miles > 0 else 0.0
         sport = activity.get("sport_type") or activity.get("type") or "Activity"
+        start_time = activity.get("start_date_local") or activity.get("start_date") or ""
+        end_time = ""
+        if start_time and activity.get("moving_time"):
+            try:
+                start_dt = datetime.fromisoformat(str(start_time).replace("Z", "+00:00"))
+                end_time = (start_dt + timedelta(seconds=int(activity.get("moving_time") or 0))).isoformat()
+            except Exception:
+                end_time = ""
         previews.append(
             {
                 "source": "Strava",
                 "name": sport,
                 "day": (activity.get("start_date_local") or activity.get("start_date") or "")[:10],
                 "sport": sport,
+                "raw_type": activity.get("type") or activity.get("sport_type") or sport,
+                "source_title": activity.get("name") or sport,
+                "source_id": activity.get("id"),
+                "start_time": start_time,
+                "end_time": end_time,
                 "distance_miles": distance_miles,
                 "duration_minutes": duration_minutes,
                 "average_pace_min_per_mile": pace,
@@ -568,6 +581,11 @@ def whoop_workout_preview(snapshot: dict) -> list[dict]:
                 "name": sport_name,
                 "day": _local_iso_date(start),
                 "sport": sport_name,
+                "raw_type": workout.get("workout_type") or workout.get("activity_name") or sport_name,
+                "source_title": workout.get("sport_name") or workout.get("activity_name") or sport_name,
+                "source_id": workout.get("id"),
+                "start_time": start,
+                "end_time": end,
                 "distance_miles": 0,
                 "duration_minutes": duration_minutes,
                 "average_pace_min_per_mile": 0,

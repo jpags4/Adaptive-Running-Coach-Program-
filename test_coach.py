@@ -16,6 +16,7 @@ from app import (
     _pace_text_for_type,
     _profile_settings_payload,
     _recommendation_training_context,
+    dedupe_workout_log_items,
     normalize_workout_category,
     build_training_roadmap,
     calendar_days,
@@ -417,6 +418,163 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(payload["activity"][0]["title"], "Activity")
         self.assertEqual(payload["activity"][1]["category"], "activity")
         self.assertEqual(payload["activity"][1]["title"], "Activity")
+
+    def test_dedupe_workout_log_items_merges_duplicate_spin_records_and_keeps_richer_data(self) -> None:
+        items = [
+            {
+                "source": "Strava",
+                "category": "spin",
+                "day": "2026-03-24",
+                "name": "Ride",
+                "raw_type": "Ride",
+                "source_title": "Morning Ride",
+                "duration_minutes": 47,
+                "start_time": "2026-03-24T07:00:00+00:00",
+                "end_time": "2026-03-24T07:47:00+00:00",
+                "source_id": "strava-1",
+                "strain": None,
+            },
+            {
+                "source": "WHOOP",
+                "category": "spin",
+                "day": "2026-03-24",
+                "name": "Cycling",
+                "raw_type": "Cycling",
+                "source_title": "Cycling",
+                "duration_minutes": 47,
+                "start_time": "2026-03-24T07:02:00+00:00",
+                "end_time": "2026-03-24T07:49:00+00:00",
+                "source_id": "whoop-1",
+                "strain": 11.1,
+            },
+        ]
+
+        merged = dedupe_workout_log_items(items)
+
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["category"], "spin")
+        self.assertEqual(merged[0]["duration_minutes"], 47)
+        self.assertEqual(merged[0]["strain"], 11.1)
+        self.assertTrue(merged[0]["source_id"] in {"strava-1", "whoop-1"})
+
+    def test_activity_log_payload_merges_duplicate_spin_records_into_one_entry(self) -> None:
+        payload = _activity_log_payload(
+            [
+                {
+                    "source": "Strava",
+                    "name": "Ride",
+                    "sport": "Ride",
+                    "raw_type": "Ride",
+                    "source_title": "Morning Ride",
+                    "day": "2026-03-24",
+                    "duration_minutes": 47,
+                    "start_time": "2026-03-24T07:00:00+00:00",
+                    "end_time": "2026-03-24T07:47:00+00:00",
+                },
+                {
+                    "source": "WHOOP",
+                    "name": "Cycling",
+                    "sport": "Cycling",
+                    "raw_type": "Cycling",
+                    "source_title": "Cycling",
+                    "day": "2026-03-24",
+                    "duration_minutes": 47,
+                    "start_time": "2026-03-24T07:01:00+00:00",
+                    "end_time": "2026-03-24T07:48:00+00:00",
+                    "strain": 11.1,
+                },
+            ]
+        )
+
+        self.assertEqual(len(payload["spin"]), 1)
+        self.assertEqual(payload["spin"][0]["strain"], 11.1)
+
+    def test_dedupe_workout_log_items_does_not_merge_distinct_same_day_workouts(self) -> None:
+        merged = dedupe_workout_log_items(
+            [
+                {
+                    "source": "WHOOP",
+                    "category": "spin",
+                    "day": "2026-03-24",
+                    "name": "Cycling",
+                    "duration_minutes": 47,
+                    "start_time": "2026-03-24T07:00:00+00:00",
+                    "end_time": "2026-03-24T07:47:00+00:00",
+                },
+                {
+                    "source": "WHOOP",
+                    "category": "spin",
+                    "day": "2026-03-24",
+                    "name": "Cycling",
+                    "duration_minutes": 32,
+                    "start_time": "2026-03-24T17:30:00+00:00",
+                    "end_time": "2026-03-24T18:02:00+00:00",
+                },
+            ]
+        )
+
+        self.assertEqual(len(merged), 2)
+
+    def test_dedupe_workout_log_items_merges_duplicate_runs(self) -> None:
+        merged = dedupe_workout_log_items(
+            [
+                {
+                    "source": "Strava",
+                    "category": "running",
+                    "day": "2026-03-24",
+                    "name": "Run",
+                    "duration_minutes": 31,
+                    "distance_miles": 4.0,
+                    "start_time": "2026-03-24T11:00:00+00:00",
+                    "end_time": "2026-03-24T11:31:00+00:00",
+                },
+                {
+                    "source": "WHOOP",
+                    "category": "running",
+                    "day": "2026-03-24",
+                    "name": "Running",
+                    "duration_minutes": 32,
+                    "distance_miles": 0,
+                    "strain": 10.4,
+                    "start_time": "2026-03-24T11:01:00+00:00",
+                    "end_time": "2026-03-24T11:33:00+00:00",
+                },
+            ]
+        )
+
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["distance_miles"], 4.0)
+        self.assertEqual(merged[0]["strain"], 10.4)
+
+    def test_dedupe_workout_log_items_merges_generic_activity_when_session_clearly_matches(self) -> None:
+        merged = dedupe_workout_log_items(
+            [
+                {
+                    "source": "ProviderA",
+                    "category": "activity",
+                    "day": "2026-03-24",
+                    "name": "Yoga Flow",
+                    "raw_type": "Yoga",
+                    "duration_minutes": 38,
+                    "start_time": "2026-03-24T19:00:00+00:00",
+                    "end_time": "2026-03-24T19:38:00+00:00",
+                },
+                {
+                    "source": "ProviderB",
+                    "category": "activity",
+                    "day": "2026-03-24",
+                    "name": "Yoga",
+                    "raw_type": "Yoga",
+                    "duration_minutes": 38,
+                    "start_time": "2026-03-24T19:01:00+00:00",
+                    "end_time": "2026-03-24T19:39:00+00:00",
+                    "strain": 7.2,
+                },
+            ]
+        )
+
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["strain"], 7.2)
 
     def test_activity_notes_context_includes_spin_and_activity_notes(self) -> None:
         context = _activity_notes_context(
