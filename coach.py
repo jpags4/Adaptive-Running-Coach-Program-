@@ -1152,6 +1152,169 @@ def _preserved_overall_text(readiness: dict, flags: dict, run: dict, tags: set[s
     return "The session stays in place, but this is still a controlled day. The workout remains as planned because it already fits the day."
 
 
+def _has_meaningful_caution(readiness: dict, flags: dict, tags: list[str] | set[str]) -> bool:
+    return bool(
+        readiness["componentScores"]["recovery"] < 0
+        or flags["elevatedHrCaution"]
+        or flags["highStrainCaution"]
+        or flags["mentalDownshift"]
+        or readiness["componentScores"]["legs"] < 0
+        or any(tag in set(tags) for tag in {"protect_key_session", "protect_week_structure", "subjective_fatigue"})
+    )
+
+
+def _format_distance_text(miles: float | int | None, duration_min: int | None) -> str:
+    if miles is not None:
+        return f"{float(miles):.1f} mi"
+    if duration_min is not None:
+        return f"{int(duration_min)} min"
+    return "no run"
+
+
+def _planned_pace_text(planned_workout: dict) -> str:
+    pace_range = planned_workout.get("paceRange") or planned_workout.get("easyPaceRange")
+    return _pace_range_to_text(pace_range, str(_baseline_run_recommendation(planned_workout).get("intensity") or "easy"), True)
+
+
+def _primary_driver_text(readiness: dict, flags: dict) -> str:
+    if flags["injuryOverride"] or flags["forceRestOrCrossTrain"]:
+        return "injury-related signals overrode the original plan"
+    if readiness["componentScores"]["recovery"] < 0 and flags["highStrainCaution"]:
+        return "recovery and recent load did not support the original stress"
+    if flags["elevatedHrCaution"] and flags["highStrainCaution"]:
+        return "elevated resting HR and prior-day strain stacked too much caution"
+    if readiness["componentScores"]["recovery"] < 0:
+        return "recovery came in below the support threshold"
+    if flags["highStrainCaution"]:
+        return "recent load was high enough to cap today's stress"
+    if flags["elevatedHrCaution"]:
+        return "resting HR was elevated enough to add caution"
+    if readiness["componentScores"]["legs"] < 0:
+        return "subjective leg feedback lowered the ceiling for the day"
+    if flags["mentalDownshift"]:
+        return "mental fatigue reduced the quality you were likely to get from more stress"
+    return "the current signals supported the planned work"
+
+
+def _detailed_overall_text(mapped: dict, readiness: dict, planned_workout: dict) -> str:
+    plan_status = str(mapped["planStatus"])
+    flags = readiness["flags"]
+    driver = _primary_driver_text(readiness, flags)
+    planned_label = str(planned_workout.get("label") or "planned session")
+    final_label = str(mapped["summaryLabel"] or mapped["run"].get("label") or planned_label)
+
+    if plan_status == "preserved":
+        if readiness["tier"] == "high" and not _has_meaningful_caution(readiness, flags, mapped["reasoning"]["rationaleTags"]):
+            return "Plan status: preserved. The session stayed in place because the current signals supported the planned load, so the main job is simply executing it cleanly."
+        if readiness["componentScores"]["recovery"] < 0 and mapped["run"].get("intensity") in {"easy", "very_easy"}:
+            return "Plan status: preserved. The session stayed in place because it was already low-risk, but recovery below threshold means it should remain fully controlled."
+        return "Plan status: preserved. The workout stayed in place because the caution signals were manageable without changing the session, and the tradeoff is keeping the effort measured."
+
+    if plan_status == "modified":
+        return f"Plan status: modified. The original {planned_label.lower()} was adjusted to {final_label.lower()} because {driver}, so the tradeoff is preserving useful work while cutting the stress that carried the most risk."
+
+    return f"Plan status: replaced. The original {planned_label.lower()} was taken off the table because {driver}, so the tradeoff is giving up training stress today to protect recovery and the rest of the week."
+
+
+def _detailed_run_text(planned_workout: dict, mapped: dict) -> str:
+    run = mapped["run"]
+    planned_label = str(planned_workout.get("label") or "planned run")
+    planned_distance = _format_distance_text(planned_workout.get("plannedMiles"), planned_workout.get("plannedDurationMin"))
+    final_distance = _format_distance_text(run.get("miles"), run.get("durationMin"))
+    plan_status = str(mapped["planStatus"])
+
+    if not run.get("shouldRun"):
+        return f"Planned: {planned_label} ({planned_distance}). Final: {run.get('label', 'No run')} ({final_distance}). Running was removed because the current signals did not justify adding training stress."
+
+    if plan_status == "preserved":
+        return f"Planned: {planned_label} ({planned_distance}). Final: unchanged at {final_distance}. The run stays in place because it already fits the intended stress for today."
+
+    if planned_workout.get("type") == "long_run":
+        planned_miles = planned_workout.get("plannedMiles")
+        final_miles = run.get("miles")
+        reduction_text = ""
+        if planned_miles is not None and final_miles is not None and float(planned_miles) > 0:
+            reduction = max(0, round((float(planned_miles) - float(final_miles)) / float(planned_miles) * 100))
+            if reduction:
+                reduction_text = f" Distance was reduced by about {reduction}% to keep the aerobic work without carrying extra fatigue."
+        return f"Planned: {planned_label} ({planned_distance}). Final: {run.get('label', 'Adjusted run')} ({final_distance}). The long run kept its aerobic structure but lost some volume to control total load.{reduction_text}"
+
+    return f"Planned: {planned_label} ({planned_distance}). Final: {run.get('label', 'Adjusted run')} ({final_distance}). Intensity was lowered because today's signals did not support the original workout stress."
+
+
+def _detailed_pace_text(planned_workout: dict, mapped: dict, pace_text: str) -> str:
+    run = mapped["run"]
+    if not run.get("shouldRun"):
+        return "No pace target is shown because today is not a run day."
+
+    planned_pace = _planned_pace_text(planned_workout)
+    if "easy_pace_substitution" in mapped["reasoning"]["rationaleTags"] and planned_pace != pace_text:
+        return f"Pace shifted from {planned_pace} to {pace_text} so the effort matches the lower-intensity version of the day."
+
+    if mapped["planStatus"] == "preserved":
+        return f"Pace stays at {pace_text} because the original effort target still fits the session."
+
+    return f"Pace is set at {pace_text} to match the final intensity and keep the work inside today's limits."
+
+
+def _detailed_lift_text(mapped: dict, readiness: dict, planned_workout: dict) -> str:
+    lift = mapped["lift"]
+    run = mapped["run"]
+    if lift["action"] == "no_lift":
+        if readiness["flags"]["avoidHeavyLifting"] or not run.get("shouldRun"):
+            return "Lifting was removed because recovery did not support adding more lower-body stress on top of today."
+        return "Lifting was removed because the run already carries the training load the day can absorb."
+    if lift["action"] == "core_only":
+        return "Core-only lifting keeps some durability work in place without adding meaningful leg load."
+    if lift["action"] == "mobility_only":
+        return "Mobility replaces strength loading so you can keep movement in place without adding fatigue."
+    if lift["action"] == "lift_light":
+        if readiness["flags"]["avoidHeavyLifting"] or planned_workout.get("type") in {"tempo", "intervals", "race_pace", "long_run"}:
+            return "Light strength is allowed, but heavy lower-body loading is off the table because the run already accounts for most of today's stress."
+        return "Light strength is allowed because total stress remains controlled, but the lift should stay short and technically clean."
+    return "Strength stays in place because readiness supports the planned loading."
+
+
+def _detailed_recovery_text(readiness: dict, metrics: RecoveryMetrics) -> str:
+    details: list[str] = []
+    if readiness["componentScores"]["recovery"] < 0:
+        details.append(f"Recovery came in at {metrics.recovery_score}%, below the 50% threshold, which was a primary reason for keeping the day conservative.")
+    elif readiness["componentScores"]["recovery"] > 0:
+        details.append(f"Recovery came in at {metrics.recovery_score}%, which supported carrying the planned workload.")
+    else:
+        details.append(f"Recovery came in at {metrics.recovery_score}%, which kept the day in a neutral range rather than actively supporting more load.")
+    if readiness["flags"]["elevatedHrCaution"] and readiness["flags"]["highStrainCaution"]:
+        details.append(f"Resting HR was elevated and yesterday's strain was {metrics.strain:.1f}, so those signals combined to tighten the guardrails.")
+    elif readiness["flags"]["elevatedHrCaution"]:
+        details.append("Resting HR was elevated above baseline, which added caution even if the rest of the check-in was workable.")
+    elif readiness["flags"]["highStrainCaution"]:
+        details.append(f"Yesterday's strain was {metrics.strain:.1f}, which was high enough to limit how much stress made sense to keep today.")
+    if readiness["componentScores"]["legs"] < 0:
+        details.append("Subjective leg feedback lowered readiness enough to matter in the final call.")
+    if readiness["flags"]["mentalDownshift"]:
+        details.append("Mental fatigue also lowered the ceiling for how hard the day should feel.")
+    return " ".join(details)
+
+
+def _detailed_warnings(mapped: dict, readiness: dict) -> list[str]:
+    warnings: list[str] = []
+    run = mapped["run"]
+    lift = mapped["lift"]
+    if run.get("shouldRun") and run.get("intensity") in {"easy", "very_easy"}:
+        warnings.append("Keep the run conversational. If the effort drifts above easy, shorten it.")
+    if not run.get("shouldRun"):
+        warnings.append("Do not turn today into a bonus run. The recommendation is to back off, not make up work.")
+    if lift["action"] == "no_lift":
+        warnings.append("Do not add lifting on top of today's recommendation.")
+    elif readiness["flags"]["avoidHeavyLifting"] or lift["action"] in {"core_only", "mobility_only"}:
+        warnings.append("Do not add heavy lower-body lifting today.")
+    if "protect_key_session" in mapped["reasoning"]["rationaleTags"]:
+        warnings.append("Keep today measured so the next key session has a better chance of landing well.")
+    if readiness["flags"]["injuryOverride"] or readiness["flags"]["forceRestOrCrossTrain"]:
+        warnings.append("If pain, tingling, dizziness, or other unusual symptoms show up, stop and reassess.")
+    return warnings[:3]
+
+
 def _plan_status(planned_workout: dict, baseline_run: dict, final_run: dict, lift: dict) -> str:
     workout_type = str(planned_workout.get("type") or "")
 
@@ -1386,7 +1549,8 @@ def _recommendation_from_daily_map(
     workout = mapped["summaryLabel"] if run.get("shouldRun") else ("Rest and recovery" if not lift.get("shouldLift") else lift.get("label"))
     lift_focus = "No lifting" if lift["action"] == "no_lift" else lift["label"]
     lift_guidance = " ".join(lift.get("guidance") or [])
-    warnings = list(mapped["reasoning"]["recoveryInfluence"]) + list(mapped["reasoning"]["planProtection"])
+    detailed_overall = _detailed_overall_text(mapped, readiness, planned_workout)
+    warnings = _detailed_warnings(mapped, readiness)
     planned_distance = float(planned_workout.get("plannedMiles") or 0.0)
     planned_pace = str(planned_workout.get("plannedTextPace") or "Rest day")
     readiness_status = "supported" if readiness["decision"] == "push" else "partly supported" if readiness["decision"] == "maintain" else "not supported"
@@ -1405,11 +1569,11 @@ def _recommendation_from_daily_map(
         ],
         explanation=[mapped["reasoning"]["overall"]],
         explanation_sections={
-            "overall": mapped["reasoning"]["overall"],
-            "run": " ".join(mapped["reasoning"]["runLogic"]) or "The planned movement stayed in place.",
-            "pace": "Used easy pace guidance instead of workout pace." if "easy_pace_substitution" in mapped["reasoning"]["rationaleTags"] else f"The pace band of {pace_text} matches the intended effort for today.",
-            "lift": " ".join(mapped["reasoning"]["liftLogic"]),
-            "recovery": " ".join(mapped["reasoning"]["recoveryInfluence"]) or "Readiness inputs supported the planned training load.",
+            "overall": detailed_overall,
+            "run": _detailed_run_text(planned_workout, mapped),
+            "pace": _detailed_pace_text(planned_workout, mapped, pace_text),
+            "lift": _detailed_lift_text(mapped, readiness, planned_workout),
+            "recovery": _detailed_recovery_text(readiness, metrics),
         },
         warnings=warnings,
         confidence="high" if readiness["decision"] == "push" else "medium",

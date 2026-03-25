@@ -475,14 +475,8 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(meta["source"], "deterministic")
         self.assertIn("overall", recommendation.explanation_sections)
         self.assertNotIn("OPENAI_API_KEY not set", recommendation.warnings)
-        self.assertIn(recommendation.explanation_sections["overall"], {
-            "The planned session still fits today. Readiness is strong and the current signals support keeping the workout as written.",
-            "The planned session still makes sense today, but this should stay controlled. Recovery is not ideal, though the workout is light enough to keep in place.",
-            "The planned session still makes sense today. There are some caution signals in the background, but not enough to change the session, so keep the effort measured.",
-            "The session stays in place, but this is still a controlled day. The workout remains as planned because it already fits the day.",
-            "The planned session has been adjusted based on readiness and recovery signals. We preserve structure while reducing stress.",
-            "The planned session has been replaced due to recovery and risk signals. The priority is protecting the athlete and the rest of the week.",
-        })
+        self.assertTrue(recommendation.explanation_sections["overall"].startswith("Plan status:"))
+        self.assertTrue(recommendation.explanation)
         self.assertIn("recommendation_explanation", meta)
         self.assertIn(meta["recommendation_explanation"]["source"], {"llm", "template_fallback"})
 
@@ -1700,6 +1694,76 @@ def print_recommendation_explanation_harness() -> None:
         print(f"whyBullets: {explanation.get('whyBullets', [])}")
         print(f"cautionNote: {explanation.get('cautionNote')}")
         print(f"encouragement: {explanation.get('encouragement')}")
+
+
+def print_detailed_reasoning_harness() -> None:
+    scenarios = [
+        {
+            "name": "Preserved Low-Recovery Easy Day",
+            "today": date(2026, 3, 23),
+            "metric": _harness_metric("2026-03-23", 48, 7.3, 54, 9.0),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 23)),
+            "metrics": _harness_metrics_window(date(2026, 3, 23), _harness_metric("2026-03-23", 48, 7.3, 54, 9.0), baseline_rhr=53),
+        },
+        {
+            "name": "Modified Hard Day To Easy",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 57, 7.2, 57, 13.4),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+            "metrics": _harness_metrics_window(date(2026, 3, 24), _harness_metric("2026-03-24", 57, 7.2, 57, 13.4), baseline_rhr=53),
+        },
+        {
+            "name": "Replaced Recovery Day",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 42, 5.2, 58, 15.0),
+            "feedback": {"physical_feeling": "injured", "mental_feeling": "drained", "notes": "calf tightness and tingling"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+        },
+        {
+            "name": "High-Readiness Preserved Quality Day",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 86, 8.2, 52, 7.4),
+            "feedback": {"physical_feeling": "fresh", "mental_feeling": "sharp", "notes": "felt good yesterday"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+        },
+    ]
+
+    print("\nDetailed Reasoning Harness")
+    for scenario in scenarios:
+        today = scenario["today"]
+        metric = scenario["metric"]
+        feedback = scenario["feedback"]
+        weekly_intent = scenario["weekly_intent"]
+        metrics = scenario.get("metrics") or (SAMPLE_METRICS[:-1] + [metric])
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback=feedback,
+            weekly_intent=weekly_intent,
+            mode="conservative",
+        )
+        planned_workout = _build_planned_workout_payload(weekly_intent, SAMPLE_PROFILE, today)
+        explanation = generate_recommendation_explanation(
+            {
+                "recommendation": recommendation,
+                "plannedWorkout": planned_workout,
+                "athleteName": SAMPLE_PROFILE.name,
+            }
+        )
+
+        print(f"\n=== {scenario['name']} ===")
+        print(f"Coach Summary: {explanation.get('summary', '-')}")
+        print("Detailed Reasoning:")
+        print(f"- Overall: {recommendation.explanation_sections.get('overall', '')}")
+        print(f"- Run Logic: {recommendation.explanation_sections.get('run', '')}")
+        print(f"- Pace: {recommendation.explanation_sections.get('pace', '')}")
+        print(f"- Lift Logic: {recommendation.explanation_sections.get('lift', '')}")
+        print(f"- Recovery Influence: {recommendation.explanation_sections.get('recovery', '')}")
+        print(f"- Warnings: {recommendation.warnings}")
 
 
 if __name__ == "__main__":
