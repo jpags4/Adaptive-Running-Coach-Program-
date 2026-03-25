@@ -208,6 +208,35 @@ def parse_date(value: str) -> date:
     return datetime.strptime(value, "%Y-%m-%d").date()
 
 
+def sunday_week_start(day_value: date) -> date:
+    days_since_sunday = (day_value.weekday() + 1) % 7
+    return day_value - timedelta(days=days_since_sunday)
+
+
+def sunday_week_end(day_value: date) -> date:
+    return sunday_week_start(day_value) + timedelta(days=6)
+
+
+def sunday_week_key(day_value: date) -> str:
+    return sunday_week_start(day_value).isoformat()
+
+
+def week_run_mileage(runs: list[Run], anchor: date, through_day: date | None = None) -> float:
+    if not runs:
+        return 0.0
+
+    start = sunday_week_start(anchor)
+    end = through_day or anchor
+    return round(
+        sum(
+            float(run.distance_miles or 0.0)
+            for run in runs
+            if start <= parse_date(run.day) <= end
+        ),
+        1,
+    )
+
+
 def days_until_race(goal_race_date: str, today: date) -> int:
     return (parse_date(goal_race_date) - today).days
 
@@ -564,8 +593,8 @@ def build_weekly_intent(
         [parse_date(item.day) for item in metrics] + [parse_date(run.day) for run in runs],
         default=today,
     )
-    week_start = today - timedelta(days=today.weekday())
-    freshest_week_start = latest_data_day - timedelta(days=latest_data_day.weekday())
+    week_start = sunday_week_start(today)
+    freshest_week_start = sunday_week_start(latest_data_day)
     future_weeks = max(0, (week_start - freshest_week_start).days // 7)
     seven_day_miles = recent_mileage(runs, days=7)
     longest_recent_run = recent_longest_run(runs, days=28)
@@ -1206,10 +1235,12 @@ def _build_deterministic_context(
     feedback = subjective_feedback or {}
     strength_completed = int(feedback.get("weekly_strength_sessions_completed") or 0)
     return {
-        "weeklyMilesCompleted": recent_mileage(runs, days=7),
+        "weeklyMilesCompleted": week_run_mileage(runs, today),
         "weeklyMilesTarget": weekly_intent.mileage_target,
         "daysSinceLastRest": None,
-        "completedHardSessionsThisWeek": sum(1 for run in runs if parse_date(run.day) >= today - timedelta(days=today.weekday()) and run.effort in {"hard", "very hard"}),
+        "completedHardSessionsThisWeek": sum(
+            1 for run in runs if parse_date(run.day) >= sunday_week_start(today) and run.effort in {"hard", "very hard"}
+        ),
         "completedStrengthSessionsThisWeek": strength_completed,
         "targetStrengthSessionsPerWeek": profile.desired_strength_frequency,
         "nextKeyWorkoutInDays": 1 if today.weekday() in {0, 1, 2, 3} else None,

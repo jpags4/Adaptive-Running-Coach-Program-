@@ -20,6 +20,10 @@ from coach import (
     days_until_race,
     pace_window,
     recent_mileage,
+    sunday_week_end,
+    sunday_week_key,
+    sunday_week_start,
+    week_run_mileage,
 )
 from integrations import (
     OAuthError,
@@ -770,7 +774,7 @@ def _recent_checkin_context(checkins: dict[str, dict], reference_day: str, limit
 
 
 def _apply_prior_week_completion_cap(weekly_intent: WeeklyIntent, runs: list, prior_week_cutoff) -> WeeklyIntent:
-    prior_week_start = prior_week_cutoff - timedelta(days=prior_week_cutoff.weekday())
+    prior_week_start = sunday_week_start(prior_week_cutoff)
     prior_week_miles = round(
         sum(
             float(run.distance_miles or 0.0)
@@ -821,7 +825,7 @@ def _recommendation_training_context(activity_feed: list[dict], today_iso: str) 
         return {}
 
     today_value = datetime.strptime(today_iso, "%Y-%m-%d").date()
-    week_start = today_value - timedelta(days=today_value.weekday())
+    week_start = sunday_week_start(today_value)
     prior_two_day_cutoff = today_value - timedelta(days=2)
 
     strength_days_this_week: set[str] = set()
@@ -1052,7 +1056,7 @@ def projected_calendar_entries(anchor, recommendation, end_day, profile) -> dict
     long_run_day = _preferred_long_run_index(getattr(profile, "preferred_long_run_day", "Sunday"))
     weekly_intent = getattr(recommendation, "weekly_intent", {}) or {}
     run_blueprints = _run_blueprints(long_run_day, recommendation, weekly_intent=weekly_intent)
-    current_week_start = anchor - timedelta(days=anchor.weekday())
+    current_week_start = sunday_week_start(anchor)
     if weekly_intent:
         base_weekly_target = max(20.0, float(weekly_intent.get("mileage_target") or 0))
     else:
@@ -1062,8 +1066,8 @@ def projected_calendar_entries(anchor, recommendation, end_day, profile) -> dict
     projection_date = anchor + timedelta(days=1)
 
     while projection_date <= end_day:
-        week_start = projection_date - timedelta(days=projection_date.weekday())
-        week_end = min(end_day, week_start + timedelta(days=6))
+        week_start = sunday_week_start(projection_date)
+        week_end = min(end_day, sunday_week_end(projection_date))
         week_offset = max(0, (week_start - current_week_start).days // 7)
         week_type = str(weekly_intent.get("week_type") or "").strip().lower()
         multiplier = 1.05 if week_type == "build" else 0.92 if week_type == "absorb" else 0.8 if week_type == "taper" else 1.1 if not weekly_intent else 1.0
@@ -1148,12 +1152,11 @@ def _today_plan_entries(anchor, recommendation) -> list[dict]:
 
 
 def _week_plan_key(day_value) -> str:
-    week_start = day_value - timedelta(days=day_value.weekday())
-    return week_start.isoformat()
+    return sunday_week_key(day_value)
 
 
 def _week_start(day_value):
-    return day_value - timedelta(days=day_value.weekday())
+    return sunday_week_start(day_value)
 
 
 def _runs_through_day(runs, cutoff_day):
@@ -1233,7 +1236,7 @@ def _load_or_create_weekly_plan(anchor, profile, runs, metrics) -> dict:
 
 def build_training_roadmap(anchor, profile, runs, metrics, weeks: int = 4) -> list[dict]:
     roadmap: list[dict] = []
-    current_week_start = anchor - timedelta(days=anchor.weekday())
+    current_week_start = sunday_week_start(anchor)
     current_intent = build_weekly_intent(profile, runs, metrics, today=anchor)
     projected_miles = round(float(current_intent.mileage_target), 1)
 
@@ -1302,8 +1305,8 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
             continue
         feed_by_day.setdefault(day, []).append(item)
 
-    start_day = anchor - timedelta(days=anchor.weekday())
-    end_day = start_day + timedelta(days=6)
+    start_day = sunday_week_start(anchor)
+    end_day = sunday_week_end(anchor)
     projected_by_day = weekly_plan or {}
 
     cards: list[dict] = []
@@ -1531,7 +1534,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             "injury_flags": profile.injury_flags,
         },
         "summary": {
-            "recent_mileage": recent_mileage(runs),
+            "recent_mileage": week_run_mileage(runs, today_date, today_date),
             "latest_recovery": metrics[-1].recovery_score,
             "latest_sleep_hours": metrics[-1].sleep_hours,
             "latest_strain": metrics[-1].strain,

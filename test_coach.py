@@ -17,6 +17,7 @@ from app import (
     _pace_text_for_type,
     _profile_settings_payload,
     _recommendation_training_context,
+    _week_plan_key,
     build_canonical_workouts,
     dedupe_workout_log_items,
     match_strava_run_to_whoop_workout,
@@ -40,6 +41,10 @@ from coach import (
     coach_recommendation,
     deterministic_recommendation,
     planned_session_for_day,
+    sunday_week_end,
+    sunday_week_key,
+    sunday_week_start,
+    week_run_mileage,
 )
 from integrations import (
     build_strava_authorize_url,
@@ -1330,13 +1335,13 @@ class CoachRecommendationTests(unittest.TestCase):
 
         current_week_future = sum(
             activity.get("distance_miles", 0)
-            for day in range(17, 23)
+            for day in range(17, 22)
             for activity in projections[date(2026, 3, day).isoformat()]
             if activity.get("name") == "Run"
         )
         next_week = sum(
             activity.get("distance_miles", 0)
-            for day in range(23, 30)
+            for day in range(22, 29)
             for activity in projections[date(2026, 3, day).isoformat()]
             if activity.get("name") == "Run"
         )
@@ -1412,7 +1417,7 @@ class CoachRecommendationTests(unittest.TestCase):
         ]
 
         plan = _generate_weekly_plan(
-            anchor=date(2026, 3, 14),
+            anchor=date(2026, 3, 12),
             profile=SAMPLE_PROFILE,
             runs=SAMPLE_RUNS,
             metrics=low_readiness_metrics,
@@ -1421,7 +1426,7 @@ class CoachRecommendationTests(unittest.TestCase):
         future_runs = [
             activity
             for iso_day, activities in plan["activities"].items()
-            if iso_day > "2026-03-14"
+            if iso_day > "2026-03-12"
             for activity in activities
             if activity.get("name") == "Run"
         ]
@@ -1453,8 +1458,8 @@ class CoachRecommendationTests(unittest.TestCase):
             metrics=SAMPLE_METRICS,
         )
 
-        self.assertEqual(monday_plan["planned_from_day"], "2026-03-15")
-        self.assertEqual(wednesday_plan["planned_from_day"], "2026-03-15")
+        self.assertEqual(monday_plan["planned_from_day"], "2026-03-14")
+        self.assertEqual(wednesday_plan["planned_from_day"], "2026-03-14")
         self.assertEqual(monday_plan["weekly_intent"], wednesday_plan["weekly_intent"])
         self.assertEqual(monday_plan["activities"], wednesday_plan["activities"])
 
@@ -1469,8 +1474,8 @@ class CoachRecommendationTests(unittest.TestCase):
         )
 
         self.assertEqual(len(cards), 7)
-        self.assertEqual(cards[0]["day"], "2026-03-09")
-        self.assertEqual(cards[-1]["day"], "2026-03-15")
+        self.assertEqual(cards[0]["day"], "2026-03-08")
+        self.assertEqual(cards[-1]["day"], "2026-03-14")
 
     def test_training_roadmap_returns_future_week_summaries(self) -> None:
         roadmap = build_training_roadmap(
@@ -1481,10 +1486,46 @@ class CoachRecommendationTests(unittest.TestCase):
         )
 
         self.assertEqual(len(roadmap), 4)
-        self.assertEqual(roadmap[0]["week_start"], "2026-03-16")
+        self.assertEqual(roadmap[0]["week_start"], "2026-03-15")
         self.assertTrue(all(item["mileage_range"] for item in roadmap))
         self.assertTrue(all(item["confidence_note"] for item in roadmap))
         self.assertGreaterEqual(roadmap[1]["estimated_total_miles"], roadmap[0]["estimated_total_miles"])
+
+    def test_sunday_week_helpers_use_sunday_as_week_start(self) -> None:
+        anchor = date(2026, 3, 25)
+        self.assertEqual(sunday_week_start(anchor).isoformat(), "2026-03-22")
+        self.assertEqual(sunday_week_end(anchor).isoformat(), "2026-03-28")
+        self.assertEqual(sunday_week_key(anchor), "2026-03-22")
+        self.assertEqual(_week_plan_key(anchor), "2026-03-22")
+
+    def test_week_run_mileage_resets_on_sunday_boundary(self) -> None:
+        runs = [
+            Run(day="2026-03-21", distance_miles=10.0, duration_minutes=80, effort="easy", workout_type="long_run"),
+            Run(day="2026-03-24", distance_miles=4.0, duration_minutes=36, effort="easy", workout_type="easy_run"),
+        ]
+
+        self.assertEqual(week_run_mileage(runs, date(2026, 3, 25), date(2026, 3, 25)), 4.0)
+        self.assertEqual(week_run_mileage(runs, date(2026, 3, 22), date(2026, 3, 22)), 0.0)
+
+    def test_generate_weekly_plan_and_calendar_use_sunday_start_key(self) -> None:
+        plan = _generate_weekly_plan(
+            anchor=date(2026, 3, 25),
+            profile=SAMPLE_PROFILE,
+            runs=SAMPLE_RUNS,
+            metrics=SAMPLE_METRICS,
+        )
+        cards = calendar_days(
+            activity_feed=[],
+            metrics=SAMPLE_METRICS,
+            recommendation=None,
+            today="2026-03-25",
+            profile=SAMPLE_PROFILE,
+            weekly_plan=plan["activities"],
+        )
+
+        self.assertEqual(plan["week_start"], "2026-03-22")
+        self.assertEqual(cards[0]["day"], "2026-03-22")
+        self.assertEqual(cards[-1]["day"], "2026-03-28")
 
     def test_uncertainty_assessment_returns_follow_up_questions(self) -> None:
         recommendation = coach_recommendation(
