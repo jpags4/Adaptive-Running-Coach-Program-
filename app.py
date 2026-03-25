@@ -328,27 +328,48 @@ def _normalize_activity_item(activity: dict) -> dict:
     item["distance"] = item.get("distance_miles")
     item["pace"] = item.get("pace_text") or item.get("run_pace_guidance")
     item["intensity_label"] = _normalized_intensity_label(
-        item.get("intensity_label") or item.get("intensity") or item.get("effort")
+        item.get("intensity_label") or item.get("intensity") or item.get("effort"),
+        activity=item,
     )
     item["intensity_color"] = _intensity_color_token(item.get("intensity_label"))
     item["dedupe_key"] = _activity_merge_key(item)
     return item
 
 
-def _normalized_intensity_label(value) -> str | None:
+def _normalized_intensity_label(value, activity: dict | None = None) -> str | None:
     text = str(value or "").strip().lower()
     if not text:
-        return None
-    if "recovery" in text:
-        return "recovery"
-    if "easy" in text:
-        return "easy"
-    if "moderate" in text or "steady" in text:
-        return "moderate"
-    if "hard" in text:
-        return "hard"
-    if "rest" in text:
-        return "rest"
+        normalized = None
+    elif "recovery" in text:
+        normalized = "recovery"
+    elif "easy" in text:
+        normalized = "easy"
+    elif "moderate" in text or "steady" in text:
+        normalized = "moderate"
+    elif "hard" in text:
+        normalized = "hard"
+    elif "rest" in text:
+        normalized = "rest"
+    else:
+        normalized = None
+
+    if normalized:
+        return normalized
+
+    if activity and normalize_workout_category(activity) == "spin":
+        try:
+            strain = float(activity.get("strain"))
+        except (TypeError, ValueError):
+            strain = None
+        if strain is not None:
+            if strain < 6:
+                return "recovery"
+            if strain < 10:
+                return "easy"
+            if strain < 14:
+                return "moderate"
+            return "hard"
+
     return None
 
 

@@ -10,6 +10,7 @@ from app import (
     _apply_clarification_answers_to_settings,
     _attach_activity_notes,
     _generate_weekly_plan,
+    _normalize_activity_item,
     _planned_skip_today,
     _recent_checkin_context,
     _current_day_status,
@@ -750,6 +751,29 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(payload["activity"][1]["category"], "activity")
         self.assertEqual(payload["activity"][1]["title"], "Activity")
         self.assertIsNone(payload["runs"][0].get("intensity_label"))
+
+    def test_normalize_activity_item_maps_spin_strain_to_recovery_easy_moderate_hard(self) -> None:
+        recovery_spin = _normalize_activity_item({"sport": "Cycling", "day": "2026-03-20", "duration_minutes": 30, "strain": 4.5})
+        easy_spin = _normalize_activity_item({"sport": "Cycling", "day": "2026-03-21", "duration_minutes": 40, "strain": 7.8})
+        moderate_spin = _normalize_activity_item({"sport": "Cycling", "day": "2026-03-22", "duration_minutes": 47, "strain": 11.1})
+        hard_spin = _normalize_activity_item({"sport": "Cycling", "day": "2026-03-23", "duration_minutes": 60, "strain": 15.2})
+
+        self.assertEqual(recovery_spin.get("intensity_label"), "recovery")
+        self.assertEqual(recovery_spin.get("intensity_color"), "recovery")
+        self.assertEqual(easy_spin.get("intensity_label"), "easy")
+        self.assertEqual(easy_spin.get("intensity_color"), "easy")
+        self.assertEqual(moderate_spin.get("intensity_label"), "moderate")
+        self.assertEqual(moderate_spin.get("intensity_color"), "moderate")
+        self.assertEqual(hard_spin.get("intensity_label"), "hard")
+        self.assertEqual(hard_spin.get("intensity_color"), "hard")
+
+    def test_normalize_activity_item_keeps_explicit_spin_intensity_over_strain_fallback(self) -> None:
+        spin = _normalize_activity_item(
+            {"sport": "Cycling", "day": "2026-03-24", "duration_minutes": 47, "strain": 15.2, "intensity_label": "easy"}
+        )
+
+        self.assertEqual(spin.get("intensity_label"), "easy")
+        self.assertEqual(spin.get("intensity_color"), "easy")
 
     def test_build_canonical_workouts_copies_strava_intensity_label_for_runs(self) -> None:
         whoop_snapshot = {
