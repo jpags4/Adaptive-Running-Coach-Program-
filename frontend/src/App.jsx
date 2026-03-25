@@ -687,13 +687,13 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
           type="button"
           onClick={onOpen}
           disabled={isGenerating}
-          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-5 text-center text-[2rem] font-semibold tracking-[-0.02em] transition duration-200 ${
+          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-5 text-center text-[2rem] font-semibold tracking-[0.02em] transition duration-200 ${
             isGenerating
               ? isDark
                 ? 'cursor-not-allowed border-neutral-700 bg-neutral-900 text-neutral-400 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]'
                 : 'cursor-not-allowed border-neutral-200 bg-neutral-900 text-neutral-300 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]'
               : isDark
-              ? 'border-[rgba(168,85,247,0.7)] bg-neutral-950 text-[rgba(232,232,238,0.9)] shadow-[0_0_0_1px_rgba(168,85,247,0.22),0_0_18px_rgba(168,85,247,0.18),0_0_36px_rgba(168,85,247,0.10)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.32),0_0_24px_rgba(168,85,247,0.22),0_0_44px_rgba(168,85,247,0.14)]'
+              ? 'border-[rgba(168,85,247,0.7)] bg-neutral-950 text-white/70 shadow-[0_0_0_1px_rgba(168,85,247,0.22),0_0_18px_rgba(168,85,247,0.18),0_0_36px_rgba(168,85,247,0.10)] hover:border-violet-400 hover:text-white/85 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.32),0_0_24px_rgba(168,85,247,0.22),0_0_44px_rgba(168,85,247,0.14)]'
               : 'border-violet-300 bg-white text-neutral-950 shadow-[0_0_0_1px_rgba(216,180,254,0.8),0_0_46px_rgba(196,181,253,0.42)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.9),0_0_58px_rgba(192,132,252,0.48)]'
           }`}
         >
@@ -705,7 +705,7 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
           <span className={`relative flex h-11 w-11 items-center justify-center rounded-2xl ${
             isGenerating
               ? isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-neutral-800 text-neutral-300'
-              : isDark ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-50 text-violet-600'
+              : isDark ? 'bg-violet-500/12 text-white/65' : 'bg-violet-50 text-violet-600'
           }`}>
             {isGenerating ? (
               <span className="h-6 w-6 animate-spin rounded-full border-2 border-current/40 border-t-current" />
@@ -713,7 +713,7 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
               <SparkleIcon />
             )}
           </span>
-          <span className="relative italic">{isGenerating ? 'Generating Recommendation...' : 'Generate Today’s Recommendation'}</span>
+          <span className="relative font-medium not-italic">{isGenerating ? 'Generating Recommendation...' : 'Generate Today’s Recommendation'}</span>
         </button>
       </div>
     </section>
