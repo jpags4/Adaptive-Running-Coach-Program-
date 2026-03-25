@@ -913,103 +913,81 @@ function CheckInModal({
   )
 }
 
-function TodayActivityButton({ onOpen, currentDayStatus, theme = 'light' }) {
+function dailyContextRecoveryTone(recoveryScore, theme = 'light') {
   const isDark = theme === 'dark'
-  const statusText = currentDayStatus?.headline || 'No activity logged yet'
-
-  return (
-    <div className="mt-2 mb-3">
-      <button
-        type="button"
-        onClick={onOpen}
-        className={`inline-flex items-center gap-3 rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
-          isDark
-            ? 'border-sky-900/70 bg-sky-950/40 text-sky-200 hover:border-sky-700 hover:bg-sky-950/60'
-            : 'border-sky-200 bg-sky-50 text-sky-800 hover:border-sky-300 hover:bg-sky-100'
-        }`}
-      >
-        <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isDark ? 'bg-sky-400' : 'bg-sky-500'}`} />
-        <span>Today&apos;s Activity</span>
-        <span className={`${isDark ? 'text-sky-300/80' : 'text-sky-700/80'}`}>•</span>
-        <span className={`font-medium ${isDark ? 'text-sky-100/85' : 'text-sky-900/80'}`}>{statusText}</span>
-      </button>
-    </div>
-  )
+  const score = Number(recoveryScore)
+  if (!score) return isDark ? 'bg-neutral-400' : 'bg-neutral-500'
+  if (score >= 67) return isDark ? 'bg-emerald-400' : 'bg-emerald-500'
+  if (score >= 34) return isDark ? 'bg-amber-400' : 'bg-amber-500'
+  return isDark ? 'bg-red-400' : 'bg-red-500'
 }
 
-function TodayActivityModal({ isOpen, onClose, currentDayStatus, recommendation, theme = 'light' }) {
+function dailyContextTargetText(activity) {
+  if (!activity) return ''
+  if (activity.distance_miles) return `${trimNumber(activity.distance_miles)} mi`
+  if (activity.duration_minutes) return `${activity.duration_minutes} min`
+  return ''
+}
+
+function recommendationTargetText(recommendation) {
+  if (!recommendation) return ''
+  const modality = String(recommendation.primary_modality || 'run').toLowerCase()
+  if (modality === 'bike') {
+    return recommendation.duration_minutes ? `${recommendation.duration_minutes} min` : ''
+  }
+  if (recommendation.run_distance_miles) return `${trimNumber(recommendation.run_distance_miles)} mi`
+  if (recommendation.duration_minutes) return `${recommendation.duration_minutes} min`
+  return ''
+}
+
+function DailyContextBar({
+  today,
+  activityCalendar,
+  currentDayStatus,
+  recommendation,
+  recoveryScore,
+  yesterdayStrain,
+  theme = 'light',
+}) {
   const isDark = theme === 'dark'
-  if (!isOpen) return null
+  const todayCard = Array.isArray(activityCalendar) ? activityCalendar.find((card) => card.day === today) : null
+  const completedActivities = Array.isArray(todayCard?.activities)
+    ? todayCard.activities.filter((activity) => !activity.projected)
+    : []
+  const completedPrimary = completedActivities[0] || null
 
-  const noActivityYet = !currentDayStatus
-  const headline = currentDayStatus?.headline || 'Nothing logged yet today.'
-  const detail =
-    currentDayStatus?.detail ||
-    'You have not logged a run or workout yet today.'
+  let dotClass = isDark ? 'bg-neutral-400' : 'bg-neutral-500'
+  let mainText = `Recovery ${Number(recoveryScore || 0)}% • No session yet`
 
-  let planRelationship = 'Today has not started yet.'
-  if (recommendation && noActivityYet) {
-    planRelationship = `Today’s recommendation is ${shortWorkoutTitle(recommendation.workout)}. You still have the full session ahead of you.`
-  } else if (recommendation && currentDayStatus?.status === 'completed') {
-    planRelationship = 'You have already covered today’s work, so the recommendation is effectively complete.'
-  } else if (recommendation && currentDayStatus?.status === 'on_track') {
-    planRelationship = 'You are essentially on plan for today and have already hit the day’s goal.'
-  } else if (recommendation && currentDayStatus?.status === 'in_progress') {
-    planRelationship = 'You have started today’s plan, but there is still some work left to finish.'
-  } else if (recommendation && currentDayStatus?.status === 'cross_trained') {
-    planRelationship = 'You have logged activity today, but the recommended run is still pending unless you intentionally swap the day.'
-  } else if (!recommendation && noActivityYet) {
-    planRelationship = 'Once a recommendation is generated, this will compare your logged activity against the day’s plan.'
-  } else if (!recommendation) {
-    planRelationship = 'Generate today’s recommendation to see how your logged activity compares to the plan.'
+  if (completedPrimary && currentDayStatus) {
+    const target = dailyContextTargetText(completedPrimary)
+    dotClass = workoutIntensityIndicator(completedPrimary)
+    mainText = `Today: ${workoutCatalogTitle(completedPrimary)} completed${target ? ` • ${target}` : ''}`
+  } else if (recommendation) {
+    const label = shortWorkoutTitle(recommendation.workout)
+    const target = recommendationTargetText(recommendation)
+    dotClass = intensityIndicator(recommendation.intensity)
+    mainText = `Planned: ${label}${target ? ` • ${target}` : ''}`
+  } else {
+    dotClass = dailyContextRecoveryTone(recoveryScore, theme)
   }
 
+  const prefix = yesterdayStrain ? `Yesterday: ${trimNumber(yesterdayStrain)} strain` : ''
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
-      <button
-        type="button"
-        aria-label="Close today's activity"
-        onClick={onClose}
-        className="absolute inset-0 bg-neutral-950/45 backdrop-blur-sm"
-      />
-      <section className={`relative z-10 w-full max-w-3xl rounded-[2rem] border p-8 shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
-        isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
-      }`}>
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div>
-            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-sky-300/80' : 'text-sky-700'}`}>
-              Today&apos;s Activity
-            </p>
-            <h2 className={`mt-3 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-              {headline}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`rounded-full border px-4 py-2 text-sm font-semibold ${
-              isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-sky-500' : 'border-neutral-200 bg-white text-neutral-700 hover:border-sky-300'
-            }`}
-          >
-            Close
-          </button>
-        </div>
-
-        <div className={`mt-6 rounded-[1.5rem] border px-5 py-4 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
-          <p className={`text-base leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>{detail}</p>
-        </div>
-
-        <div className={`mt-5 rounded-[1.5rem] border px-5 py-4 ${
-          isDark ? 'border-sky-900/60 bg-sky-950/25' : 'border-sky-200 bg-sky-50/80'
-        }`}>
-          <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-300/80' : 'text-sky-700'}`}>
-            Status Against Plan
-          </p>
-          <p className={`mt-3 text-base leading-8 ${isDark ? 'text-neutral-200' : 'text-neutral-800'}`}>
-            {planRelationship}
-          </p>
-        </div>
-      </section>
+    <div className="mt-5 mb-9">
+      <div
+        className={`inline-flex w-full items-center gap-3 rounded-full border px-4 py-3 text-sm font-medium ${
+          isDark
+            ? 'border-violet-900/60 bg-neutral-900/85 text-neutral-300 shadow-[0_0_0_1px_rgba(168,85,247,0.12),0_0_24px_rgba(168,85,247,0.1)]'
+            : 'border-violet-200 bg-white/85 text-neutral-700 shadow-[0_0_0_1px_rgba(196,181,253,0.4),0_0_18px_rgba(196,181,253,0.18)]'
+        }`}
+      >
+        <span className={`inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${dotClass}`} />
+        <span className="min-w-0 truncate">
+          {prefix ? `${prefix} • ${mainText}` : mainText}
+        </span>
+      </div>
     </div>
   )
 }
@@ -2604,7 +2582,6 @@ export default function App() {
   const [painWithWalking, setPainWithWalking] = useState(false)
   const [painWithCycling, setPainWithCycling] = useState(false)
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
-  const [isTodayActivityOpen, setIsTodayActivityOpen] = useState(false)
   const [profileSettings, setProfileSettings] = useState(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
@@ -2667,22 +2644,6 @@ export default function App() {
       window.removeEventListener('keydown', handleEscape)
     }
   }, [isCheckInModalOpen])
-
-  useEffect(() => {
-    if (!isTodayActivityOpen) return undefined
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') setIsTodayActivityOpen(false)
-    }
-    window.addEventListener('keydown', handleEscape)
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', handleEscape)
-    }
-  }, [isTodayActivityOpen])
 
   async function persistProfileSettings(nextSettings, { closeAfterSave = false } = {}) {
     setIsSavingProfile(true)
@@ -2857,14 +2818,6 @@ export default function App() {
             theme={theme}
           />
 
-        <TodayActivityModal
-          isOpen={isTodayActivityOpen}
-          onClose={() => setIsTodayActivityOpen(false)}
-          currentDayStatus={currentDayStatus}
-          recommendation={recommendationData}
-          theme={theme}
-        />
-
         {recommendationData ? (
           <div className="mt-2">
             <TrainingCard
@@ -2958,9 +2911,13 @@ export default function App() {
           />
         </section>
 
-        <TodayActivityButton
-          onOpen={() => setIsTodayActivityOpen(true)}
+        <DailyContextBar
+          today={summaryData.today}
+          activityCalendar={summaryData.activity_calendar}
           currentDayStatus={currentDayStatus}
+          recommendation={recommendationData}
+          recoveryScore={summary.latest_recovery}
+          yesterdayStrain={summary.latest_strain}
           theme={theme}
         />
 
