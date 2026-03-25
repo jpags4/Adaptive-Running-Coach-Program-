@@ -309,7 +309,7 @@ function DashboardLoading({ theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
     <main
-      className={`min-h-screen ${
+      className={`min-h-screen overflow-x-hidden ${
         isDark
           ? 'bg-[radial-gradient(circle_at_top,_rgba(58,28,112,0.26),_transparent_34%),radial-gradient(circle_at_50%_28%,_rgba(76,29,149,0.14),_transparent_30%),radial-gradient(circle_at_50%_72%,_rgba(49,25,97,0.12),_transparent_38%),linear-gradient(180deg,_#17131d_0%,_#1c1628_18%,_#241c37_38%,_#1b1725_60%,_#241c37_82%,_#151219_100%)] text-neutral-50'
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
@@ -317,12 +317,12 @@ function DashboardLoading({ theme = 'light' }) {
     >
       <style>{`
         @keyframes violetCurrent {
-          0% { background-position: 0% 50%; filter: drop-shadow(0 0 0.45rem rgba(168, 85, 247, 0.14)); }
-          50% { background-position: 100% 50%; filter: drop-shadow(0 0 0.85rem rgba(168, 85, 247, 0.24)); }
-          100% { background-position: 0% 50%; filter: drop-shadow(0 0 0.45rem rgba(168, 85, 247, 0.14)); }
+          0% { background-position: 0% 50%; filter: drop-shadow(0 0 0.18rem rgba(168, 85, 247, 0.08)); }
+          50% { background-position: 100% 50%; filter: drop-shadow(0 0 0.38rem rgba(168, 85, 247, 0.14)); }
+          100% { background-position: 0% 50%; filter: drop-shadow(0 0 0.18rem rgba(168, 85, 247, 0.08)); }
         }
       `}</style>
-      <div className="mx-auto max-w-7xl px-8 py-10">
+      <div className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
         <div className={`h-16 w-96 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/90' : 'bg-neutral-200/70'}`} />
         <div className={`mt-4 h-8 w-56 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-200/60'}`} />
         <div className={`mt-10 h-4 w-64 animate-pulse rounded-full ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-200/60'}`} />
@@ -392,12 +392,12 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const isDark = theme === 'dark'
   const greeting = timeOfDayGreeting()
   return (
-    <header className="flex items-start justify-between gap-8 pb-6">
-      <div>
+    <header className="grid gap-8 pb-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.78fr)] lg:items-start">
+      <div className="min-w-0 max-w-[46rem]">
         <h1
-          className={`max-w-full text-[clamp(3.25rem,5.4vw,5.4rem)] font-semibold uppercase italic leading-[0.95] tracking-[0.015em] md:whitespace-nowrap ${
+          className={`max-w-full text-[clamp(2.85rem,4.9vw,4.75rem)] font-semibold uppercase italic leading-[0.94] tracking-[0.01em] xl:whitespace-nowrap ${
             isDark
-              ? 'animate-[violetCurrent_7s_ease-in-out_infinite] bg-[linear-gradient(110deg,#ffffff_0%,#ffffff_34%,#c084fc_48%,#ffffff_61%,#f5f3ff_100%)] bg-[length:220%_100%] bg-clip-text text-transparent [text-shadow:0_0_18px_rgba(168,85,247,0.28),0_0_38px_rgba(139,92,246,0.16)]'
+              ? 'animate-[violetCurrent_10s_ease-in-out_infinite] bg-[linear-gradient(112deg,#f8f7ff_0%,#ffffff_28%,#c4b5fd_42%,#ffffff_57%,#ede9fe_100%)] bg-[length:180%_100%] bg-clip-text text-transparent [text-shadow:0_0_8px_rgba(168,85,247,0.11),0_0_18px_rgba(139,92,246,0.06)]'
               : 'text-neutral-950'
           }`}
         >
@@ -409,8 +409,8 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
         <p className={`mt-4 text-[1.05rem] uppercase tracking-[0.08em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{formatDate(today)}</p>
       </div>
 
-      <div className="flex flex-col items-end gap-6 pt-1 text-right">
-        <div className="flex items-center gap-3">
+      <div className="min-w-0 lg:justify-self-end">
+        <div className="flex flex-wrap items-center justify-start gap-3 lg:justify-end">
           <button
             type="button"
             onClick={onOpenProfile}
@@ -425,11 +425,13 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           </button>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
-        <div>
+        <div className={`mt-5 max-w-[24rem] rounded-[1.6rem] border px-5 py-5 text-left lg:ml-auto lg:text-right ${
+          isDark ? `border-neutral-800 bg-neutral-900/88 ${darkGlow(true)}` : 'border-neutral-200 bg-white/92'
+        }`}>
           <p className={`text-[0.78rem] font-medium uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
             Race Goal
           </p>
-          <p className={`mt-4 max-w-[22rem] text-[1.05rem] uppercase leading-[1.45] tracking-[0.09em] ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
+          <p className={`mt-4 text-[1.02rem] uppercase leading-[1.5] tracking-[0.08em] ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
             Half Marathon · {formatRaceGoal(goalRaceDate)}
           </p>
         </div>
