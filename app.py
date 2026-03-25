@@ -327,7 +327,10 @@ def _normalize_activity_item(activity: dict) -> dict:
     item["duration_min"] = item.get("duration_minutes")
     item["distance"] = item.get("distance_miles")
     item["pace"] = item.get("pace_text") or item.get("run_pace_guidance")
-    item["intensity_label"] = _normalized_intensity_label(item.get("intensity") or item.get("effort"))
+    item["intensity_label"] = _normalized_intensity_label(
+        item.get("intensity_label") or item.get("intensity") or item.get("effort")
+    )
+    item["intensity_color"] = _intensity_color_token(item.get("intensity_label"))
     item["dedupe_key"] = _activity_merge_key(item)
     return item
 
@@ -347,6 +350,21 @@ def _normalized_intensity_label(value) -> str | None:
     if "rest" in text:
         return "rest"
     return None
+
+
+def _intensity_color_token(value) -> str:
+    text = str(value or "").strip().lower()
+    if text == "recovery":
+        return "recovery"
+    if text == "easy":
+        return "easy"
+    if text == "moderate":
+        return "moderate"
+    if text == "hard":
+        return "hard"
+    if text == "rest":
+        return "neutral"
+    return "neutral"
 
 
 def _parse_activity_timestamp(value: str | None) -> datetime | None:

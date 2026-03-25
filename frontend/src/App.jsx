@@ -1908,6 +1908,18 @@ function intensityPillClass(value) {
   return 'bg-neutral-100 text-neutral-600'
 }
 
+function activityIntensityDotClass(activity) {
+  const token = String(activity?.intensity_color || '').toLowerCase()
+  if (token === 'hard') return 'bg-rose-500'
+  if (token === 'moderate') return 'bg-amber-400'
+  if (token === 'easy' || token === 'recovery') return 'bg-emerald-500'
+  const intensity = activityIntensityLabel(activity).toLowerCase()
+  if (intensity.includes('hard')) return 'bg-rose-500'
+  if (intensity.includes('moderate')) return 'bg-amber-400'
+  if (intensity.includes('easy') || intensity.includes('recovery')) return 'bg-emerald-500'
+  return 'bg-neutral-400'
+}
+
 function certaintyPillClass(value, theme = 'light') {
   const isDark = theme === 'dark'
   const text = String(value || '').toLowerCase()
@@ -1918,12 +1930,8 @@ function certaintyPillClass(value, theme = 'light') {
 
 function calendarStripeClass(activities) {
   const first = activities[0]
-  const intensity = simplifyIntensity(first?.intensity_label || first?.intensity || '')
-  const text = intensity.toLowerCase()
-  if (text.includes('hard')) return 'bg-rose-500'
-  if (text.includes('moderate')) return 'bg-amber-400'
-  if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-500'
-  return 'bg-neutral-300'
+  const dotClass = activityIntensityDotClass(first)
+  return dotClass === 'bg-neutral-400' ? 'bg-neutral-300' : dotClass
 }
 
 function intensityIconTone(value) {
@@ -2390,12 +2398,7 @@ function workoutCatalogSummary(activity) {
 }
 
 function workoutIntensityIndicator(activity) {
-  const intensity = activityIntensityLabel(activity)
-  const text = intensity.toLowerCase()
-  if (text.includes('hard')) return 'bg-rose-500'
-  if (text.includes('moderate')) return 'bg-amber-400'
-  if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-500'
-  return 'bg-neutral-400'
+  return activityIntensityDotClass(activity)
 }
 
 function WorkoutCatalogListItem({ activity, isSelected, onSelect, theme = 'light' }) {
