@@ -98,12 +98,16 @@ function HeartOutlineIcon({ className = 'h-5 w-5' }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      fill="currentColor"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <path d="M10.0932 10.7463c-.6848 0-1.4564.6075-1.8639.922l-.0439.034-.182.1401c-.1238.0954-.2779.1255-.4258.0831-.1479-.0424-.276-.1535-.3539-.3067l-.9948-1.9576l-1.1058 4.423c-.0748.2991-.3222.5136-.6277.5444c-.3056.0307-.6095-.1282-.7711-.4035L2.1808 11.3055c-.1854-.3588-.0448-.8002.314-.9856c.3588-.1854.8002-.0448.9856.314l.748 1.4471l1.0864-4.3457c.0716-.2863.3077-.4968.6017-.5368c.2939-.04.5904.0981.7334.351l1.1678 2.0695c.4983-.3832 1.5443-1.1664 2.2752-1.1664h2.5408c.4041 0 .7317.3276.7317.7317c0 .4041-.3276.7317-.7317.7317h-2.5408Z" />
-      <path d="M22.75 9.26043c0 2.88077-1.7199 5.72377-4.949 8.63717c-1.3345 1.2037-2.6914 2.1611-3.7107 2.8247c-.5105.3324-.9362.5913-1.2348.7658c-.1494.0873-.2671.1542-.3478.1992c-.0404.0225-.0716.0393-.0925.0505l-.0236.0126l-.0064.0033l-.0018.0009c-.0005.0003-.0008.0004-.0012.0006c-.0003.0002-.0006.0003-.332.6263l-.3314-.6266c-.0004-.0002-.0007-.0004-.0012-.0006l-.0018-.0009l-.0064-.0033l-.0236-.0126c-.0209-.0112-.0521-.028-.0925-.0505c-.0807-.045-.1984-.1119-.3478-.1992c-.2986-.1745-.7243-.4334-1.2348-.7658c-1.0193-.6636-2.37617-1.621-3.71073-2.8247C2.96986 14.9842 1.25 12.1412 1.25 9.26043C1.25 4.60841 4.49119 1.25 8.4273 1.25c1.808 0 3.5061.85755 4.5727 2.26064C14.0666 2.10755 15.7647 1.25 17.5727 1.25C21.5088 1.25 22.75 4.60841 22.75 9.26043Zm-9.3877 11.53097c.962-.6265 2.2536-1.5391 3.4592-2.6268c3.1245-2.8187 4.4648-5.2575 4.4648-7.90315C21.2863 5.31377 18.6068 2.7134 17.5727 2.7134c-1.5781 0-3.0739.92917-3.8776 2.31171c-.4604.7919-1.5956.7919-2.056 0C10.8351 3.64257 9.33931 2.7134 8.4273 2.7134C5.39316 2.7134 2.71345 5.31377 2.71345 9.26043c0 2.64565 1.34031 5.08445 4.46486 7.90315c1.20557 1.0877 2.49719 2.0003 3.45919 2.6268c.4808.313.872.551.9575.6019c.0855-.0509.4767-.2889.9575-.6019Z" />
+      <path d="M12 20.25s-7-4.67-7-10.48c0-2.63 2-4.52 4.47-4.52c1.42 0 2.57.65 3.53 1.98c.96-1.33 2.11-1.98 3.53-1.98c2.47 0 4.47 1.89 4.47 4.52c0 5.81-7 10.48-7 10.48Z" />
+      <path d="M6.35 11.65h2.05l1.15-2.2l1.55 4.2l1.45-3h2.9" />
     </svg>
   )
 }
@@ -311,6 +315,13 @@ function DashboardLoading({ theme = 'light' }) {
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
+      <style>{`
+        @keyframes violetCurrent {
+          0% { background-position: 0% 50%; filter: drop-shadow(0 0 0.45rem rgba(168, 85, 247, 0.14)); }
+          50% { background-position: 100% 50%; filter: drop-shadow(0 0 0.85rem rgba(168, 85, 247, 0.24)); }
+          100% { background-position: 0% 50%; filter: drop-shadow(0 0 0.45rem rgba(168, 85, 247, 0.14)); }
+        }
+      `}</style>
       <div className="mx-auto max-w-7xl px-8 py-10">
         <div className={`h-16 w-96 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/90' : 'bg-neutral-200/70'}`} />
         <div className={`mt-4 h-8 w-56 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-200/60'}`} />
@@ -383,13 +394,19 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   return (
     <header className="flex items-start justify-between gap-8 pb-6">
       <div>
-        <h1 className={`text-5xl font-semibold uppercase italic tracking-[0.04em] md:text-6xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-          {greeting}, {name || 'Athlete'}
+        <h1
+          className={`max-w-full text-[clamp(3.25rem,5.4vw,5.4rem)] font-semibold uppercase italic leading-[0.95] tracking-[0.015em] md:whitespace-nowrap ${
+            isDark
+              ? 'animate-[violetCurrent_7s_ease-in-out_infinite] bg-[linear-gradient(110deg,#ffffff_0%,#ffffff_34%,#c084fc_48%,#ffffff_61%,#f5f3ff_100%)] bg-[length:220%_100%] bg-clip-text text-transparent [text-shadow:0_0_18px_rgba(168,85,247,0.28),0_0_38px_rgba(139,92,246,0.16)]'
+              : 'text-neutral-950'
+          }`}
+        >
+          {`${greeting}, ${name || 'Athlete'}`}
         </h1>
-        <p className={`mt-7 text-xs font-medium uppercase tracking-[0.28em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+        <p className={`mt-8 text-[0.8rem] font-medium uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
           Adaptive Running Coach
         </p>
-        <p className={`mt-3 text-lg uppercase tracking-[0.12em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{formatDate(today)}</p>
+        <p className={`mt-4 text-[1.05rem] uppercase tracking-[0.08em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{formatDate(today)}</p>
       </div>
 
       <div className="flex flex-col items-end gap-6 pt-1 text-right">
@@ -409,10 +426,10 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
         <div>
-          <p className={`text-xs font-medium uppercase tracking-[0.24em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+          <p className={`text-[0.78rem] font-medium uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
             Race Goal
           </p>
-          <p className={`mt-3 text-xl uppercase tracking-[0.12em] ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
+          <p className={`mt-4 max-w-[22rem] text-[1.05rem] uppercase leading-[1.45] tracking-[0.09em] ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
             Half Marathon · {formatRaceGoal(goalRaceDate)}
           </p>
         </div>
@@ -616,12 +633,12 @@ function StatCard({
         <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${iconTone}`}>
           {icon}
         </div>
-        <p className={`min-w-0 break-words pt-1 text-sm font-semibold uppercase leading-7 tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+        <p className={`min-w-0 break-words pt-1 text-[0.78rem] font-medium uppercase leading-7 tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
           {label}
         </p>
       </div>
-      <p className={`mt-6 text-[2.7rem] font-semibold tracking-tight sm:text-[3rem] ${resolvedAccent}`}>{value}</p>
-      <p className={`mt-3 break-words text-base leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{subtext}</p>
+      <p className={`mt-6 text-[2.7rem] font-semibold italic leading-none tracking-[-0.03em] sm:text-[3.1rem] ${resolvedAccent}`}>{value}</p>
+      <p className={`mt-4 break-words text-[1.02rem] leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{subtext}</p>
     </div>
   )
 }
@@ -658,7 +675,7 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
           type="button"
           onClick={onOpen}
           disabled={isGenerating}
-          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-5 text-center text-2xl font-semibold tracking-tight transition duration-200 ${
+          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-5 text-center text-[2rem] font-semibold tracking-[-0.02em] transition duration-200 ${
             isGenerating
               ? isDark
                 ? 'cursor-not-allowed border-neutral-700 bg-neutral-900 text-neutral-400 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]'
@@ -684,7 +701,7 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
               <SparkleIcon />
             )}
           </span>
-          <span className="relative">{isGenerating ? 'Generating Recommendation...' : 'Generate Today’s Recommendation'}</span>
+          <span className="relative italic">{isGenerating ? 'Generating Recommendation...' : 'Generate Today’s Recommendation'}</span>
         </button>
       </div>
     </section>
@@ -1231,7 +1248,7 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
               Current Week
             </p>
             <div className={`mt-3 inline-flex rounded-[1.5rem] border px-5 py-3 ${isDark ? 'border-violet-800/60 bg-violet-950/50 text-white' : 'border-violet-100 bg-violet-50/80 text-neutral-950'}`}>
-              <h2 className="text-3xl font-semibold uppercase italic tracking-[0.05em] md:text-4xl">
+              <h2 className="text-3xl font-semibold uppercase italic tracking-[0.025em] md:text-4xl">
                 {weeklyFocus.phase || 'Weekly focus'}
               </h2>
             </div>
@@ -1491,7 +1508,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
                 : 'border-violet-200 bg-violet-50/85 shadow-[inset_4px_0_0_0_rgba(124,58,237,0.85)]'
             }`}>
               <h3 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-violet-100' : 'text-violet-900'}`}>
-                <span className="uppercase italic tracking-[0.05em]">
+                <span className="uppercase italic tracking-[0.025em]">
                 {weeklyFocus.phase || 'Weekly focus'}
                 </span>
               </h3>
@@ -1523,7 +1540,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
                       <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                         Week {index + 2} · {formatRoadmapWeekSpan(week)}
                       </p>
-                      <h4 className={`mt-2 text-xl font-semibold uppercase italic tracking-[0.05em] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                      <h4 className={`mt-2 text-xl font-semibold uppercase italic tracking-[0.025em] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                         {week.phase}
                       </h4>
                       <p className={`mt-2 max-w-4xl text-sm leading-6 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
