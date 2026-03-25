@@ -42,6 +42,18 @@ def _parse_pace_text_range_value(value: str) -> dict | None:
     return {"min": match.group(1), "max": match.group(2)}
 
 
+def _metric_snapshot(recommendation: Recommendation) -> dict[str, float | int | None]:
+    recap_line = str((recommendation.recap or [""])[0] or "")
+    recovery_match = re.search(r"recovery\s+(\d+)%", recap_line, re.IGNORECASE)
+    sleep_match = re.search(r"sleep\s+([0-9]+(?:\.[0-9]+)?)\s+hours", recap_line, re.IGNORECASE)
+    strain_match = re.search(r"strain\s+([0-9]+(?:\.[0-9]+)?)", recap_line, re.IGNORECASE)
+    return {
+        "recovery": int(recovery_match.group(1)) if recovery_match else None,
+        "sleep": float(sleep_match.group(1)) if sleep_match else None,
+        "strain": float(strain_match.group(1)) if strain_match else None,
+    }
+
+
 def _recommendation_explanation_payload(inputs: dict) -> dict:
     recommendation = inputs["recommendation"]
     planned_workout = inputs["plannedWorkout"]
@@ -78,6 +90,7 @@ def _recommendation_explanation_payload(inputs: dict) -> dict:
                 "guidance": list(lift.get("guidance") or ([recommendation.lift_guidance] if recommendation.lift_guidance else [])),
             },
             "flags": flags,
+            "metricSnapshot": _metric_snapshot(recommendation),
             "reasoning": {
                 "rationaleTags": list(adaptation.get("rationale_tags") or []),
                 "runLogic": list(recommendation.explanation_sections.get("run", "").split(". ")) if recommendation.explanation_sections.get("run") else [],
@@ -109,6 +122,8 @@ def build_explanation_prompt(inputs: dict) -> dict[str, str]:
         f"- readiness score: {rec['readinessScore']}\n"
         f"- readiness tier: {rec['readinessTier']}\n"
         f"- decision: {rec['decision']}\n\n"
+        "Key metrics:\n"
+        f"- metricSnapshot: {json.dumps(rec['metricSnapshot'])}\n\n"
         "Run:\n"
         f"- shouldRun: {rec['run']['shouldRun']}\n"
         f"- label: {rec['run']['label']}\n"
@@ -132,6 +147,7 @@ def build_explanation_prompt(inputs: dict) -> dict[str, str]:
         "{\n"
         '  "summary": "2-4 sentences max",\n'
         '  "whyBullets": ["short bullet", "short bullet"],\n'
+        '  "decisionDrivers": "1-2 short sentences or null",\n'
         '  "cautionNote": "optional short note or null",\n'
         '  "encouragement": "optional short line or null"\n'
         "}\n\n"
@@ -140,11 +156,53 @@ def build_explanation_prompt(inputs: dict) -> dict[str, str]:
         "- Do not mention every metric.\n"
         "- Mention only the most important reasons.\n"
         "- Keep it under 120 words total.\n"
+        "- Include one compact decisionDrivers sentence that names the key signals behind the final call.\n"
         "- If the session is preserved, make that explicit.\n"
         "- If the session is modified, explain the change plainly.\n"
         "- If the session is replaced, explain that recovery takes priority today.\n"
     )
     return {"system": system, "user": user}
+
+
+def _decision_drivers_text(payload: dict) -> str:
+    rec = payload["recommendation"]
+    flags = dict(rec["flags"] or {})
+    metric_snapshot = dict(rec.get("metricSnapshot") or {})
+    recovery = metric_snapshot.get("recovery")
+    strain = metric_snapshot.get("strain")
+    plan_status = str(rec.get("planStatus") or "modified")
+    planned_label = str(payload["plannedWorkout"].get("label") or "the planned session").lower()
+    final_label = str(rec.get("summaryLabel") or rec["run"].get("label") or "the final session").lower()
+    lift_label = str(rec["lift"].get("label") or "").lower()
+    low_risk_same_day = plan_status == "preserved" and final_label in {"easy run", "recovery run"} or "easy" in planned_label
+
+    if flags.get("injuryOverride") or flags.get("forceRestOrCrossTrain"):
+        return "Decision drivers: Pain or injury signals took priority over the plan, so training stress was removed for today."
+
+    if plan_status == "replaced":
+        if recovery is not None and recovery < 50:
+            return f"Decision drivers: Recovery came in at {recovery}%, below your 50% threshold, and the rest of the signals did not justify training stress, so the session was replaced with recovery."
+        return "Decision drivers: The current recovery and caution signals did not justify training stress, so the session was replaced with recovery."
+
+    if plan_status == "modified":
+        if flags.get("highStrainCaution") and flags.get("elevatedHrCaution"):
+            return "Decision drivers: Elevated resting HR and recent load stacked enough caution to remove intensity, so the session shifted to an easy run."
+        if recovery is not None and recovery < 50:
+            return f"Decision drivers: Recovery came in at {recovery}%, below your 50% threshold, so the original session was eased down to keep training moving without forcing intensity."
+        if flags.get("mentalDownshift"):
+            return "Decision drivers: Subjective fatigue lowered the ceiling for the day, so the session was trimmed back to keep the work productive."
+        return "Decision drivers: The original session carried more stress than today's signals supported, so the day was downshifted to keep useful work in place."
+
+    if recovery is not None and recovery < 50 and low_risk_same_day:
+        lift_clause = ""
+        if lift_label in {"core only", "no lift today"}:
+            lift_clause = f" {rec['lift']['label']} keeps extra stress from stacking."
+        return f"Decision drivers: Recovery came in at {recovery}%, below your 50% threshold, but the planned session was already easy and low-risk enough to keep.{lift_clause}"
+    if rec.get("readinessTier") == "high" and not any([flags.get("highStrainCaution"), flags.get("elevatedHrCaution"), flags.get("mentalDownshift")]):
+        return "Decision drivers: Recovery, sleep, and your subjective check-in all supported the planned work, so no adjustment was needed."
+    if flags.get("highStrainCaution") and strain is not None:
+        return f"Decision drivers: Recent load was elevated with strain at {strain:.1f}, so the session stayed controlled even though it remained on the plan."
+    return "Decision drivers: The final recommendation reflects the strongest current recovery and readiness signals without adding stress the day does not need."
 
 
 def build_template_fallback_explanation(inputs: dict) -> dict:
@@ -172,6 +230,8 @@ def build_template_fallback_explanation(inputs: dict) -> dict:
         caution_note = "This session stays in place, but the goal is to stay comfortably within the intended effort."
     elif plan_status != "preserved" and (flags.get("highStrainCaution") or flags.get("elevatedHrCaution")):
         caution_note = "Recent load and recovery signals both point toward keeping today lighter."
+
+    decision_drivers = _decision_drivers_text(payload)
 
     if plan_status == "preserved":
         if readiness_tier == "high" and not preserved_caution:
@@ -201,6 +261,7 @@ def build_template_fallback_explanation(inputs: dict) -> dict:
         return {
             "summary": summary,
             "whyBullets": why_bullets,
+            "decisionDrivers": decision_drivers,
             "cautionNote": caution_note,
             "encouragement": "Let the day stay smooth and controlled from the start." if preserved_caution else "Settle in early, then let the session come to you.",
             "source": "template_fallback",
@@ -215,6 +276,7 @@ def build_template_fallback_explanation(inputs: dict) -> dict:
                 "Current signals say to back off.",
                 "Less stress today sets up a better next session.",
             ],
+            "decisionDrivers": decision_drivers,
             "cautionNote": caution_note,
             "encouragement": "Take the reset and come back fresher.",
             "source": "template_fallback",
@@ -230,6 +292,7 @@ def build_template_fallback_explanation(inputs: dict) -> dict:
             "The structure stays in place.",
             "The load comes down to match today.",
         ],
+        "decisionDrivers": decision_drivers,
         "cautionNote": caution_note,
         "encouragement": "Keep it controlled and let that be enough for today.",
         "source": "template_fallback",
@@ -255,6 +318,11 @@ def _validate_explanation_output(output: dict, inputs: dict) -> bool:
 
     caution_note = output.get("cautionNote")
     if caution_note is not None and not isinstance(caution_note, str):
+        return False
+    decision_drivers = output.get("decisionDrivers")
+    if decision_drivers is not None and not isinstance(decision_drivers, str):
+        return False
+    if isinstance(decision_drivers, str) and (not decision_drivers.strip() or _word_count(decision_drivers) > 45):
         return False
     encouragement = output.get("encouragement")
     if encouragement is not None and not isinstance(encouragement, str):
@@ -284,6 +352,7 @@ def _validate_explanation_output(output: dict, inputs: dict) -> bool:
     output["whyBullets"] = cleaned_bullets
     output["summary"] = summary
     output["cautionNote"] = str(caution_note).strip() if isinstance(caution_note, str) and caution_note.strip() else None
+    output["decisionDrivers"] = str(decision_drivers).strip() if isinstance(decision_drivers, str) and decision_drivers.strip() else None
     output["encouragement"] = str(encouragement).strip() if isinstance(encouragement, str) and encouragement.strip() else None
     return True
 
@@ -326,6 +395,7 @@ def generate_recommendation_explanation(inputs: dict) -> dict:
     return {
         "summary": output["summary"],
         "whyBullets": list(output.get("whyBullets") or []),
+        "decisionDrivers": output.get("decisionDrivers"),
         "cautionNote": output.get("cautionNote"),
         "encouragement": output.get("encouragement"),
         "source": "llm",

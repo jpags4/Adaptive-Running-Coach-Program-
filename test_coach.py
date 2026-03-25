@@ -483,6 +483,7 @@ class CoachRecommendationTests(unittest.TestCase):
     def test_preserved_explanation_says_workout_is_supported(self) -> None:
         explanation = build_template_fallback_explanation(self._make_explanation_inputs(plan_status="preserved"))
         self.assertTrue(any(token in explanation["summary"].lower() for token in ["good day", "original session", "readiness looks solid"]))
+        self.assertTrue(str(explanation["decisionDrivers"]).startswith("Decision drivers:"))
         self.assertEqual(explanation["source"], "template_fallback")
 
     def test_modified_explanation_says_session_is_adjusted(self) -> None:
@@ -495,6 +496,7 @@ class CoachRecommendationTests(unittest.TestCase):
             )
         )
         self.assertTrue(any(token in explanation["summary"].lower() for token in ["less stress", "fits today better", "keeping the day on track"]))
+        self.assertIn("Decision drivers:", explanation["decisionDrivers"])
 
     def test_replaced_explanation_says_recovery_takes_priority(self) -> None:
         explanation = build_template_fallback_explanation(
@@ -508,6 +510,7 @@ class CoachRecommendationTests(unittest.TestCase):
             )
         )
         self.assertTrue(any(token in explanation["summary"].lower() for token in ["replaced", "recovery", "priority"]))
+        self.assertIn("Decision drivers:", explanation["decisionDrivers"])
 
     def test_injury_override_adds_caution_note(self) -> None:
         explanation = build_template_fallback_explanation(
@@ -535,6 +538,7 @@ class CoachRecommendationTests(unittest.TestCase):
         request_mock.return_value = {
             "summary": "Go run today and keep it short.",
             "whyBullets": ["Easy day."],
+            "decisionDrivers": "Decision drivers: Easy day.",
             "cautionNote": None,
             "encouragement": None,
         }
@@ -556,6 +560,7 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertTrue(explanation["summary"])
         self.assertIsInstance(explanation["whyBullets"], list)
         self.assertLessEqual(len(explanation["whyBullets"]), 3)
+        self.assertIn("decisionDrivers", explanation)
         self.assertIn("source", explanation)
 
     def test_build_explanation_prompt_includes_final_plan_status(self) -> None:
@@ -1637,11 +1642,19 @@ def print_plan_preserved_scenarios() -> None:
 def print_recommendation_explanation_harness() -> None:
     scenarios = [
         {
-            "name": "Preserved",
+            "name": "High-Readiness Preserved",
             "today": date(2026, 3, 24),
             "metric": _harness_metric("2026-03-24", 86, 8.2, 52, 7.4),
             "feedback": {"physical_feeling": "fresh", "mental_feeling": "sharp", "notes": "felt good yesterday"},
             "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+        },
+        {
+            "name": "Preserved Low-Recovery Easy Day",
+            "today": date(2026, 3, 23),
+            "metric": _harness_metric("2026-03-23", 48, 7.3, 54, 9.0),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 23)),
+            "metrics": _harness_metrics_window(date(2026, 3, 23), _harness_metric("2026-03-23", 48, 7.3, 54, 9.0), baseline_rhr=53),
         },
         {
             "name": "Modified",
@@ -1692,6 +1705,7 @@ def print_recommendation_explanation_harness() -> None:
         print(f"explanation source: {explanation.get('source', '-')}")
         print(f"summary: {explanation.get('summary', '-')}")
         print(f"whyBullets: {explanation.get('whyBullets', [])}")
+        print(f"decisionDrivers: {explanation.get('decisionDrivers')}")
         print(f"cautionNote: {explanation.get('cautionNote')}")
         print(f"encouragement: {explanation.get('encouragement')}")
 

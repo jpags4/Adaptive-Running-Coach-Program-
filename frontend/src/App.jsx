@@ -896,8 +896,6 @@ function TrainingCard({
   if (!recommendation) return null
 
   const isDark = theme === 'dark'
-  const sections = recommendation.explanation_sections ?? {}
-  const adaptation = recommendation.daily_adaptation ?? {}
   const isLiftOffDay = /lifting off-day|no lifting/i.test(String(recommendation.lift_focus || ''))
   const liftBlocks = isLiftOffDay ? [] : formatLiftBlocks(recommendation.lift_guidance)
   const intensityLabel = simplifyIntensity(recommendation.intensity)
@@ -1047,13 +1045,26 @@ function TrainingCard({
 
           {Array.isArray(recommendationExplanation.whyBullets) && recommendationExplanation.whyBullets.length > 0 ? (
             <ul className={`mt-5 space-y-2 text-base leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-              {recommendationExplanation.whyBullets.map((bullet, index) => (
+              {recommendationExplanation.whyBullets.slice(0, 2).map((bullet, index) => (
                 <li key={`${bullet}-${index}`} className="flex gap-3">
                   <span className={`mt-3 inline-block h-1.5 w-1.5 rounded-full ${isDark ? 'bg-sky-300' : 'bg-sky-700'}`} />
                   <span>{bullet}</span>
                 </li>
               ))}
             </ul>
+          ) : null}
+
+          {recommendationExplanation.decisionDrivers ? (
+            <div className={`mt-5 rounded-[1.25rem] border px-4 py-4 ${
+              isDark ? 'border-neutral-800 bg-neutral-950/70' : 'border-white/80 bg-white/90'
+            }`}>
+              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
+                What Drove This Decision
+              </p>
+              <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                {recommendationExplanation.decisionDrivers}
+              </p>
+            </div>
           ) : null}
 
           {recommendationExplanation.cautionNote ? (
@@ -1071,109 +1082,6 @@ function TrainingCard({
           ) : null}
         </section>
       ) : null}
-
-      <details className={`mt-8 rounded-2xl border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
-        <summary className={`cursor-pointer list-none px-5 py-4 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-          Detailed Reasoning
-        </summary>
-        <div className={`space-y-5 border-t px-5 py-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-          <ReasonCard
-            title="Overall"
-            text={stripReasonPrefix(sections.overall, 'overall')}
-            tone="violet"
-            icon={<TargetIcon className="h-4 w-4" />}
-            fullWidth
-            theme={theme}
-          />
-
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <div className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-emerald-900/40 bg-emerald-950/55' : 'border-emerald-200 bg-emerald-50/70'}`}>
-              <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950 text-emerald-300' : 'bg-white text-emerald-700'}`}>
-                  <RouteIcon className="h-4 w-4" />
-                </div>
-                <p className={`text-base font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-emerald-200' : 'text-emerald-900'}`}>
-                  Run Logic
-                </p>
-              </div>
-              <div className={`mt-4 rounded-[1.5rem] border ${isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-white/80 bg-white/90'}`}>
-                <div className="px-5 py-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isDark ? 'bg-neutral-900 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
-                      <AbacusIcon className="h-4 w-4" />
-                    </div>
-                    <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-200' : 'text-neutral-600'}`}>
-                      Distance
-                    </p>
-                  </div>
-                  <p className={`mt-3 text-[15px] leading-8 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                    {stripReasonPrefix(sections.run, 'run distance')}
-                  </p>
-                </div>
-                <div className={`border-t px-5 py-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                  <div className="flex items-center gap-2.5">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isDark ? 'bg-neutral-900 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
-                      <Icon path="M12 8v5l3 3M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0Z" className="h-4 w-4" />
-                    </div>
-                    <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-200' : 'text-neutral-600'}`}>
-                      Pace
-                    </p>
-                  </div>
-                  <p className={`mt-3 text-[15px] leading-8 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                    {stripReasonPrefix(sections.pace, 'pace')}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className={`rounded-[1.75rem] border p-5 ${isDark ? 'border-violet-900/40 bg-violet-950/55' : 'border-violet-200 bg-violet-50/70'}`}>
-              <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-full ${isDark ? 'bg-violet-950 text-violet-300' : 'bg-white text-violet-700'}`}>
-                  <DumbbellIcon className="h-4 w-4" />
-                </div>
-                <p className={`text-base font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-violet-200' : 'text-violet-900'}`}>
-                  Lift Logic
-                </p>
-              </div>
-              <div className="mt-4">
-                <ReasonCard title="Lifting" text={stripReasonPrefix(sections.lift, 'lifting')} tone="panel" icon={<DumbbellIcon className="h-4 w-4" />} theme={theme} />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            <ReasonCard
-              title="Recovery Influence"
-              text={stripReasonPrefix(sections.recovery, 'recovery influence')}
-              tone="neutral"
-              icon={<TrendUpIcon className="h-4 w-4" />}
-              theme={theme}
-            />
-            <div className={`rounded-[1.75rem] border p-5 ${
-              isDark
-                ? 'border-amber-800 bg-amber-950/70 shadow-[inset_4px_0_0_0_rgba(245,158,11,0.95)]'
-                : 'border-amber-200 bg-amber-50/70 shadow-[inset_4px_0_0_0_rgba(245,158,11,0.85)]'
-            }`}>
-              <div className="flex items-center gap-2.5">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isDark ? 'bg-black/20 text-amber-300' : 'bg-white/90 text-amber-700'}`}>
-                  <Icon path="M12 9v4m0 4h.01M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" className="h-4 w-4" />
-                </div>
-                <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-200' : 'text-neutral-600'}`}>
-                  Warnings
-                </p>
-              </div>
-              <ul className={`mt-4 space-y-3 text-[15px] leading-8 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                {(recommendation.warnings || []).filter(Boolean).map((warning, index) => (
-                  <li key={`${warning}-${index}`} className="flex gap-3">
-                    <span className={`${isDark ? 'text-amber-300' : 'text-amber-600'}`}>•</span>
-                    <span>{warning}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </details>
     </section>
   )
 }
