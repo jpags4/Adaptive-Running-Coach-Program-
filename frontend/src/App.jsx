@@ -326,6 +326,29 @@ function DashboardLoading({ theme = 'light' }) {
             filter: drop-shadow(0 0 0.3rem rgba(168, 85, 247, 0.14));
           }
         }
+
+        .arc-modal-scroll {
+          scrollbar-color: #0a0a0a #1b1b1b;
+        }
+
+        .arc-modal-scroll::-webkit-scrollbar {
+          width: 12px;
+        }
+
+        .arc-modal-scroll::-webkit-scrollbar-track {
+          background: #0a0a0a;
+          border-radius: 999px;
+        }
+
+        .arc-modal-scroll::-webkit-scrollbar-thumb {
+          background: #2a2a2a;
+          border-radius: 999px;
+          border: 2px solid #0a0a0a;
+        }
+
+        .arc-modal-scroll::-webkit-scrollbar-thumb:hover {
+          background: #343434;
+        }
       `}</style>
       <div className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
         <div className={`h-16 w-96 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/90' : 'bg-neutral-200/70'}`} />
@@ -799,7 +822,7 @@ function CheckInModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-7 pb-0 pt-9 md:px-8">
+        <div className="arc-modal-scroll flex-1 overflow-y-auto px-7 pb-0 pt-9 md:px-8">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div>
               <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
