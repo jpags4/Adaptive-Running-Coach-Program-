@@ -622,7 +622,7 @@ function StatCard({
   value,
   subtext,
   accent = 'text-neutral-950',
-  iconTone = 'bg-violet-50 text-violet-600',
+  iconTone = 'text-violet-600',
   theme = 'light',
 }) {
   const isDark = theme === 'dark'
@@ -637,15 +637,15 @@ function StatCard({
       }`}
     >
       <div className={`flex items-start gap-3 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${iconTone}`}>
+        <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center ${iconTone}`}>
           {icon}
         </div>
-        <p className={`min-w-0 break-words pt-1 text-[0.78rem] font-medium uppercase leading-7 tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+        <p className={`min-w-0 break-words text-[0.78rem] font-medium uppercase leading-7 tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
           {label}
         </p>
       </div>
-      <p className={`mt-6 text-[2.7rem] font-semibold italic leading-none tracking-[-0.03em] sm:text-[3.1rem] ${resolvedAccent}`}>{value}</p>
-      <p className={`mt-4 break-words text-[1.02rem] leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{subtext}</p>
+      <p className={`mt-5 text-[2.7rem] font-semibold italic leading-none tracking-[-0.03em] sm:text-[3.1rem] ${resolvedAccent}`}>{value}</p>
+      <p className={`mt-3 break-words text-[1.02rem] leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{subtext}</p>
     </div>
   )
 }
@@ -2880,7 +2880,7 @@ export default function App() {
             label="Sleep"
             value={summary.latest_sleep_hours ? `${summary.latest_sleep_hours.toFixed(1)} hrs` : '-'}
             subtext="Latest WHOOP sleep duration"
-            iconTone={theme === 'dark' ? 'bg-white text-neutral-900' : 'bg-neutral-100 text-neutral-900'}
+            iconTone={theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'}
             theme={theme}
           />
           <StatCard
@@ -2891,12 +2891,12 @@ export default function App() {
             accent={recoveryAccent}
             iconTone={
               theme === 'dark'
-                ? 'bg-[#ecfff7] text-emerald-600'
+                ? 'text-emerald-400'
                 : summary.latest_recovery >= 67
-                  ? 'bg-emerald-50 text-emerald-600'
+                  ? 'text-emerald-600'
                   : summary.latest_recovery >= 34
-                    ? 'bg-amber-50 text-amber-500'
-                    : 'bg-red-50 text-red-600'
+                    ? 'text-amber-500'
+                    : 'text-red-600'
             }
             theme={theme}
           />
@@ -2906,7 +2906,7 @@ export default function App() {
             value={summary.latest_resting_hr ? `${summary.latest_resting_hr}` : '-'}
             subtext="Most recent resting heart rate"
             accent="text-violet-700"
-            iconTone={theme === 'dark' ? 'bg-white text-violet-600' : 'bg-violet-50 text-violet-700'}
+            iconTone={theme === 'dark' ? 'text-violet-300' : 'text-violet-700'}
             theme={theme}
           />
           <StatCard
@@ -2915,7 +2915,7 @@ export default function App() {
             value={summary.latest_strain ? `${summary.latest_strain}` : '-'}
             subtext="WHOOP strain from yesterday"
             accent="text-sky-600"
-            iconTone={theme === 'dark' ? 'bg-white text-sky-600' : 'bg-sky-50 text-sky-600'}
+            iconTone={theme === 'dark' ? 'text-sky-300' : 'text-sky-600'}
             theme={theme}
           />
           <StatCard
@@ -2927,7 +2927,7 @@ export default function App() {
                 ? `${formatDate(previousRun.day)} · ${previousRun.duration_minutes || 0} min`
                 : 'Most recent run'
             }
-            iconTone={theme === 'dark' ? 'bg-white text-neutral-900' : 'bg-neutral-100 text-neutral-900'}
+            iconTone={theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'}
             theme={theme}
           />
           <StatCard
@@ -2945,11 +2945,11 @@ export default function App() {
             iconTone={
               theme === 'dark'
                 ? loadAccent === 'text-emerald-600'
-                  ? 'bg-[#ecfff7] text-emerald-600'
-                  : 'bg-[#fff6e8] text-amber-500'
+                  ? 'text-emerald-400'
+                  : 'text-amber-400'
                 : loadAccent === 'text-emerald-600'
-                  ? 'bg-emerald-50 text-emerald-600'
-                  : 'bg-amber-50 text-amber-500'
+                  ? 'text-emerald-600'
+                  : 'text-amber-500'
             }
             theme={theme}
           />
