@@ -1211,7 +1211,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     recommendation_feedback = dict(subjective_feedback or {})
     activity_notes = load_activity_notes()
     full_activity_feed = _filter_calendar_activities(sorted(all_activities, key=lambda item: item.get("day", ""), reverse=True))
-    full_logged_activity_feed = _filter_calendar_activities(sorted(logged_activities, key=lambda item: item.get("day", ""), reverse=True))
+    full_logged_activity_feed = sorted(logged_activities, key=lambda item: item.get("day", ""), reverse=True)
     annotated_activity_feed = _attach_activity_notes(full_activity_feed, activity_notes)
     annotated_activity_log = _activity_log_payload(_attach_activity_notes(full_logged_activity_feed, activity_notes))
     recommendation_feedback.update(_recommendation_training_context(annotated_activity_feed, today_iso))
