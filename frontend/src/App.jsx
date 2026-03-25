@@ -747,6 +747,19 @@ function CheckInModal({
 }) {
   const isDark = theme === 'dark'
   if (!isOpen) return null
+  const legsOptions = ['fresh', 'normal', 'heavy', 'sore', 'injured']
+  const mentalOptions = ['sharp', 'steady', 'stressed', 'drained']
+
+  const choiceButtonClasses = (active) =>
+    `min-h-[4.1rem] w-full rounded-[1.35rem] border px-4 py-4 text-left text-base font-medium transition ${
+      active
+        ? isDark
+          ? 'border-violet-500/80 bg-violet-600 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.32),0_12px_28px_rgba(109,40,217,0.22)]'
+          : 'border-violet-300 bg-violet-600 text-white shadow-[0_10px_28px_rgba(109,40,217,0.18)]'
+        : isDark
+          ? 'border-neutral-800 bg-neutral-950 text-neutral-300 hover:border-violet-500/50 hover:text-white'
+          : 'border-neutral-200 bg-stone-50 text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
+    }`
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
@@ -756,157 +769,201 @@ function CheckInModal({
         onClick={onClose}
         className="absolute inset-0 bg-neutral-950/45 backdrop-blur-sm"
       />
-      <section className={`relative z-10 max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border p-8 shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
+      <section className={`relative z-10 flex max-h-[90vh] w-full max-w-[72rem] flex-col overflow-hidden rounded-[2rem] border shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
         isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
       }`}>
-        <div className="max-w-3xl">
-            <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+        <div className="flex items-start justify-between gap-6 px-7 pb-0 pt-7 md:px-8 md:pt-8">
+          <div className="max-w-3xl">
+            <p className={`text-sm font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
               Recommendation Prompts
             </p>
-            <h2 className={`mt-4 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            <h2 className={`mt-4 max-w-4xl text-[2.45rem] font-semibold leading-[1.08] tracking-tight md:text-[2.85rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
               Fill this out, then generate today&apos;s recommendation.
             </h2>
-            <p className={`mt-4 text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+            <p className={`mt-4 max-w-3xl text-[1.04rem] leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
               Your biometrics and recent running load are already on the page. These prompts let the model account
               for how your legs feel, how your head feels, and anything else you want it to weigh.
             </p>
-        </div>
-
-        <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2">
-          <div>
-            <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              How do your legs feel?
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {['fresh', 'normal', 'heavy', 'sore', 'injured'].map((option) => (
-                <PromptButton key={option} active={physicalFeeling === option} onClick={() => onPhysicalChange(option)} theme={theme}>
-                  {capitalize(option)}
-                </PromptButton>
-              ))}
-            </div>
           </div>
-
-          <div>
-            <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              What&apos;s your mental state?
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {['sharp', 'steady', 'stressed', 'drained'].map((option) => (
-                <PromptButton key={option} active={mentalFeeling === option} onClick={() => onMentalChange(option)} theme={theme}>
-                  {capitalize(option)}
-                </PromptButton>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <div className={`rounded-[1.5rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                  Pain check-in
-                </p>
-                <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                  Use this only if pain is part of today&apos;s training decision.
-                </p>
-              </div>
-              <label className={`inline-flex items-center gap-3 text-sm font-medium ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                <input
-                  type="checkbox"
-                  checked={hasPain}
-                  onChange={(event) => onHasPainChange(event.target.checked)}
-                  className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500"
-                />
-                Pain present
-              </label>
-            </div>
-
-            {hasPain ? (
-              <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
-                <div>
-                  <label className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-                    Severity
-                  </label>
-                  <select
-                    value={painSeverity}
-                    onChange={(event) => onPainSeverityChange(event.target.value)}
-                    className={`mt-3 w-full rounded-2xl border px-4 py-3 text-sm ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-100' : 'border-neutral-200 bg-white text-neutral-800'}`}
-                  >
-                    {['none', 'mild', 'moderate', 'severe'].map((option) => (
-                      <option key={option} value={option}>{capitalize(option)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-                    Location
-                  </label>
-                  <select
-                    value={painLocation}
-                    onChange={(event) => onPainLocationChange(event.target.value)}
-                    className={`mt-3 w-full rounded-2xl border px-4 py-3 text-sm ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-100' : 'border-neutral-200 bg-white text-neutral-800'}`}
-                  >
-                    {['none', 'foot', 'ankle', 'shin', 'calf', 'knee', 'hamstring', 'quad', 'hip', 'low_back', 'other'].map((option) => (
-                      <option key={option} value={option}>{option === 'low_back' ? 'Low Back' : capitalize(option.replace('_', ' '))}</option>
-                    ))}
-                  </select>
-                </div>
-                <label className={`inline-flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                  <input type="checkbox" checked={painWithRunning} onChange={(event) => onPainWithRunningChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
-                  Pain shows up when running
-                </label>
-                <label className={`inline-flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                  <input type="checkbox" checked={painWithWalking} onChange={(event) => onPainWithWalkingChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
-                  Pain shows up when walking
-                </label>
-                <label className={`inline-flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                  <input type="checkbox" checked={painWithCycling} onChange={(event) => onPainWithCyclingChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
-                  Pain shows up when cycling
-                </label>
-              </div>
-            ) : null}
-          </div>
-
-          <label className={`mt-8 block text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            Anything else the coach should know?
-          </label>
-          <textarea
-            value={notes}
-            onChange={(event) => onNotesChange(event.target.value)}
-            placeholder="Examples: poor sleep, lingering calf tightness, emotionally drained, limited time, want to lift arms only."
-            className={`mt-4 min-h-32 w-full rounded-[1.5rem] border px-5 py-4 text-base leading-7 outline-none transition placeholder:text-neutral-400 focus:border-violet-400 ${
-              isDark
-                ? 'border-neutral-800 bg-neutral-950 text-neutral-100'
-                : 'border-neutral-200 bg-stone-50 text-neutral-800'
-            }`}
-          />
-        </div>
-
-        <div className="mt-8 flex justify-center">
           <button
             type="button"
-            onClick={onGenerate}
-            disabled={isGenerating}
-            className={`inline-flex items-center gap-3 rounded-full px-7 py-4 text-sm font-semibold transition ${
-              isGenerating
-                ? isDark
-                  ? 'cursor-not-allowed bg-neutral-800 text-neutral-500'
-                  : 'cursor-not-allowed bg-neutral-200 text-neutral-500'
-                : isDark
-                  ? 'bg-violet-600 text-white shadow-[0_12px_28px_rgba(109,40,217,0.28)] hover:bg-violet-500'
-                  : 'bg-neutral-950 text-white shadow-[0_12px_28px_rgba(76,29,149,0.22)] hover:bg-neutral-800'
+            onClick={onClose}
+            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-lg transition ${
+              isDark
+                ? 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-violet-500 hover:text-white'
+                : 'border-neutral-200 bg-white text-neutral-500 hover:border-violet-300 hover:text-neutral-900'
             }`}
+            aria-label="Close recommendation prompts"
           >
-            {isGenerating ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-700" />
-                Generating Recommendation...
-              </>
-            ) : (
-              'Generate Recommendation'
-            )}
+            ×
           </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-7 pb-0 pt-9 md:px-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div>
+              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                How do your legs feel?
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {legsOptions.map((option) => (
+                  <button key={option} type="button" onClick={() => onPhysicalChange(option)} className={choiceButtonClasses(physicalFeeling === option)}>
+                    {capitalize(option)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                What&apos;s your mental state?
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {mentalOptions.map((option) => (
+                  <button key={option} type="button" onClick={() => onMentalChange(option)} className={choiceButtonClasses(mentalFeeling === option)}>
+                    {capitalize(option)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-9">
+            <div className={`rounded-[1.75rem] border p-6 ${isDark ? 'border-neutral-800 bg-neutral-950/90' : 'border-neutral-200 bg-stone-50/95'}`}>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-2xl">
+                  <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                    Pain check-in
+                  </p>
+                  <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                    Use this only if pain is part of today&apos;s training decision.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onHasPainChange(!hasPain)}
+                  className={`inline-flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium transition ${
+                    hasPain
+                      ? isDark
+                        ? 'border-violet-500/80 bg-violet-600/20 text-white'
+                        : 'border-violet-300 bg-violet-50 text-violet-700'
+                      : isDark
+                        ? 'border-neutral-800 bg-neutral-950 text-neutral-300'
+                        : 'border-neutral-200 bg-white text-neutral-700'
+                  }`}
+                  aria-pressed={hasPain}
+                >
+                  <span> Pain present </span>
+                  <span className={`relative inline-flex h-6 w-11 rounded-full transition ${hasPain ? (isDark ? 'bg-violet-500/90' : 'bg-violet-500') : (isDark ? 'bg-neutral-800' : 'bg-neutral-300')}`}>
+                    <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${hasPain ? 'left-[1.35rem]' : 'left-0.5'}`} />
+                  </span>
+                </button>
+              </div>
+
+              <div className={`overflow-hidden transition-all duration-300 ${hasPain ? 'mt-6 max-h-[30rem] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div>
+                    <label className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                      Severity
+                    </label>
+                    <select
+                      value={painSeverity}
+                      onChange={(event) => onPainSeverityChange(event.target.value)}
+                      className={`mt-3 w-full rounded-[1.2rem] border px-4 py-3 text-sm outline-none transition ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-100' : 'border-neutral-200 bg-white text-neutral-800'}`}
+                    >
+                      {['none', 'mild', 'moderate', 'severe'].map((option) => (
+                        <option key={option} value={option}>{capitalize(option)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                      Location
+                    </label>
+                    <select
+                      value={painLocation}
+                      onChange={(event) => onPainLocationChange(event.target.value)}
+                      className={`mt-3 w-full rounded-[1.2rem] border px-4 py-3 text-sm outline-none transition ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-100' : 'border-neutral-200 bg-white text-neutral-800'}`}
+                    >
+                      {['none', 'foot', 'ankle', 'shin', 'calf', 'knee', 'hamstring', 'quad', 'hip', 'low_back', 'other'].map((option) => (
+                        <option key={option} value={option}>{option === 'low_back' ? 'Low Back' : capitalize(option.replace('_', ' '))}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <label className={`flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                    <input type="checkbox" checked={painWithRunning} onChange={(event) => onPainWithRunningChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
+                    Pain shows up when running
+                  </label>
+                  <label className={`flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                    <input type="checkbox" checked={painWithWalking} onChange={(event) => onPainWithWalkingChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
+                    Pain shows up when walking
+                  </label>
+                  <label className={`flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                    <input type="checkbox" checked={painWithCycling} onChange={(event) => onPainWithCyclingChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
+                    Pain shows up when cycling
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-9 pb-6">
+            <label className={`block text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              Anything else the coach should know?
+            </label>
+            <textarea
+              value={notes}
+              onChange={(event) => onNotesChange(event.target.value)}
+              placeholder="Examples: poor sleep, lingering calf tightness, emotionally drained, limited time, want to lift arms only."
+              className={`mt-4 min-h-[8.5rem] w-full rounded-[1.5rem] border px-5 py-4 text-base leading-7 outline-none transition placeholder:text-neutral-500 focus:border-violet-400 ${
+                isDark
+                  ? 'border-neutral-800 bg-neutral-950 text-neutral-100'
+                  : 'border-neutral-200 bg-stone-50 text-neutral-800'
+              }`}
+            />
+          </div>
+        </div>
+
+        <div className={`sticky bottom-0 border-t px-7 py-5 md:px-8 ${
+          isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
+        }`}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className={`text-sm font-medium transition ${
+                isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-950'
+              }`}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onGenerate}
+              disabled={isGenerating}
+              className={`inline-flex items-center gap-3 rounded-full px-7 py-4 text-sm font-semibold transition ${
+                isGenerating
+                  ? isDark
+                    ? 'cursor-not-allowed bg-neutral-800 text-neutral-500'
+                    : 'cursor-not-allowed bg-neutral-200 text-neutral-500'
+                  : isDark
+                    ? 'bg-violet-600 text-white shadow-[0_12px_28px_rgba(109,40,217,0.28)] hover:bg-violet-500'
+                    : 'bg-neutral-950 text-white shadow-[0_12px_28px_rgba(76,29,149,0.22)] hover:bg-neutral-800'
+              }`}
+            >
+              {isGenerating ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-700" />
+                  Generating Recommendation...
+                </>
+              ) : (
+                'Generate Recommendation'
+              )}
+            </button>
+          </div>
         </div>
       </section>
     </div>
