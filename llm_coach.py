@@ -154,24 +154,55 @@ def build_template_fallback_explanation(inputs: dict) -> dict:
     plan_status = str(rec["planStatus"] or "modified")
     planned_label = str(payload["plannedWorkout"].get("label") or "").strip()
     final_label = str(rec.get("summaryLabel") or "").strip()
+    readiness_tier = str(rec.get("readinessTier") or "").strip().lower()
+    rationale_tags = set(rec.get("reasoning", {}).get("rationaleTags") or [])
+    recovery_influence = list(rec.get("reasoning", {}).get("recoveryInfluence") or [])
+    preserved_caution = bool(
+        recovery_influence
+        or flags.get("highStrainCaution")
+        or flags.get("elevatedHrCaution")
+        or flags.get("mentalDownshift")
+        or "protect_key_session" in rationale_tags
+        or "protect_week_structure" in rationale_tags
+    )
     caution_note = None
     if flags.get("injuryOverride") or flags.get("forceRestOrCrossTrain"):
         caution_note = "Back off today and reassess before returning to normal training."
+    elif plan_status == "preserved" and preserved_caution:
+        caution_note = "This session stays in place, but the goal is to stay comfortably within the intended effort."
     elif plan_status != "preserved" and (flags.get("highStrainCaution") or flags.get("elevatedHrCaution")):
         caution_note = "Recent load and recovery signals both point toward keeping today lighter."
 
     if plan_status == "preserved":
-        summary = "Today is a good day to stay with the original session. Your readiness looks solid, and nothing in the current signals is asking us to back off."
-        if planned_label:
-            summary = f"Today is a good day to keep {planned_label.lower()} as planned. Your readiness looks solid, and nothing in the current signals is asking us to back off."
+        if readiness_tier == "high" and not preserved_caution:
+            summary = "Today is a good day to keep the planned session in place. Readiness is strong and the current signals support the work as written."
+            if planned_label:
+                summary = f"Today is a good day to keep {planned_label.lower()} in place. Readiness is strong and the current signals support the work as written."
+            why_bullets = [
+                "The session is supported today.",
+                "Current signals do not require a change.",
+            ]
+        elif run_is_low_risk := final_label.lower() in {"easy run", "recovery run"} or str(rec.get("decision") or "") == "maintain":
+            summary = "The planned session still makes sense today, but this should stay controlled. Recovery is not ideal, though the workout is light enough to keep in place."
+            if planned_label:
+                summary = f"The planned session still makes sense today, and {planned_label.lower()} can stay in place, but this should stay controlled."
+            why_bullets = [
+                "The workout stays in place because it already fits the day.",
+                "Keep the effort controlled even though the plan stays the same.",
+            ]
+        else:
+            summary = "We’re leaving the session unchanged, but the goal is still to keep the day measured. That keeps the week on track without adding unnecessary stress."
+            if planned_label:
+                summary = f"We’re leaving {planned_label.lower()} unchanged, but the goal is still to keep the day measured."
+            why_bullets = [
+                "The session still fits today.",
+                "Keep the effort controlled and measured.",
+            ]
         return {
             "summary": summary,
-            "whyBullets": [
-                "The work is supported today.",
-                "No major caution flags are in the way.",
-            ],
+            "whyBullets": why_bullets,
             "cautionNote": caution_note,
-            "encouragement": "Settle in early, then let the session come to you.",
+            "encouragement": "Let the day stay smooth and controlled from the start." if preserved_caution else "Settle in early, then let the session come to you.",
             "source": "template_fallback",
         }
     if plan_status == "replaced":

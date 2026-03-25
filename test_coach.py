@@ -476,7 +476,10 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertIn("overall", recommendation.explanation_sections)
         self.assertNotIn("OPENAI_API_KEY not set", recommendation.warnings)
         self.assertIn(recommendation.explanation_sections["overall"], {
-            "The planned session is supported today. Readiness is high and no caution flags are present, so we keep the workout unchanged.",
+            "The planned session still fits today. Readiness is strong and the current signals support keeping the workout as written.",
+            "The planned session still makes sense today, but this should stay controlled. Recovery is not ideal, though the workout is light enough to keep in place.",
+            "The planned session still makes sense today. There are some caution signals in the background, but not enough to change the session, so keep the effort measured.",
+            "The session stays in place, but this is still a controlled day. The workout remains as planned because it already fits the day.",
             "The planned session has been adjusted based on readiness and recovery signals. We preserve structure while reducing stress.",
             "The planned session has been replaced due to recovery and risk signals. The priority is protecting the athlete and the rest of the week.",
         })

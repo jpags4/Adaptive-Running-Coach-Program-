@@ -1124,6 +1124,34 @@ def _plan_status_label(status: str) -> str:
     return "Changed"
 
 
+def _preserved_overall_text(readiness: dict, flags: dict, run: dict, tags: set[str]) -> str:
+    recovery_influence = [
+        item
+        for item, include in [
+            ("Recovery score below threshold triggered a downshift.", readiness["componentScores"]["recovery"] < 0),
+            ("Elevated resting HR added caution.", flags["elevatedHrCaution"]),
+            ("High recent strain limited how much load to keep today.", flags["highStrainCaution"]),
+            ("Subjective leg feedback materially lowered readiness.", readiness["componentScores"]["legs"] < 0),
+            ("Mental fatigue reduced the ceiling for today's training.", flags["mentalDownshift"]),
+        ]
+        if include
+    ]
+    meaningful_caution = bool(
+        recovery_influence
+        or any(tag in tags for tag in {"protect_key_session", "protect_week_structure", "high_strain_caution", "elevated_hr_caution", "subjective_fatigue"})
+    )
+
+    if readiness["tier"] == "high" and not meaningful_caution:
+        return "The planned session still fits today. Readiness is strong and the current signals support keeping the workout as written."
+
+    if readiness["tier"] == "moderate" or meaningful_caution:
+        if run.get("intensity") in {"easy", "very_easy"}:
+            return "The planned session still makes sense today, but this should stay controlled. Recovery is not ideal, though the workout is light enough to keep in place."
+        return "The planned session still makes sense today. There are some caution signals in the background, but not enough to change the session, so keep the effort measured."
+
+    return "The session stays in place, but this is still a controlled day. The workout remains as planned because it already fits the day."
+
+
 def _plan_status(planned_workout: dict, baseline_run: dict, final_run: dict, lift: dict) -> str:
     workout_type = str(planned_workout.get("type") or "")
 
@@ -1301,12 +1329,6 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
         tags.add("mobility_only")
 
     summary = "Easy Run" if run["shouldRun"] and run["intensity"] == "easy" else "Recovery Run" if run["shouldRun"] and run["intensity"] == "very_easy" else "Recovery Day" if not run["shouldRun"] and not lift["shouldLift"] else "Mobility Day" if not run["shouldRun"] and lift["action"] == "mobility_only" else "Light Strength Day" if not run["shouldRun"] and lift["action"] == "core_only" else run["label"]
-    plan_status = _plan_status(planned_workout, baseline_run, run, lift)
-    overall = "The planned session has been adjusted based on readiness and recovery signals. We preserve structure while reducing stress."
-    if plan_status == "preserved":
-        overall = "The planned session is supported today. Readiness is high and no caution flags are present, so we keep the workout unchanged."
-    elif plan_status == "replaced":
-        overall = "The planned session has been replaced due to recovery and risk signals. The priority is protecting the athlete and the rest of the week."
     if flags["avoidSpeedWork"]:
         tags.add("avoid_speed_work")
     if flags["mentalDownshift"]:
@@ -1315,6 +1337,12 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
         tags.add("high_strain_caution")
     if flags["elevatedHrCaution"]:
         tags.add("elevated_hr_caution")
+    plan_status = _plan_status(planned_workout, baseline_run, run, lift)
+    overall = "The planned session has been adjusted based on readiness and recovery signals. We preserve structure while reducing stress."
+    if plan_status == "preserved":
+        overall = _preserved_overall_text(readiness, flags, run, tags)
+    elif plan_status == "replaced":
+        overall = "The planned session has been replaced due to recovery and risk signals. The priority is protecting the athlete and the rest of the week."
 
     return {
         "planStatus": plan_status,
