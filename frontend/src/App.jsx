@@ -975,9 +975,9 @@ function DailyContextBar({
   const prefix = yesterdayStrain ? `Yesterday: ${trimNumber(yesterdayStrain)} strain` : ''
 
   return (
-    <div className="mt-5 mb-9">
+    <div className="mb-10">
       <div
-        className={`inline-flex w-full items-center gap-3 rounded-full border px-4 py-3 text-sm font-medium ${
+        className={`flex w-full items-center gap-3 rounded-full border px-4 py-3 text-sm font-medium ${
           isDark
             ? 'border-violet-900/60 bg-neutral-900/85 text-neutral-300 shadow-[0_0_0_1px_rgba(168,85,247,0.12),0_0_24px_rgba(168,85,247,0.1)]'
             : 'border-violet-200 bg-white/85 text-neutral-700 shadow-[0_0_0_1px_rgba(196,181,253,0.4),0_0_18px_rgba(196,181,253,0.18)]'
@@ -2830,96 +2830,98 @@ export default function App() {
           </div>
         ) : null}
 
-        <section className="grid grid-cols-1 gap-6 py-10 md:grid-cols-2 xl:grid-cols-3">
-          <StatCard
-            icon={<Icon path="M12 6v6l4 2M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0Z" />}
-            label="Sleep"
-            value={summary.latest_sleep_hours ? `${summary.latest_sleep_hours.toFixed(1)} hrs` : '-'}
-            subtext="Latest WHOOP sleep duration"
-            iconTone={theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'}
-            theme={theme}
-          />
-          <StatCard
-            icon={<BatteryIcon />}
-            label="Recovery"
-            value={summary.latest_recovery ? `${summary.latest_recovery}%` : '-'}
-            subtext="Latest WHOOP recovery score"
-            accent={recoveryAccent}
-            iconTone={
-              theme === 'dark'
-                ? 'text-emerald-400'
-                : summary.latest_recovery >= 67
-                  ? 'text-emerald-600'
-                  : summary.latest_recovery >= 34
-                    ? 'text-amber-500'
-                    : 'text-red-600'
-            }
-            theme={theme}
-          />
-          <StatCard
-            icon={<HeartOutlineIcon />}
-            label="Resting HR"
-            value={summary.latest_resting_hr ? `${summary.latest_resting_hr}` : '-'}
-            subtext="Most recent resting heart rate"
-            accent="text-violet-700"
-            iconTone={theme === 'dark' ? 'text-violet-300' : 'text-violet-700'}
-            theme={theme}
-          />
-          <StatCard
-            icon={<Icon path="M3 12h4l2-5l4 10l2-5h6" />}
-            label="Yesterday’s Strain"
-            value={summary.latest_strain ? `${summary.latest_strain}` : '-'}
-            subtext="WHOOP strain from yesterday"
-            accent="text-sky-600"
-            iconTone={theme === 'dark' ? 'text-sky-300' : 'text-sky-600'}
-            theme={theme}
-          />
-          <StatCard
-            icon={<RunningShoeIcon />}
-            label="Last Run Mileage"
-            value={previousRun.distance_miles ? `${previousRun.distance_miles} mi` : '-'}
-            subtext={
-              previousRun.day
-                ? `${formatDate(previousRun.day)} · ${previousRun.duration_minutes || 0} min`
-                : 'Most recent run'
-            }
-            iconTone={theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'}
-            theme={theme}
-          />
-          <StatCard
-            icon={<Icon path="M5 19h4V9H5zm5 0h4V5h-4zm5 0h4v-7h-4z" />}
-            label="Weekly Mileage Progress"
-            value={
-              summary.recent_mileage && adaptiveWeeklyTarget
-                ? `${summary.recent_mileage.toFixed(1)} / ${adaptiveWeeklyTarget.toFixed(1)} mi`
-                : summary.recent_mileage
-                  ? `${summary.recent_mileage.toFixed(1)} mi`
-                  : '-'
-            }
-            subtext="Mileage completed toward this week's adaptive target"
-            accent={loadAccent}
-            iconTone={
-              theme === 'dark'
-                ? loadAccent === 'text-emerald-600'
+        <section className="py-10">
+          <div className="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              icon={<Icon path="M12 6v6l4 2M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0Z" />}
+              label="Sleep"
+              value={summary.latest_sleep_hours ? `${summary.latest_sleep_hours.toFixed(1)} hrs` : '-'}
+              subtext="Latest WHOOP sleep duration"
+              iconTone={theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'}
+              theme={theme}
+            />
+            <StatCard
+              icon={<BatteryIcon />}
+              label="Recovery"
+              value={summary.latest_recovery ? `${summary.latest_recovery}%` : '-'}
+              subtext="Latest WHOOP recovery score"
+              accent={recoveryAccent}
+              iconTone={
+                theme === 'dark'
                   ? 'text-emerald-400'
-                  : 'text-amber-400'
-                : loadAccent === 'text-emerald-600'
-                  ? 'text-emerald-600'
-                  : 'text-amber-500'
-            }
+                  : summary.latest_recovery >= 67
+                    ? 'text-emerald-600'
+                    : summary.latest_recovery >= 34
+                      ? 'text-amber-500'
+                      : 'text-red-600'
+              }
+              theme={theme}
+            />
+            <StatCard
+              icon={<HeartOutlineIcon />}
+              label="Resting HR"
+              value={summary.latest_resting_hr ? `${summary.latest_resting_hr}` : '-'}
+              subtext="Most recent resting heart rate"
+              accent="text-violet-700"
+              iconTone={theme === 'dark' ? 'text-violet-300' : 'text-violet-700'}
+              theme={theme}
+            />
+            <StatCard
+              icon={<Icon path="M3 12h4l2-5l4 10l2-5h6" />}
+              label="Yesterday’s Strain"
+              value={summary.latest_strain ? `${summary.latest_strain}` : '-'}
+              subtext="WHOOP strain from yesterday"
+              accent="text-sky-600"
+              iconTone={theme === 'dark' ? 'text-sky-300' : 'text-sky-600'}
+              theme={theme}
+            />
+            <StatCard
+              icon={<RunningShoeIcon />}
+              label="Last Run Mileage"
+              value={previousRun.distance_miles ? `${previousRun.distance_miles} mi` : '-'}
+              subtext={
+                previousRun.day
+                  ? `${formatDate(previousRun.day)} · ${previousRun.duration_minutes || 0} min`
+                  : 'Most recent run'
+              }
+              iconTone={theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'}
+              theme={theme}
+            />
+            <StatCard
+              icon={<Icon path="M5 19h4V9H5zm5 0h4V5h-4zm5 0h4v-7h-4z" />}
+              label="Weekly Mileage Progress"
+              value={
+                summary.recent_mileage && adaptiveWeeklyTarget
+                  ? `${summary.recent_mileage.toFixed(1)} / ${adaptiveWeeklyTarget.toFixed(1)} mi`
+                  : summary.recent_mileage
+                    ? `${summary.recent_mileage.toFixed(1)} mi`
+                    : '-'
+              }
+              subtext="Mileage completed toward this week's adaptive target"
+              accent={loadAccent}
+              iconTone={
+                theme === 'dark'
+                  ? loadAccent === 'text-emerald-600'
+                    ? 'text-emerald-400'
+                    : 'text-amber-400'
+                  : loadAccent === 'text-emerald-600'
+                    ? 'text-emerald-600'
+                    : 'text-amber-500'
+              }
+              theme={theme}
+            />
+          </div>
+
+          <DailyContextBar
+            today={summaryData.today}
+            activityCalendar={summaryData.activity_calendar}
+            currentDayStatus={currentDayStatus}
+            recommendation={recommendationData}
+            recoveryScore={summary.latest_recovery}
+            yesterdayStrain={summary.latest_strain}
             theme={theme}
           />
         </section>
-
-        <DailyContextBar
-          today={summaryData.today}
-          activityCalendar={summaryData.activity_calendar}
-          currentDayStatus={currentDayStatus}
-          recommendation={recommendationData}
-          recoveryScore={summary.latest_recovery}
-          yesterdayStrain={summary.latest_strain}
-          theme={theme}
-        />
 
         <MasterTrainingCalendar
           cards={summaryData.activity_calendar}
