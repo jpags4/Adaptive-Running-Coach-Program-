@@ -509,6 +509,42 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertTrue(canonical[0]["enrichment"]["stravaMatched"])
         self.assertEqual(canonical[0]["enrichment"]["stravaActivityId"], "strava-run-1")
 
+    def test_build_canonical_workouts_matches_strava_run_using_utc_start_date(self) -> None:
+        whoop_snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "id": "whoop-run-1",
+                        "start": "2026-03-22T18:00:00Z",
+                        "end": "2026-03-22T18:47:00Z",
+                        "sport_name": "Running",
+                        "score": {"strain": 11.1},
+                    }
+                ]
+            }
+        }
+        strava_snapshot = {
+            "activities": [
+                {
+                    "id": "strava-run-1",
+                    "type": "Run",
+                    "sport_type": "Run",
+                    "start_date": "2026-03-22T18:03:00Z",
+                    "start_date_local": "2026-03-22T14:03:00Z",
+                    "moving_time": 2820,
+                    "distance": 15127.0,
+                    "name": "Sunday Long Run",
+                }
+            ]
+        }
+
+        canonical = build_canonical_workouts(whoop_snapshot, strava_snapshot)
+
+        self.assertEqual(len(canonical), 1)
+        self.assertTrue(canonical[0]["enrichment"]["stravaMatched"])
+        self.assertAlmostEqual(canonical[0]["distance_miles"], 9.4, places=1)
+        self.assertGreater(float(canonical[0]["average_pace_min_per_mile"] or 0.0), 0.0)
+
     def test_build_canonical_workouts_skips_ambiguous_strava_run_enrichment(self) -> None:
         whoop_snapshot = {
             "workouts": {

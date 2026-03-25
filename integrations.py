@@ -474,7 +474,11 @@ def strava_activity_preview(activities: list[dict]) -> list[dict]:
         duration_minutes = max(1, int(activity.get("moving_time", 0) / 60))
         pace = round(duration_minutes / distance_miles, 2) if distance_miles > 0 else 0.0
         sport = activity.get("sport_type") or activity.get("type") or "Activity"
-        start_time = activity.get("start_date_local") or activity.get("start_date") or ""
+        # Use Strava's canonical UTC timestamp for cross-provider matching.
+        # `start_date_local` is athlete-local clock time and can appear hours away
+        # from WHOOP's UTC timestamp even when both refer to the same session.
+        start_time = activity.get("start_date") or activity.get("start_date_local") or ""
+        local_start_time = activity.get("start_date_local") or activity.get("start_date") or ""
         end_time = ""
         if start_time and activity.get("moving_time"):
             try:
@@ -492,6 +496,7 @@ def strava_activity_preview(activities: list[dict]) -> list[dict]:
                 "source_title": activity.get("name") or sport,
                 "source_id": activity.get("id"),
                 "start_time": start_time,
+                "local_start_time": local_start_time,
                 "end_time": end_time,
                 "distance_miles": distance_miles,
                 "duration_minutes": duration_minutes,
