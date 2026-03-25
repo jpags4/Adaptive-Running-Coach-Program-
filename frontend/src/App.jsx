@@ -240,6 +240,27 @@ function RouteIcon({ className = 'h-5 w-5' }) {
   )
 }
 
+function BikeIcon({ className = 'h-5 w-5' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="6" cy="17" r="3.5" />
+      <circle cx="18" cy="17" r="3.5" />
+      <path d="M10 6h3l2 4" />
+      <path d="M10 6 7 12h5l3 5" />
+      <path d="M14 10h4" />
+    </svg>
+  )
+}
+
 function RulerIcon({ className = 'h-5 w-5' }) {
   return (
     <svg
@@ -1764,7 +1785,9 @@ function formatWeekSpan(cards) {
 function flattenActivityLog(activityLog) {
   const runs = Array.isArray(activityLog?.runs) ? activityLog.runs : []
   const strength = Array.isArray(activityLog?.strength) ? activityLog.strength : []
-  return [...runs, ...strength]
+  const spin = Array.isArray(activityLog?.spin) ? activityLog.spin : []
+  const activity = Array.isArray(activityLog?.activity) ? activityLog.activity : []
+  return [...runs, ...strength, ...spin, ...activity]
 }
 
 function formatRoadmapWeekSpan(week) {
@@ -2109,10 +2132,12 @@ function ActivityLogSection({
     { key: 'all', label: 'All Workouts', icon: <SparkleIcon className="h-4 w-4" /> },
     { key: 'runs', label: 'Running', icon: <RouteIcon className="h-4 w-4" /> },
     { key: 'strength', label: 'Weightlifting', icon: <DumbbellIcon className="h-4 w-4" /> },
+    { key: 'spin', label: 'Spin', icon: <BikeIcon className="h-4 w-4" /> },
   ]
   const filteredActivities = allActivities.filter((activity) => {
     if (filter === 'runs') return isRunActivity(activity)
-    if (filter === 'strength') return !isRunActivity(activity)
+    if (filter === 'strength') return activityCategory(activity) === 'weightlifting'
+    if (filter === 'spin') return activityCategory(activity) === 'spin'
     return true
   })
   const selectedActivity =
@@ -2238,33 +2263,73 @@ function ActivityLogSection({
   )
 }
 
+function activityCategory(activity) {
+  const explicit = String(activity?.category || '').trim().toLowerCase()
+  if (explicit) return explicit
+  const source = `${activity?.name || ''} ${activity?.sport || ''} ${activity?.raw_type || ''}`.toLowerCase()
+  if (/run|running|treadmill|track|jog/.test(source)) return 'running'
+  if (/weight|strength|lift|gym|resistance|weights/.test(source)) return 'weightlifting'
+  if (/spin|cycling|bike|peloton|ride/.test(source)) return 'spin'
+  return 'activity'
+}
+
 function isRunActivity(activity) {
-  return /run/i.test(String(activity?.name || '')) || /run/i.test(String(activity?.sport || ''))
+  return activityCategory(activity) === 'running'
+}
+
+function activityCategoryLabel(activity) {
+  const category = activityCategory(activity)
+  if (category === 'running') return 'Running'
+  if (category === 'weightlifting') return 'Weightlifting'
+  if (category === 'spin') return 'Spin'
+  return 'Activity'
+}
+
+function activitySourceLabel(activity) {
+  return humanizeActivityLabel(activity?.source_title || activity?.raw_type || activity?.name || activity?.sport || '')
 }
 
 function workoutCatalogTitle(activity) {
-  if (isRunActivity(activity)) {
-    return humanizeActivityLabel(activity.workout_type || activity.name || 'Run')
-  }
-  return calendarLiftFocus(activity) || humanizeActivityLabel(activity.name || activity.sport || 'Workout')
+  const category = activityCategory(activity)
+  if (category === 'running') return 'Run'
+  if (category === 'weightlifting') return 'Weight Training'
+  if (category === 'spin') return 'Spin'
+  return 'Activity'
 }
 
 function workoutCatalogSummary(activity) {
-  if (isRunActivity(activity)) {
+  const category = activityCategory(activity)
+  if (category === 'running') {
     const distance = activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-'
     return `${distance} • ${calendarPace(activity)}`
   }
-  return activity.duration_minutes ? `${activity.duration_minutes} min` : 'Strength session'
+  if (category === 'weightlifting') {
+    return activity.duration_minutes ? `${activity.duration_minutes} min` : 'Strength session'
+  }
+  if (category === 'spin') {
+    const bits = []
+    if (activity.duration_minutes) bits.push(`${activity.duration_minutes} min`)
+    if (activity.strain) bits.push(`Strain ${trimNumber(activity.strain)}`)
+    if (!bits.length && activity.distance_miles) bits.push(`${trimNumber(activity.distance_miles)} mi`)
+    return bits.join(' • ') || 'Bike session'
+  }
+  const bits = []
+  if (activity.duration_minutes) bits.push(`${activity.duration_minutes} min`)
+  if (activity.strain) bits.push(`Strain ${trimNumber(activity.strain)}`)
+  return bits.join(' • ') || activitySourceLabel(activity) || 'Logged activity'
 }
 
 function workoutIntensityIndicator(activity) {
+  const category = activityCategory(activity)
   const intensity = simplifyIntensity(activity.intensity || activity.workout_type || activity.name || '')
   const text = intensity.toLowerCase()
   if (text.includes('hard')) return 'bg-rose-500'
   if (text.includes('moderate')) return 'bg-amber-400'
   if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-500'
-  if (isRunActivity(activity)) return 'bg-neutral-300'
-  return 'bg-violet-500'
+  if (category === 'weightlifting') return 'bg-violet-500'
+  if (category === 'spin') return 'bg-sky-500'
+  if (category === 'running') return 'bg-neutral-300'
+  return 'bg-neutral-500'
 }
 
 function WorkoutCatalogListItem({ activity, isSelected, onSelect, theme = 'light' }) {
@@ -2308,7 +2373,8 @@ function WorkoutCatalogDetail({
   theme = 'light',
 }) {
   const isDark = theme === 'dark'
-  const isRun = isRunActivity(activity)
+  const category = activityCategory(activity)
+  const isRun = category === 'running'
   const title = workoutCatalogTitle(activity)
   const buttonLabel = saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save note'
   const intensity = simplifyIntensity(activity.intensity || activity.workout_type || activity.name || '')
@@ -2319,26 +2385,51 @@ function WorkoutCatalogDetail({
         { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
         { label: 'Intensity', value: intensity || '-' },
       ]
-    : [
-        { label: 'Workout', value: title },
-        { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
-        ...(activity.strain ? [{ label: 'Strain', value: String(activity.strain) }] : []),
-        ...(activity.lift_focus ? [{ label: 'Focus', value: calendarLiftFocus(activity) || '-' }] : []),
-      ]
+    : category === 'weightlifting'
+      ? [
+          { label: 'Workout', value: title },
+          { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
+          ...(activity.strain ? [{ label: 'Strain', value: String(activity.strain) }] : []),
+          ...(activity.lift_focus ? [{ label: 'Focus', value: calendarLiftFocus(activity) || '-' }] : []),
+        ]
+      : category === 'spin'
+        ? [
+            { label: 'Workout', value: title },
+            { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
+            ...(activity.strain ? [{ label: 'Strain', value: trimNumber(activity.strain) }] : []),
+            ...(activity.distance_miles ? [{ label: 'Distance', value: `${trimNumber(activity.distance_miles)} mi` }] : []),
+            ...(activitySourceLabel(activity) && activitySourceLabel(activity) !== title ? [{ label: 'Source', value: activitySourceLabel(activity) }] : []),
+          ]
+        : [
+            { label: 'Workout', value: title },
+            ...(activity.duration_minutes ? [{ label: 'Duration', value: `${activity.duration_minutes} min` }] : []),
+            ...(activity.strain ? [{ label: 'Strain', value: trimNumber(activity.strain) }] : []),
+            ...(activity.calories ? [{ label: 'Calories', value: trimNumber(activity.calories) }] : []),
+            ...(activitySourceLabel(activity) ? [{ label: 'Source', value: activitySourceLabel(activity) }] : []),
+            ...(activity.raw_type && activity.raw_type !== activitySourceLabel(activity) ? [{ label: 'Type', value: humanizeActivityLabel(activity.raw_type) }] : []),
+          ]
   const supportingText = isRun
     ? activity.duration_minutes
       ? `${activity.duration_minutes} min total`
       : 'Logged run'
-    : activity.strain
-      ? `WHOOP strain ${activity.strain}`
-      : 'Logged lift'
+    : category === 'weightlifting'
+      ? activity.strain
+        ? `WHOOP strain ${activity.strain}`
+        : 'Logged lift'
+      : category === 'spin'
+        ? activity.strain
+          ? `WHOOP strain ${activity.strain}`
+          : 'Logged bike session'
+        : activity.strain
+          ? `WHOOP strain ${activity.strain}`
+          : 'Logged activity'
 
   return (
     <div>
       <div className="flex items-center gap-3">
         <div className={`h-3.5 w-3.5 rounded-full ${workoutIntensityIndicator(activity)}`} />
         <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          {isRun ? 'Running' : 'Weightlifting'}
+          {activityCategoryLabel(activity)}
         </p>
       </div>
 

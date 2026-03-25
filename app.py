@@ -220,14 +220,47 @@ def sample_activity_preview(runs: list) -> list[dict]:
     ]
 
 
+def _activity_source_text(activity: dict) -> str:
+    return " ".join(
+        str(activity.get(key) or "")
+        for key in ("name", "sport", "sport_name", "type", "title", "modality", "source_title")
+    ).strip()
+
+
+def normalize_workout_category(activity: dict) -> str:
+    raw = _activity_source_text(activity).lower()
+    normalized = "".join(char for char in raw if char.isalpha() or char.isspace())
+    if any(token in normalized for token in ("run", "running", "treadmill", "track", "jog")):
+        return "running"
+    if any(
+        token in normalized
+        for token in (
+            "weight",
+            "strength",
+            "lift",
+            "gym",
+            "resistance",
+            "functional strength",
+            "functionalstrength",
+            "weights",
+        )
+    ):
+        return "weightlifting"
+    if any(token in normalized for token in ("spin", "cycling", "bike", "indoor cycling", "stationary bike", "peloton", "ride")):
+        return "spin"
+    return "activity"
+
+
 def _calendar_activity_kind(activity: dict) -> str:
-    raw = str(activity.get("name") or activity.get("sport") or "").lower()
+    raw = _activity_source_text(activity).lower()
     normalized = "".join(char for char in raw if char.isalpha())
     if any(token in normalized for token in ("weight", "strength", "lift", "mobility", "stretch", "yoga", "pilates", "core")):
         return "strength"
     if "run" in normalized:
         return "run"
-    return normalized
+    if any(token in normalized for token in ("spin", "cycling", "bike", "peloton", "ride")):
+        return "spin"
+    return normalized or "activity"
 
 
 def _filter_calendar_activities(activity_feed: list[dict]) -> list[dict]:
@@ -276,13 +309,41 @@ def _attach_activity_notes(activities: list[dict], notes_by_key: dict[str, dict]
 
 
 def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
-    runs = [item for item in activities if _calendar_activity_kind(item) == "run"]
-    strength = [item for item in activities if _calendar_activity_kind(item) == "strength"]
+    def normalize_item(activity: dict) -> dict:
+        item = dict(activity)
+        category = normalize_workout_category(item)
+        title = {
+            "running": "Run",
+            "weightlifting": "Weight Training",
+            "spin": "Spin",
+            "activity": "Activity",
+        }.get(category, "Activity")
+        raw_type = str(item.get("sport") or item.get("sport_name") or item.get("type") or "").strip() or None
+        source_title = str(item.get("name") or item.get("title") or "").strip() or None
+        item["category"] = category
+        item["title"] = title
+        item["raw_type"] = raw_type
+        item["source_title"] = source_title
+        item["date"] = str(item.get("day") or "")
+        item["duration_min"] = item.get("duration_minutes")
+        item["distance"] = item.get("distance_miles")
+        item["pace"] = item.get("pace_text") or item.get("run_pace_guidance")
+        return item
+
+    normalized = [normalize_item(item) for item in activities]
+    runs = [item for item in normalized if item.get("category") == "running"]
+    strength = [item for item in normalized if item.get("category") == "weightlifting"]
+    spin = [item for item in normalized if item.get("category") == "spin"]
+    generic = [item for item in normalized if item.get("category") == "activity"]
     ordered_runs = sorted(runs, key=lambda item: (str(item.get("day") or ""), float(item.get("distance_miles") or 0.0)), reverse=True)
     ordered_strength = sorted(strength, key=lambda item: (str(item.get("day") or ""), int(item.get("duration_minutes") or 0)), reverse=True)
+    ordered_spin = sorted(spin, key=lambda item: (str(item.get("day") or ""), int(item.get("duration_minutes") or 0)), reverse=True)
+    ordered_generic = sorted(generic, key=lambda item: (str(item.get("day") or ""), int(item.get("duration_minutes") or 0)), reverse=True)
     return {
         "runs": ordered_runs,
         "strength": ordered_strength,
+        "spin": ordered_spin,
+        "activity": ordered_generic,
     }
 
 
@@ -294,7 +355,7 @@ def _activity_notes_context(
 ) -> str:
     noted_items = [
         item
-        for bucket in ("runs", "strength")
+        for bucket in ("runs", "strength", "spin", "activity")
         for item in activity_log.get(bucket, [])
         if str(item.get("note") or "").strip()
     ]
@@ -342,7 +403,7 @@ def _activity_notes_context(
 
     context_lines: list[str] = []
     for item in noted_items[:limit]:
-        label = str(item.get("name") or item.get("sport") or "Workout").strip()
+        label = str(item.get("title") or item.get("name") or item.get("sport") or "Workout").strip()
         day = str(item.get("day") or "").strip()
         details: list[str] = []
         if float(item.get("distance_miles") or 0.0) > 0:

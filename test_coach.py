@@ -4,6 +4,7 @@ from unittest import mock
 
 from app import (
     _activity_key,
+    _activity_log_payload,
     _activity_notes_context,
     _apply_prior_week_completion_cap,
     _apply_clarification_answers_to_settings,
@@ -15,6 +16,7 @@ from app import (
     _pace_text_for_type,
     _profile_settings_payload,
     _recommendation_training_context,
+    normalize_workout_category,
     build_training_roadmap,
     calendar_days,
     projected_calendar_entries,
@@ -355,6 +357,93 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertEqual(annotated[0]["activity_key"], activity_key)
         self.assertEqual(annotated[0]["note"], "Felt smooth until the last mile.")
+
+    def test_normalize_workout_category_classifies_core_modalities(self) -> None:
+        self.assertEqual(normalize_workout_category({"name": "Outdoor Run"}), "running")
+        self.assertEqual(normalize_workout_category({"sport": "Functional Strength"}), "weightlifting")
+        self.assertEqual(normalize_workout_category({"name": "Peloton Ride"}), "spin")
+        self.assertEqual(normalize_workout_category({"name": "Yoga Flow"}), "activity")
+
+    def test_activity_log_payload_includes_spin_and_generic_activity(self) -> None:
+        payload = _activity_log_payload(
+            [
+                {
+                    "source": "Strava",
+                    "name": "Run",
+                    "sport": "Run",
+                    "day": "2026-03-21",
+                    "distance_miles": 4.0,
+                    "duration_minutes": 31,
+                },
+                {
+                    "source": "Whoop",
+                    "name": "Weightlifting",
+                    "sport": "Weightlifting",
+                    "day": "2026-03-20",
+                    "duration_minutes": 42,
+                },
+                {
+                    "source": "Whoop",
+                    "name": "Peloton Ride",
+                    "sport": "Cycling",
+                    "day": "2026-03-19",
+                    "duration_minutes": 45,
+                    "strain": 11.2,
+                },
+                {
+                    "source": "Whoop",
+                    "name": "Yoga Flow",
+                    "sport": "Yoga",
+                    "day": "2026-03-18",
+                    "duration_minutes": 38,
+                    "strain": 9.4,
+                },
+                {
+                    "source": "Whoop",
+                    "day": "2026-03-17",
+                    "duration_minutes": 25,
+                    "strain": 7.1,
+                },
+            ]
+        )
+
+        self.assertEqual(payload["runs"][0]["category"], "running")
+        self.assertEqual(payload["runs"][0]["title"], "Run")
+        self.assertEqual(payload["strength"][0]["category"], "weightlifting")
+        self.assertEqual(payload["strength"][0]["title"], "Weight Training")
+        self.assertEqual(payload["spin"][0]["category"], "spin")
+        self.assertEqual(payload["spin"][0]["title"], "Spin")
+        self.assertEqual(payload["activity"][0]["category"], "activity")
+        self.assertEqual(payload["activity"][0]["title"], "Activity")
+        self.assertEqual(payload["activity"][1]["category"], "activity")
+        self.assertEqual(payload["activity"][1]["title"], "Activity")
+
+    def test_activity_notes_context_includes_spin_and_activity_notes(self) -> None:
+        context = _activity_notes_context(
+            {
+                "runs": [],
+                "strength": [],
+                "spin": [
+                    {
+                        "day": "2026-03-19",
+                        "title": "Spin",
+                        "duration_minutes": 45,
+                        "note": "Kept this smooth and aerobic.",
+                    }
+                ],
+                "activity": [
+                    {
+                        "day": "2026-03-18",
+                        "title": "Activity",
+                        "duration_minutes": 38,
+                        "note": "Mobility felt helpful afterward.",
+                    }
+                ],
+            }
+        )
+
+        self.assertIn("2026-03-19 Spin (45 min): Kept this smooth", context)
+        self.assertIn("2026-03-18 Activity (38 min): Mobility felt helpful", context)
 
     def test_activity_notes_context_includes_recent_noted_workouts(self) -> None:
         context = _activity_notes_context(
