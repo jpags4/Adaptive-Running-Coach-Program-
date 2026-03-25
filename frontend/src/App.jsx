@@ -1674,11 +1674,13 @@ function CalendarCard({ card, theme = 'light' }) {
             ))}
           </div>
         ) : (
-          <div className="pt-2.5">
-            <p className={`text-sm italic leading-6 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              Rest day
-            </p>
-          </div>
+          card.is_today ? <div className="pt-2.5" /> : (
+            <div className="pt-2.5">
+              <p className={`text-sm italic leading-6 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Rest day
+              </p>
+            </div>
+          )
         )}
       </div>
     </div>
@@ -1691,9 +1693,9 @@ function CalendarActivity({ activity, theme = 'light' }) {
   const isRun = category === 'running'
   const isSpin = category === 'spin'
   const isStrength = category === 'weightlifting'
-  const intensity = simplifyIntensity(activity.intensity || activity.workout_type || '')
+  const intensity = activityIntensityLabel(activity)
   const liftLabel = calendarLiftFocus(activity)
-  const showIntensityPill = isRun || isSpin ? intensity !== '-' : Boolean(intensity && intensity !== '-' && liftLabel)
+  const showIntensityPill = intensity !== '-'
 
   return (
     <div className="pb-2.5 last:pb-0">
@@ -1723,14 +1725,16 @@ function CalendarActivity({ activity, theme = 'light' }) {
           </p>
         ) : null
       ) : (
-        <p className={`text-sm leading-6 ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`}>
-          {activity.title || activitySourceLabel(activity) || 'Activity'}
+        <>
+          <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            {activity.title || activitySourceLabel(activity) || 'Activity'}
+          </p>
           {(activity.duration_minutes || activity.strain) ? (
-            <span className={`mt-1 block text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
               {[activity.duration_minutes ? `${activity.duration_minutes} min` : '', activity.strain ? `Strain ${trimNumber(activity.strain)}` : ''].filter(Boolean).join(' • ')}
-            </span>
+            </p>
           ) : null}
-        </p>
+        </>
       )}
 
       {showIntensityPill ? (
@@ -1878,11 +1882,12 @@ function shortWorkoutTitle(value) {
 
 function simplifyIntensity(value) {
   const text = String(value || '').toLowerCase()
+  if (text.includes('recovery')) return 'Recovery'
   if (text.includes('easy')) return 'Easy'
   if (text.includes('moderate') || text.includes('steady')) return 'Moderate'
   if (text.includes('hard')) return 'Hard'
   if (text.includes('rest')) return 'Rest'
-  return value || '-'
+  return '-'
 }
 
 function intensityColorClass(value) {
@@ -1890,7 +1895,7 @@ function intensityColorClass(value) {
   if (text.includes('hard')) return 'text-red-600'
   if (text.includes('moderate')) return 'text-amber-500'
   if (text.includes('easy') || text.includes('recovery')) return 'text-emerald-600'
-  return 'text-violet-700'
+  return 'text-neutral-400'
 }
 
 function intensityPillClass(value) {
@@ -1898,7 +1903,7 @@ function intensityPillClass(value) {
   if (text.includes('hard')) return 'bg-red-50 text-red-600'
   if (text.includes('moderate')) return 'bg-amber-50 text-amber-600'
   if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-50 text-emerald-700'
-  return 'bg-violet-100 text-violet-700'
+  return 'bg-neutral-100 text-neutral-600'
 }
 
 function certaintyPillClass(value, theme = 'light') {
@@ -1911,14 +1916,11 @@ function certaintyPillClass(value, theme = 'light') {
 
 function calendarStripeClass(activities) {
   const first = activities[0]
-  const kind = activityCategory(first)
-  const intensity = simplifyIntensity(first?.intensity || first?.workout_type || '')
+  const intensity = simplifyIntensity(first?.intensity_label || first?.intensity || '')
   const text = intensity.toLowerCase()
   if (text.includes('hard')) return 'bg-rose-500'
   if (text.includes('moderate')) return 'bg-amber-400'
   if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-500'
-  if (kind === 'weightlifting') return 'bg-violet-500'
-  if (kind === 'spin') return 'bg-sky-500'
   return 'bg-neutral-300'
 }
 
@@ -1927,7 +1929,11 @@ function intensityIconTone(value) {
   if (text.includes('hard')) return 'bg-red-50 text-red-600'
   if (text.includes('moderate')) return 'bg-amber-50 text-amber-600'
   if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-50 text-emerald-700'
-  return 'bg-violet-50 text-violet-600'
+  return 'bg-neutral-100 text-neutral-600'
+}
+
+function activityIntensityLabel(activity) {
+  return simplifyIntensity(activity?.intensity_label || activity?.intensity || activity?.effort || '')
 }
 
 function shortPace(value) {
@@ -2382,16 +2388,12 @@ function workoutCatalogSummary(activity) {
 }
 
 function workoutIntensityIndicator(activity) {
-  const category = activityCategory(activity)
-  const intensity = simplifyIntensity(activity.intensity || activity.workout_type || activity.name || '')
+  const intensity = activityIntensityLabel(activity)
   const text = intensity.toLowerCase()
   if (text.includes('hard')) return 'bg-rose-500'
   if (text.includes('moderate')) return 'bg-amber-400'
   if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-500'
-  if (category === 'weightlifting') return 'bg-violet-500'
-  if (category === 'spin') return 'bg-sky-500'
-  if (category === 'running') return 'bg-neutral-300'
-  return 'bg-neutral-500'
+  return 'bg-neutral-400'
 }
 
 function WorkoutCatalogListItem({ activity, isSelected, onSelect, theme = 'light' }) {
@@ -2439,13 +2441,13 @@ function WorkoutCatalogDetail({
   const isRun = category === 'running'
   const title = workoutCatalogTitle(activity)
   const buttonLabel = saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save note'
-  const intensity = simplifyIntensity(activity.intensity || activity.workout_type || activity.name || '')
+  const intensity = activityIntensityLabel(activity)
   const metrics = isRun
     ? [
         { label: 'Distance', value: activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-' },
         { label: 'Pace', value: calendarPace(activity) },
         { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
-        { label: 'Intensity', value: intensity || '-' },
+        { label: 'Intensity', value: intensity },
       ]
     : category === 'weightlifting'
       ? [

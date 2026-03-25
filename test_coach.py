@@ -749,6 +749,41 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(payload["activity"][0]["title"], "Activity")
         self.assertEqual(payload["activity"][1]["category"], "activity")
         self.assertEqual(payload["activity"][1]["title"], "Activity")
+        self.assertIsNone(payload["runs"][0].get("intensity_label"))
+
+    def test_build_canonical_workouts_copies_strava_intensity_label_for_runs(self) -> None:
+        whoop_snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "id": "whoop-run-1",
+                        "start": "2026-03-25T11:00:00Z",
+                        "end": "2026-03-25T11:32:00Z",
+                        "sport_name": "Running",
+                        "score": {"strain": 10.4},
+                    }
+                ]
+            }
+        }
+        strava_snapshot = {
+            "activities": [
+                {
+                    "id": "strava-run-1",
+                    "type": "Run",
+                    "sport_type": "Run",
+                    "start_date": "2026-03-25T11:04:00Z",
+                    "start_date_local": "2026-03-25T07:04:00Z",
+                    "moving_time": 1860,
+                    "distance": 6437.36,
+                    "name": "Lunch Run",
+                }
+            ]
+        }
+
+        canonical = build_canonical_workouts(whoop_snapshot, strava_snapshot)
+
+        self.assertEqual(canonical[0].get("category"), "running")
+        self.assertEqual(canonical[0].get("intensity_label"), "hard")
 
     def test_dedupe_workout_log_items_merges_duplicate_spin_records_and_keeps_richer_data(self) -> None:
         items = [

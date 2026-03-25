@@ -327,8 +327,26 @@ def _normalize_activity_item(activity: dict) -> dict:
     item["duration_min"] = item.get("duration_minutes")
     item["distance"] = item.get("distance_miles")
     item["pace"] = item.get("pace_text") or item.get("run_pace_guidance")
+    item["intensity_label"] = _normalized_intensity_label(item.get("intensity") or item.get("effort"))
     item["dedupe_key"] = _activity_merge_key(item)
     return item
+
+
+def _normalized_intensity_label(value) -> str | None:
+    text = str(value or "").strip().lower()
+    if not text:
+        return None
+    if "recovery" in text:
+        return "recovery"
+    if "easy" in text:
+        return "easy"
+    if "moderate" in text or "steady" in text:
+        return "moderate"
+    if "hard" in text:
+        return "hard"
+    if "rest" in text:
+        return "rest"
+    return None
 
 
 def _parse_activity_timestamp(value: str | None) -> datetime | None:
@@ -529,6 +547,8 @@ def _apply_strava_run_enrichment(canonical: dict, strava_match: dict | None) -> 
         enriched["average_pace_min_per_mile"] = strava_match.get("average_pace_min_per_mile")
     if strava_match.get("pace_text") or strava_match.get("run_pace_guidance"):
         enriched["pace"] = strava_match.get("pace_text") or strava_match.get("run_pace_guidance")
+    if not enriched.get("intensity_label"):
+        enriched["intensity_label"] = _normalized_intensity_label(strava_match.get("intensity"))
     if strava_match.get("source_title") and not enriched.get("source_title"):
         enriched["source_title"] = strava_match.get("source_title")
     enriched["enrichment"] = enrichment
