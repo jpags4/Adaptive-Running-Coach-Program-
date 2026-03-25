@@ -327,6 +327,7 @@ def _normalize_activity_item(activity: dict) -> dict:
     item["duration_min"] = item.get("duration_minutes")
     item["distance"] = item.get("distance_miles")
     item["pace"] = item.get("pace_text") or item.get("run_pace_guidance")
+    item["dedupe_key"] = _activity_merge_key(item)
     return item
 
 
@@ -356,6 +357,22 @@ def _activity_texts_compatible(left: dict, right: dict) -> bool:
     return left_text == right_text or left_text in right_text or right_text in left_text
 
 
+def _activity_merge_key(activity: dict) -> str:
+    category = str(activity.get("category") or normalize_workout_category(activity) or "activity")
+    day = str(activity.get("day") or "")
+    duration = float(activity.get("duration_minutes") or activity.get("duration_min") or 0)
+    duration_bucket = int(round(duration / 2.0) * 2) if duration > 0 else 0
+    return f"{category}|{day}|{duration_bucket}"
+
+
+def _activity_start_times_conflict(left: dict, right: dict) -> bool:
+    left_start = _parse_activity_timestamp(left.get("start_time"))
+    right_start = _parse_activity_timestamp(right.get("start_time"))
+    if left_start is None or right_start is None:
+        return False
+    return abs((left_start - right_start).total_seconds()) > 90 * 60
+
+
 def _activity_times_close_or_overlap(left: dict, right: dict) -> bool:
     left_start = _parse_activity_timestamp(left.get("start_time"))
     right_start = _parse_activity_timestamp(right.get("start_time"))
@@ -371,17 +388,20 @@ def _activity_times_close_or_overlap(left: dict, right: dict) -> bool:
 
 
 def _activity_duplicate_match(left: dict, right: dict) -> bool:
-    if str(left.get("category") or "") != str(right.get("category") or ""):
+    if _activity_merge_key(left) != _activity_merge_key(right):
         return False
-    if str(left.get("day") or "") != str(right.get("day") or ""):
+    left_duration = int(left.get("duration_minutes") or left.get("duration_min") or 0)
+    right_duration = int(right.get("duration_minutes") or right.get("duration_min") or 0)
+    if abs(left_duration - right_duration) > 1:
         return False
 
-    left_duration = int(left.get("duration_minutes") or 0)
-    right_duration = int(right.get("duration_minutes") or 0)
-    if abs(left_duration - right_duration) > 2:
+    if _activity_start_times_conflict(left, right):
         return False
 
     if _activity_times_close_or_overlap(left, right):
+        return True
+
+    if str(left.get("title") or "") and str(left.get("title") or "") == str(right.get("title") or ""):
         return True
 
     return _activity_texts_compatible(left, right)

@@ -530,6 +530,33 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(len(payload["spin"]), 1)
         self.assertEqual(payload["spin"][0]["strain"], 11.1)
 
+    def test_activity_log_payload_merges_duplicate_spin_records_without_timestamps(self) -> None:
+        payload = _activity_log_payload(
+            [
+                {
+                    "source": "Strava",
+                    "name": "Ride",
+                    "sport": "Ride",
+                    "day": "2026-03-24",
+                    "duration_minutes": 47,
+                },
+                {
+                    "source": "WHOOP",
+                    "name": "Cycling",
+                    "sport": "Cycling",
+                    "day": "2026-03-24",
+                    "duration_minutes": 47,
+                    "strain": 11.1,
+                },
+            ]
+        )
+
+        flattened = payload["runs"] + payload["strength"] + payload["spin"] + payload["activity"]
+        self.assertEqual(len(payload["spin"]), 1)
+        self.assertEqual(len(flattened), 1)
+        self.assertEqual(payload["spin"][0]["title"], "Spin")
+        self.assertEqual(payload["spin"][0]["strain"], 11.1)
+
     def test_dedupe_workout_log_items_does_not_merge_distinct_same_day_workouts(self) -> None:
         merged = dedupe_workout_log_items(
             [
