@@ -1022,18 +1022,34 @@ function TrainingCard({
       </div>
 
       {recommendationExplanation?.summary ? (
-        <div className={`mt-6 rounded-[1.75rem] border p-5 ${
-          isDark ? 'border-sky-900/40 bg-sky-950/35' : 'border-sky-200 bg-sky-50/80'
+        <section className={`mt-6 rounded-[1.9rem] border p-6 ${
+          isDark ? `border-sky-900/40 bg-sky-950/30 ${darkGlow(true)}` : 'border-sky-200 bg-sky-50/80'
         }`}>
-          <p className={`text-lg leading-8 ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-full ${
+              isDark ? 'bg-sky-950/70 text-sky-300' : 'bg-white text-sky-700'
+            }`}>
+              <TargetIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
+                Coach Summary
+              </p>
+              <p className={`mt-1 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Athlete-facing guidance built from the final recommendation
+              </p>
+            </div>
+          </div>
+
+          <p className={`mt-5 max-w-4xl text-xl leading-9 ${isDark ? 'text-white' : 'text-neutral-950'}`}>
             {recommendationExplanation.summary}
           </p>
 
           {Array.isArray(recommendationExplanation.whyBullets) && recommendationExplanation.whyBullets.length > 0 ? (
-            <ul className={`mt-4 space-y-2 text-sm leading-7 ${isDark ? 'text-sky-100/90' : 'text-sky-950'}`}>
+            <ul className={`mt-5 space-y-2 text-base leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
               {recommendationExplanation.whyBullets.map((bullet, index) => (
                 <li key={`${bullet}-${index}`} className="flex gap-3">
-                  <span className={`mt-2 inline-block h-1.5 w-1.5 rounded-full ${isDark ? 'bg-sky-300' : 'bg-sky-700'}`} />
+                  <span className={`mt-3 inline-block h-1.5 w-1.5 rounded-full ${isDark ? 'bg-sky-300' : 'bg-sky-700'}`} />
                   <span>{bullet}</span>
                 </li>
               ))}
@@ -1041,7 +1057,7 @@ function TrainingCard({
           ) : null}
 
           {recommendationExplanation.cautionNote ? (
-            <p className={`mt-4 rounded-2xl border px-4 py-3 text-sm leading-7 ${
+            <p className={`mt-5 rounded-[1.25rem] border px-4 py-3 text-sm leading-7 ${
               isDark ? 'border-amber-900/50 bg-amber-950/35 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'
             }`}>
               {recommendationExplanation.cautionNote}
@@ -1049,11 +1065,11 @@ function TrainingCard({
           ) : null}
 
           {recommendationExplanation.encouragement ? (
-            <p className={`mt-4 text-sm font-medium ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+            <p className={`mt-5 text-sm italic ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
               {recommendationExplanation.encouragement}
             </p>
           ) : null}
-        </div>
+        </section>
       ) : null}
 
       <details className={`mt-8 rounded-2xl border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
