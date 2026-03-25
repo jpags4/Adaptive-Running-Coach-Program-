@@ -368,6 +368,12 @@ function timeOfDayGreeting() {
   return 'Good evening'
 }
 
+function firstNameFromDisplayName(name) {
+  const text = String(name || '').trim()
+  if (!text) return 'Runner'
+  return text.split(/\s+/)[0] || 'Runner'
+}
+
 function ErrorScreen({ message, theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
@@ -396,6 +402,7 @@ function ErrorScreen({ message, theme = 'light' }) {
 function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile }) {
   const isDark = theme === 'dark'
   const greeting = timeOfDayGreeting()
+  const firstName = firstNameFromDisplayName(name)
   return (
     <header className="mx-auto flex w-full max-w-[1200px] flex-col justify-between gap-6 pb-8 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 flex-1">
@@ -406,7 +413,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
               : 'text-neutral-950'
           }`}
         >
-          {`${greeting}, ${name || 'Athlete'}`}
+          {`${greeting}, ${firstName}`}
         </h1>
         <p className={`mt-2 text-[13px] font-medium uppercase tracking-[0.12em] ${isDark ? 'text-neutral-400/70' : 'text-neutral-500/80'}`}>
           Adaptive Running Coach
@@ -430,14 +437,12 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           </button>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
-        <div className={`w-full max-w-[220px] rounded-[1.4rem] border px-5 py-4 text-left md:text-right ${
-          isDark ? `border-neutral-800 bg-neutral-900/88 ${darkGlow(true)}` : 'border-neutral-200 bg-white/92'
-        }`}>
-          <p className={`text-[0.78rem] font-medium uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-            Race Goal
+        <div className="w-full max-w-[220px] text-left md:text-right">
+          <p className={`text-[1.65rem] font-medium tracking-[-0.01em] ${isDark ? 'text-neutral-100/95' : 'text-neutral-950'}`}>
+            Half Marathon
           </p>
-          <p className={`mt-3 text-[0.98rem] uppercase leading-[1.45] tracking-[0.07em] ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
-            Half Marathon · {formatRaceGoal(goalRaceDate)}
+          <p className={`mt-1 text-[0.95rem] ${isDark ? 'text-neutral-300/70' : 'text-neutral-500/90'}`}>
+            {goalRaceDate ? formatDate(goalRaceDate) : 'Date TBD'}
           </p>
         </div>
       </div>
@@ -688,7 +693,7 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
                 ? 'cursor-not-allowed border-neutral-700 bg-neutral-900 text-neutral-400 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]'
                 : 'cursor-not-allowed border-neutral-200 bg-neutral-900 text-neutral-300 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]'
               : isDark
-              ? 'border-violet-500/50 bg-neutral-950 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.24),0_0_42px_rgba(168,85,247,0.28)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.35),0_0_56px_rgba(168,85,247,0.34)]'
+              ? 'border-[rgba(168,85,247,0.7)] bg-neutral-950 text-[rgba(232,232,238,0.9)] shadow-[0_0_0_1px_rgba(168,85,247,0.22),0_0_18px_rgba(168,85,247,0.18),0_0_36px_rgba(168,85,247,0.10)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.32),0_0_24px_rgba(168,85,247,0.22),0_0_44px_rgba(168,85,247,0.14)]'
               : 'border-violet-300 bg-white text-neutral-950 shadow-[0_0_0_1px_rgba(216,180,254,0.8),0_0_46px_rgba(196,181,253,0.42)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.9),0_0_58px_rgba(192,132,252,0.48)]'
           }`}
         >
