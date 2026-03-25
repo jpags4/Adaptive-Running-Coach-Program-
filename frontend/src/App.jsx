@@ -2477,14 +2477,12 @@ function WorkoutCatalogDetail({
             { label: 'Duration', value: activity.duration_minutes ? `${activity.duration_minutes} min` : '-' },
             ...(activity.strain ? [{ label: 'Strain', value: trimNumber(activity.strain) }] : []),
             ...(activity.distance_miles ? [{ label: 'Distance', value: `${trimNumber(activity.distance_miles)} mi` }] : []),
-            ...(activitySourceLabel(activity) && activitySourceLabel(activity) !== title ? [{ label: 'Source', value: activitySourceLabel(activity) }] : []),
           ]
         : [
             { label: 'Workout', value: title },
             ...(activity.duration_minutes ? [{ label: 'Duration', value: `${activity.duration_minutes} min` }] : []),
             ...(activity.strain ? [{ label: 'Strain', value: trimNumber(activity.strain) }] : []),
             ...(activity.calories ? [{ label: 'Calories', value: trimNumber(activity.calories) }] : []),
-            ...(activitySourceLabel(activity) ? [{ label: 'Source', value: activitySourceLabel(activity) }] : []),
             ...(activity.raw_type && activity.raw_type !== activitySourceLabel(activity) ? [{ label: 'Type', value: humanizeActivityLabel(activity.raw_type) }] : []),
           ]
   const supportingText = isRun
