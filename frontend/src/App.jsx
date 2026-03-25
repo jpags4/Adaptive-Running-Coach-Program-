@@ -676,11 +676,23 @@ function CheckInModal({
   physicalFeeling,
   mentalFeeling,
   notes,
+  hasPain,
+  painSeverity,
+  painLocation,
+  painWithRunning,
+  painWithWalking,
+  painWithCycling,
   isGenerating,
   onClose,
   onPhysicalChange,
   onMentalChange,
   onNotesChange,
+  onHasPainChange,
+  onPainSeverityChange,
+  onPainLocationChange,
+  onPainWithRunningChange,
+  onPainWithWalkingChange,
+  onPainWithCyclingChange,
   onGenerate,
   theme = 'light',
 }) {
@@ -740,7 +752,74 @@ function CheckInModal({
         </div>
 
         <div className="mt-8">
-          <label className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          <div className={`rounded-[1.5rem] border p-5 ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-stone-50'}`}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                  Pain check-in
+                </p>
+                <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                  Use this only if pain is part of today&apos;s training decision.
+                </p>
+              </div>
+              <label className={`inline-flex items-center gap-3 text-sm font-medium ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                <input
+                  type="checkbox"
+                  checked={hasPain}
+                  onChange={(event) => onHasPainChange(event.target.checked)}
+                  className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500"
+                />
+                Pain present
+              </label>
+            </div>
+
+            {hasPain ? (
+              <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div>
+                  <label className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                    Severity
+                  </label>
+                  <select
+                    value={painSeverity}
+                    onChange={(event) => onPainSeverityChange(event.target.value)}
+                    className={`mt-3 w-full rounded-2xl border px-4 py-3 text-sm ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-100' : 'border-neutral-200 bg-white text-neutral-800'}`}
+                  >
+                    {['none', 'mild', 'moderate', 'severe'].map((option) => (
+                      <option key={option} value={option}>{capitalize(option)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                    Location
+                  </label>
+                  <select
+                    value={painLocation}
+                    onChange={(event) => onPainLocationChange(event.target.value)}
+                    className={`mt-3 w-full rounded-2xl border px-4 py-3 text-sm ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-100' : 'border-neutral-200 bg-white text-neutral-800'}`}
+                  >
+                    {['none', 'foot', 'ankle', 'shin', 'calf', 'knee', 'hamstring', 'quad', 'hip', 'low_back', 'other'].map((option) => (
+                      <option key={option} value={option}>{option === 'low_back' ? 'Low Back' : capitalize(option.replace('_', ' '))}</option>
+                    ))}
+                  </select>
+                </div>
+                <label className={`inline-flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                  <input type="checkbox" checked={painWithRunning} onChange={(event) => onPainWithRunningChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
+                  Pain shows up when running
+                </label>
+                <label className={`inline-flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                  <input type="checkbox" checked={painWithWalking} onChange={(event) => onPainWithWalkingChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
+                  Pain shows up when walking
+                </label>
+                <label className={`inline-flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                  <input type="checkbox" checked={painWithCycling} onChange={(event) => onPainWithCyclingChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
+                  Pain shows up when cycling
+                </label>
+              </div>
+            ) : null}
+          </div>
+
+          <label className={`mt-8 block text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
             Anything else the coach should know?
           </label>
           <textarea
@@ -900,6 +979,11 @@ function TrainingCard({
   const liftBlocks = isLiftOffDay ? [] : formatLiftBlocks(recommendation.lift_guidance)
   const intensityLabel = simplifyIntensity(recommendation.intensity)
   const intensityClass = intensityColorClass(intensityLabel)
+  const primaryModality = String(recommendation.primary_modality || recommendation.daily_adaptation?.primary_modality || 'run').toLowerCase()
+  const isBikeDay = primaryModality === 'bike'
+  const bikeZone = String(recommendation.bike_zone || recommendation.run_pace_guidance || '').trim()
+  const bikeCadence = String(recommendation.bike_cadence || '').trim()
+  const enduranceNotes = Array.isArray(recommendation.endurance_notes) ? recommendation.endurance_notes.filter(Boolean) : []
 
   return (
     <section className={`mx-auto max-w-[90rem] rounded-[2rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
@@ -939,29 +1023,29 @@ function TrainingCard({
               <RouteIcon />
             </div>
             <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              Run
+              {isBikeDay ? 'Bike' : 'Run'}
             </p>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
             <div className="min-w-0">
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                Distance
+                {isBikeDay ? 'Duration' : 'Distance'}
               </p>
               <p className={`mt-3 text-6xl font-semibold leading-none tracking-tight xl:text-[5rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                {recommendation.run_distance_miles ?? '-'} mi
+                {isBikeDay ? `${recommendation.duration_minutes ?? '-'} min` : `${recommendation.run_distance_miles ?? '-'} mi`}
               </p>
             </div>
 
             <div className="min-w-0">
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                Pace
+                {isBikeDay ? 'Zone' : 'Pace'}
               </p>
               <p className={`mt-3 text-[2.45rem] font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                {paceHeadline(recommendation.run_pace_guidance)}
+                {isBikeDay ? (bikeZone || 'By feel') : paceHeadline(recommendation.run_pace_guidance)}
               </p>
               <p className={`mt-3 text-base ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                {paceSupportText(recommendation.run_pace_guidance)}
+                {isBikeDay ? (bikeCadence ? `Cadence ${bikeCadence}` : 'Keep the effort smooth and aerobic.') : paceSupportText(recommendation.run_pace_guidance)}
               </p>
             </div>
           </div>
@@ -975,7 +1059,9 @@ function TrainingCard({
                 {intensityLabel}
               </p>
               <p className={`mt-3 text-base ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                {recommendation.duration_minutes ? `${recommendation.duration_minutes} min total` : ''}
+                {isBikeDay
+                  ? (enduranceNotes[0] || '')
+                  : (recommendation.duration_minutes ? `${recommendation.duration_minutes} min total` : '')}
               </p>
             </div>
           </div>
@@ -998,7 +1084,9 @@ function TrainingCard({
 
           {isLiftOffDay ? (
             <p className={`mt-6 text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-              No lift today. Keep all training stress in the run so recovery stays on track.
+              {isBikeDay
+                ? 'No lift today. Let the bike session be the only training load while the painful area settles down.'
+                : 'No lift today. Keep all training stress in the run so recovery stays on track.'}
             </p>
           ) : (
             <div className="mt-6 space-y-3">
@@ -2341,6 +2429,12 @@ export default function App() {
   const [physicalFeeling, setPhysicalFeeling] = useState('normal')
   const [mentalFeeling, setMentalFeeling] = useState('steady')
   const [notes, setNotes] = useState('')
+  const [hasPain, setHasPain] = useState(false)
+  const [painSeverity, setPainSeverity] = useState('none')
+  const [painLocation, setPainLocation] = useState('none')
+  const [painWithRunning, setPainWithRunning] = useState(false)
+  const [painWithWalking, setPainWithWalking] = useState(false)
+  const [painWithCycling, setPainWithCycling] = useState(false)
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
   const [isTodayActivityOpen, setIsTodayActivityOpen] = useState(false)
   const [profileSettings, setProfileSettings] = useState(null)
@@ -2461,6 +2555,12 @@ export default function App() {
           physical_feeling: normalizePhysicalFeeling(physicalFeeling),
           mental_feeling: mentalFeeling,
           notes: physicalFeeling === 'injured' ? `${notes}\nPossible injury or sharp pain noted.`.trim() : notes,
+          has_pain: hasPain,
+          pain_severity: hasPain ? painSeverity : 'none',
+          pain_location: hasPain ? painLocation : 'none',
+          pain_with_running: hasPain ? painWithRunning : false,
+          pain_with_walking: hasPain ? painWithWalking : false,
+          pain_with_cycling: hasPain ? painWithCycling : null,
         }),
       })
 
@@ -2556,17 +2656,38 @@ export default function App() {
 
         <CheckInModal
           isOpen={isCheckInModalOpen}
-          physicalFeeling={physicalFeeling}
-          mentalFeeling={mentalFeeling}
-          notes={notes}
-          isGenerating={isGenerating}
-          onClose={() => setIsCheckInModalOpen(false)}
-          onPhysicalChange={setPhysicalFeeling}
-          onMentalChange={setMentalFeeling}
-          onNotesChange={setNotes}
-          onGenerate={handleGenerateRecommendation}
-          theme={theme}
-        />
+            physicalFeeling={physicalFeeling}
+            mentalFeeling={mentalFeeling}
+            notes={notes}
+            hasPain={hasPain}
+            painSeverity={painSeverity}
+            painLocation={painLocation}
+            painWithRunning={painWithRunning}
+            painWithWalking={painWithWalking}
+            painWithCycling={painWithCycling}
+            isGenerating={isGenerating}
+            onClose={() => setIsCheckInModalOpen(false)}
+            onPhysicalChange={setPhysicalFeeling}
+            onMentalChange={setMentalFeeling}
+            onNotesChange={setNotes}
+            onHasPainChange={(value) => {
+              setHasPain(value)
+              if (!value) {
+                setPainSeverity('none')
+                setPainLocation('none')
+                setPainWithRunning(false)
+                setPainWithWalking(false)
+                setPainWithCycling(false)
+              }
+            }}
+            onPainSeverityChange={setPainSeverity}
+            onPainLocationChange={setPainLocation}
+            onPainWithRunningChange={setPainWithRunning}
+            onPainWithWalkingChange={setPainWithWalking}
+            onPainWithCyclingChange={setPainWithCycling}
+            onGenerate={handleGenerateRecommendation}
+            theme={theme}
+          />
 
         <TodayActivityModal
           isOpen={isTodayActivityOpen}

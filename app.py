@@ -740,7 +740,22 @@ def _today_plan_entries(anchor, recommendation) -> list[dict]:
         return []
 
     activities: list[dict] = []
-    if recommendation.run_distance_miles > 0:
+    if str(getattr(recommendation, "primary_modality", "run") or "run").lower() == "bike" and recommendation.duration_minutes > 0:
+        activities.append(
+            {
+                "source": "Projection",
+                "name": "Bike",
+                "day": anchor.isoformat(),
+                "sport": "Projected Bike",
+                "distance_miles": 0,
+                "duration_minutes": max(20, recommendation.duration_minutes),
+                "average_pace_min_per_mile": 0,
+                "pace_text": recommendation.run_pace_guidance,
+                "intensity": recommendation.intensity,
+                "projected": True,
+            }
+        )
+    elif recommendation.run_distance_miles > 0:
         activities.append(
             {
                 "source": "Projection",
@@ -993,8 +1008,14 @@ def _current_day_status(today_iso: str, activity_feed: list[dict], recommendatio
         [float(item.get("strain") or 0.0) for item in todays_activities if item.get("strain") is not None] or [0.0]
     )
     planned_miles = round(float(getattr(recommendation, "run_distance_miles", 0.0) or 0.0), 1) if recommendation else 0.0
+    planned_modality = str(getattr(recommendation, "primary_modality", "run") or "run").lower() if recommendation else "run"
+    planned_duration = int(getattr(recommendation, "duration_minutes", 0) or 0) if recommendation else 0
 
-    if planned_miles <= 0:
+    if planned_modality == "bike" and planned_duration > 0:
+        status = "cross_trained"
+        headline = "Today's bike session is still available."
+        detail = f"The recommendation is a {planned_duration}-minute bike workout instead of a run."
+    elif planned_miles <= 0:
         status = "completed"
         headline = "You already trained today."
         detail = f"Logged {completed_run_miles:.1f} run miles today." if completed_run_miles > 0 else "A workout is already logged for today."
@@ -1508,6 +1529,12 @@ class CoachHandler(BaseHTTPRequestHandler):
                     "physical_feeling": str(form.get("physical_feeling", "")).strip(),
                     "mental_feeling": str(form.get("mental_feeling", "")).strip(),
                     "notes": str(form.get("notes", "")).strip(),
+                    "has_pain": bool(form.get("has_pain")),
+                    "pain_severity": str(form.get("pain_severity", "")).strip(),
+                    "pain_location": str(form.get("pain_location", "")).strip(),
+                    "pain_with_running": bool(form.get("pain_with_running")),
+                    "pain_with_walking": bool(form.get("pain_with_walking")),
+                    "pain_with_cycling": form.get("pain_with_cycling") if isinstance(form.get("pain_with_cycling"), bool) else None,
                     "clarification_answers": form.get("clarification_answers", {}) if isinstance(form.get("clarification_answers"), dict) else {},
                 },
                 include_recommendation=True,
@@ -1518,6 +1545,12 @@ class CoachHandler(BaseHTTPRequestHandler):
                     "physical_feeling": str(form.get("physical_feeling", "")).strip(),
                     "mental_feeling": str(form.get("mental_feeling", "")).strip(),
                     "notes": str(form.get("notes", "")).strip(),
+                    "has_pain": bool(form.get("has_pain")),
+                    "pain_severity": str(form.get("pain_severity", "")).strip(),
+                    "pain_location": str(form.get("pain_location", "")).strip(),
+                    "pain_with_running": bool(form.get("pain_with_running")),
+                    "pain_with_walking": bool(form.get("pain_with_walking")),
+                    "pain_with_cycling": form.get("pain_with_cycling") if isinstance(form.get("pain_with_cycling"), bool) else None,
                     "planned_skip_today": _planned_skip_today(
                         {
                             "notes": str(form.get("notes", "")).strip(),

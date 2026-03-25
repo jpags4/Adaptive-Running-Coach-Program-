@@ -119,6 +119,10 @@ class Recommendation:
     pace_model: dict[str, dict] = field(default_factory=dict)
     weekly_intent: dict = field(default_factory=dict)
     daily_adaptation: dict = field(default_factory=dict)
+    primary_modality: str = "run"
+    bike_zone: str = ""
+    bike_cadence: str = ""
+    endurance_notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -145,6 +149,10 @@ def recommendation_from_dict(payload: dict) -> Recommendation:
         pace_model=dict(payload.get("pace_model", {})),
         weekly_intent=dict(payload.get("weekly_intent", {})),
         daily_adaptation=dict(payload.get("daily_adaptation", {})),
+        primary_modality=payload.get("primary_modality", "run"),
+        bike_zone=payload.get("bike_zone", ""),
+        bike_cadence=payload.get("bike_cadence", ""),
+        endurance_notes=list(payload.get("endurance_notes", [])),
     )
 
 
@@ -751,6 +759,152 @@ def _copy_pace_range(pace_range: dict | None) -> dict | None:
     return {"min": str(pace_range.get("min") or ""), "max": str(pace_range.get("max") or "")}
 
 
+def _notes_imply_acute_issue(text: str | None) -> bool:
+    normalized = str(text or "").strip().lower()
+    return any(
+        token in normalized
+        for token in (
+            "sharp pain",
+            "can't walk",
+            "cannot walk",
+            "swollen",
+            "swelling",
+            "numb",
+            "tingling",
+            "pop",
+            "gave out",
+        )
+    )
+
+
+def _pain_checkin(feedback: dict | None) -> dict:
+    info = feedback or {}
+    severity = str(info.get("pain_severity") or "none").strip().lower()
+    location = str(info.get("pain_location") or "none").strip().lower()
+    notes = str(info.get("pain_notes") or info.get("notes") or "").strip()
+    has_pain = bool(info.get("has_pain")) or severity not in {"", "none"} or location not in {"", "none"} or "pain" in notes.lower()
+    return {
+        "hasPain": has_pain,
+        "painSeverity": severity if severity in {"none", "mild", "moderate", "severe"} else "none",
+        "painLocation": location if location in {"none", "foot", "ankle", "shin", "calf", "knee", "hamstring", "quad", "hip", "low_back", "other"} else "other" if has_pain else "none",
+        "painWithRunning": bool(info.get("pain_with_running")),
+        "painWithWalking": bool(info.get("pain_with_walking")),
+        "painWithCycling": None if info.get("pain_with_cycling") is None else bool(info.get("pain_with_cycling")),
+        "notes": notes,
+    }
+
+
+def evaluate_bike_substitution(pain: dict, mapped: dict, planned_workout: dict) -> dict:
+    if not pain.get("hasPain"):
+        return {"shouldSubstituteBike": False, "reason": "No pain was reported.", "confidence": "low", "preserveWorkoutIntent": False}
+
+    severity = str(pain.get("painSeverity") or "none")
+    location = str(pain.get("painLocation") or "none")
+    pain_with_running = bool(pain.get("painWithRunning"))
+    pain_with_walking = bool(pain.get("painWithWalking"))
+    pain_with_cycling = pain.get("painWithCycling")
+    notes = str(pain.get("notes") or "")
+    bike_friendly_locations = {"foot", "ankle", "shin", "calf", "knee"}
+    caution_locations = {"hip", "low_back", "hamstring", "quad", "other"}
+
+    if severity == "severe" or pain_with_walking or pain_with_cycling is True or _notes_imply_acute_issue(notes):
+        return {
+            "shouldSubstituteBike": False,
+            "reason": "Pain signals are strong enough that the safer call is recovery rather than automatically substituting bike work.",
+            "confidence": "high",
+            "preserveWorkoutIntent": False,
+        }
+
+    if not pain_with_running:
+        return {"shouldSubstituteBike": False, "reason": "Pain was not clearly tied to running impact.", "confidence": "low", "preserveWorkoutIntent": False}
+
+    if severity not in {"mild", "moderate"}:
+        return {"shouldSubstituteBike": False, "reason": "Pain severity did not fit the substitution rule.", "confidence": "low", "preserveWorkoutIntent": False}
+
+    if location in caution_locations:
+        return {
+            "shouldSubstituteBike": False,
+            "reason": "That pain location can also be aggravated by cycling mechanics, so biking is not assumed to be the safer substitute.",
+            "confidence": "medium",
+            "preserveWorkoutIntent": False,
+        }
+
+    if location not in bike_friendly_locations:
+        return {"shouldSubstituteBike": False, "reason": "The pain location was not in the conservative bike-substitution list.", "confidence": "low", "preserveWorkoutIntent": False}
+
+    preserve_workout_intent = str(planned_workout.get("type") or "") in {"easy_run", "long_run"} or (
+        severity == "mild" and mapped["run"].get("intensity") in {"easy", "moderate"}
+    )
+    return {
+        "shouldSubstituteBike": True,
+        "reason": "Pain appears tied to running impact, and a lower-impact aerobic substitute may preserve useful work more safely.",
+        "confidence": "high" if severity == "mild" else "medium",
+        "preserveWorkoutIntent": preserve_workout_intent,
+    }
+
+
+def _bike_duration_from_run(run_duration: int | None, workout_type: str, decision: str) -> int:
+    base = int(run_duration or 30)
+    if workout_type == "long_run":
+        factor = 1.4 if decision == "pull_back" else 1.5
+    elif workout_type in {"tempo", "intervals", "race_pace"}:
+        factor = 1.15 if decision == "pull_back" else 1.2
+    else:
+        factor = 1.3 if decision != "pull_back" else 1.2
+    return max(30, int(round(base * factor / 5)) * 5)
+
+
+def map_bike_substitution(planned_workout: dict, mapped: dict, pain: dict, readiness: dict) -> dict:
+    run = dict(mapped["run"])
+    workout_type = str(planned_workout.get("type") or "")
+    decision = str(readiness.get("decision") or "maintain")
+    duration = _bike_duration_from_run(run.get("durationMin"), workout_type, decision)
+    severity = str(pain.get("painSeverity") or "mild")
+    if decision == "pull_back":
+        intensity = "very_easy"
+        label = "Recovery Spin"
+        zone = "Zone 1-2"
+        cadence = "85-95 rpm"
+    elif workout_type == "long_run":
+        intensity = "easy"
+        label = "Long Aerobic Bike"
+        zone = "Zone 2"
+        cadence = "85-95 rpm"
+    elif workout_type in {"tempo", "intervals", "race_pace"}:
+        if severity == "mild" and readiness["tier"] != "low":
+            intensity = "moderate"
+            label = "Steady Bike"
+            zone = "Zone 2 to low Zone 3"
+            cadence = "80-90 rpm"
+        else:
+            intensity = "easy"
+            label = "Aerobic Bike"
+            zone = "Zone 2"
+            cadence = "85-95 rpm"
+    else:
+        intensity = "easy"
+        label = "Aerobic Bike"
+        zone = "Zone 2"
+        cadence = "85-95 rpm"
+
+    return {
+        "action": "bike_substitution",
+        "label": label,
+        "miles": None,
+        "durationMin": duration,
+        "paceRange": None,
+        "intensity": intensity,
+        "shouldRun": True,
+        "modality": "bike",
+        "bikeZone": "Zone 1-2" if decision == "pull_back" else zone,
+        "bikeCadence": cadence,
+        "notes": [
+            "Use the bike to preserve aerobic work with less impact.",
+            "Keep the ride smooth and stop if the same area becomes painful on the bike.",
+        ],
+    }
+
+
 def _parse_pace_text_range(text: str) -> dict | None:
     match = re.search(r"(\d+:\d{2})-(\d+:\d{2})/mi", str(text or "").strip())
     if not match:
@@ -1060,6 +1214,7 @@ def _build_deterministic_context(
         "targetStrengthSessionsPerWeek": profile.desired_strength_frequency,
         "nextKeyWorkoutInDays": 1 if today.weekday() in {0, 1, 2, 3} else None,
         "hasRaceWithinDays": days_until_race(profile.goal_race_date, today) if profile.goal_race_date else None,
+        "subjectiveFeedback": feedback,
     }
 
 
@@ -1091,17 +1246,18 @@ def _baseline_run_recommendation(planned_workout: dict) -> dict:
     workout_type = str(planned_workout.get("type") or "")
     miles = planned_workout.get("plannedMiles")
     duration = planned_workout.get("plannedDurationMin")
+    base = {"modality": "run", "bikeZone": None, "bikeCadence": None, "notes": []}
     if workout_type == "rest":
-        return {"action": "rest", "label": "Rest Day", "miles": None, "durationMin": None, "paceRange": None, "intensity": "rest", "shouldRun": False}
+        return {**base, "action": "rest", "label": "Rest Day", "miles": None, "durationMin": None, "paceRange": None, "intensity": "rest", "shouldRun": False}
     if workout_type == "long_run":
-        return {"action": "run_as_planned", "label": "Long Run", "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange") or planned_workout.get("easyPaceRange")), "intensity": "easy", "shouldRun": True}
+        return {**base, "action": "run_as_planned", "label": "Long Run", "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange") or planned_workout.get("easyPaceRange")), "intensity": "easy", "shouldRun": True}
     if workout_type in {"tempo", "intervals", "race_pace"}:
-        return {"action": "run_as_planned", "label": str(planned_workout.get("label") or "Quality Run"), "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange")), "intensity": "hard", "shouldRun": True}
+        return {**base, "action": "run_as_planned", "label": str(planned_workout.get("label") or "Quality Run"), "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange")), "intensity": "hard", "shouldRun": True}
     if workout_type == "cross_train":
-        return {"action": "replace_with_walk_or_cross_train", "label": "Cross-Train", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+        return {**base, "action": "replace_with_walk_or_cross_train", "label": "Cross-Train", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
     if workout_type == "strength_only":
-        return {"action": "rest", "label": "No Run Scheduled", "miles": None, "durationMin": None, "paceRange": None, "intensity": "rest", "shouldRun": False}
-    return {"action": "run_as_planned", "label": "Easy Run", "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange") or planned_workout.get("easyPaceRange")), "intensity": "easy", "shouldRun": True}
+        return {**base, "action": "rest", "label": "No Run Scheduled", "miles": None, "durationMin": None, "paceRange": None, "intensity": "rest", "shouldRun": False}
+    return {**base, "action": "run_as_planned", "label": "Easy Run", "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange") or planned_workout.get("easyPaceRange")), "intensity": "easy", "shouldRun": True}
 
 
 def _same_numeric_value(left: float | int | None, right: float | int | None) -> bool:
@@ -1213,6 +1369,9 @@ def _detailed_overall_text(mapped: dict, readiness: dict, planned_workout: dict)
     if plan_status == "modified":
         return f"Plan status: modified. The original {planned_label.lower()} was adjusted to {final_label.lower()} because {driver}, so the tradeoff is preserving useful work while cutting the stress that carried the most risk."
 
+    if str(mapped["run"].get("modality") or "run") == "bike":
+        return f"Plan status: replaced. The original {planned_label.lower()} was replaced with bike work because running pain changed the risk of the day, so the tradeoff is reducing impact while preserving aerobic work."
+
     return f"Plan status: replaced. The original {planned_label.lower()} was taken off the table because {driver}, so the tradeoff is giving up training stress today to protect recovery and the rest of the week."
 
 
@@ -1222,6 +1381,10 @@ def _detailed_run_text(planned_workout: dict, mapped: dict) -> str:
     planned_distance = _format_distance_text(planned_workout.get("plannedMiles"), planned_workout.get("plannedDurationMin"))
     final_distance = _format_distance_text(run.get("miles"), run.get("durationMin"))
     plan_status = str(mapped["planStatus"])
+
+    if str(run.get("modality") or "run") == "bike":
+        zone = str(run.get("bikeZone") or "Zone 2")
+        return f"Planned: {planned_label} ({planned_distance}). Final: {run.get('label', 'Bike')} ({final_distance}). Running was replaced with bike work to reduce impact while keeping the day aerobic in {zone}."
 
     if not run.get("shouldRun"):
         return f"Planned: {planned_label} ({planned_distance}). Final: {run.get('label', 'No run')} ({final_distance}). Running was removed because the current signals did not justify adding training stress."
@@ -1244,6 +1407,10 @@ def _detailed_run_text(planned_workout: dict, mapped: dict) -> str:
 
 def _detailed_pace_text(planned_workout: dict, mapped: dict, pace_text: str) -> str:
     run = mapped["run"]
+    if str(run.get("modality") or "run") == "bike":
+        cadence = str(run.get("bikeCadence") or "").strip()
+        cadence_text = f" with cadence around {cadence}" if cadence else ""
+        return f"Bike intensity is set at {run.get('bikeZone') or 'Zone 2'}{cadence_text} so the session preserves aerobic work without adding impact."
     if not run.get("shouldRun"):
         return "No pace target is shown because today is not a run day."
 
@@ -1260,6 +1427,8 @@ def _detailed_pace_text(planned_workout: dict, mapped: dict, pace_text: str) -> 
 def _detailed_lift_text(mapped: dict, readiness: dict, planned_workout: dict) -> str:
     lift = mapped["lift"]
     run = mapped["run"]
+    if str(run.get("modality") or "run") == "bike":
+        return "Lifting was removed so the bike substitution stays the only training load while pain is present."
     if lift["action"] == "no_lift":
         if readiness["flags"]["avoidHeavyLifting"] or not run.get("shouldRun"):
             return "Lifting was removed because recovery did not support adding more lower-body stress on top of today."
@@ -1300,7 +1469,9 @@ def _detailed_warnings(mapped: dict, readiness: dict) -> list[str]:
     warnings: list[str] = []
     run = mapped["run"]
     lift = mapped["lift"]
-    if run.get("shouldRun") and run.get("intensity") in {"easy", "very_easy"}:
+    if str(run.get("modality") or "run") == "bike":
+        warnings.append("Keep the ride smooth and stop if the same area becomes painful on the bike.")
+    if str(run.get("modality") or "run") == "run" and run.get("shouldRun") and run.get("intensity") in {"easy", "very_easy"}:
         warnings.append("Keep the run conversational. If the effort drifts above easy, shorten it.")
     if not run.get("shouldRun"):
         warnings.append("Do not turn today into a bonus run. The recommendation is to back off, not make up work.")
@@ -1317,6 +1488,9 @@ def _detailed_warnings(mapped: dict, readiness: dict) -> list[str]:
 
 def _plan_status(planned_workout: dict, baseline_run: dict, final_run: dict, lift: dict) -> str:
     workout_type = str(planned_workout.get("type") or "")
+
+    if str(final_run.get("modality") or "run") == "bike":
+        return "replaced"
 
     if workout_type == "strength_only":
         if lift.get("action") == "lift_as_planned":
@@ -1358,9 +1532,10 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
     flags = readiness["flags"]
     planned_miles = float(planned_workout["plannedMiles"]) if planned_workout.get("plannedMiles") is not None else None
     force_no_speed = bool(flags["avoidSpeedWork"] or (flags["highStrainCaution"] and flags["elevatedHrCaution"]))
+    pain = _pain_checkin(context.get("subjectiveFeedback"))
 
     if flags["injuryOverride"] or flags["forceRestOrCrossTrain"]:
-        run = {"action": "replace_with_walk_or_cross_train", "label": "Recovery / Cross-Train", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+        run = {**dict(baseline_run), "action": "replace_with_walk_or_cross_train", "label": "Recovery / Cross-Train", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
         run_logic.append("Safety flags override the planned session and remove training stress.")
         tags.update({"injury_override", "replace_with_cross_train"})
     elif readiness["decision"] == "maintain":
@@ -1379,7 +1554,7 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
     elif readiness["decision"] == "pull_back":
         if planned_workout["type"] in {"tempo", "intervals", "race_pace"}:
             if sum(1 for item in [flags["highStrainCaution"], flags["elevatedHrCaution"], flags["mentalDownshift"]] if item) >= 2:
-                run = {"action": "replace_with_walk_or_cross_train", "label": "Pull Back Day", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+                run = {**dict(baseline_run), "action": "replace_with_walk_or_cross_train", "label": "Pull Back Day", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
                 run_logic.append("Removed quality work entirely because low readiness and caution flags make it too costly.")
             else:
                 run.update({"action": "replace_with_recovery_run", "label": "Easy Run" if mode == "aggressive" else "Recovery Run", "intensity": "easy" if mode == "aggressive" else "very_easy", "shouldRun": True})
@@ -1391,7 +1566,7 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
             tags.add("reduce_volume")
         elif planned_workout["type"] == "easy_run":
             if sum(1 for item in [flags["highStrainCaution"], flags["elevatedHrCaution"], flags["mentalDownshift"]] if item) >= 2:
-                run = {"action": "replace_with_walk_or_cross_train", "label": "Pull Back Day", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+                run = {**dict(baseline_run), "action": "replace_with_walk_or_cross_train", "label": "Pull Back Day", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
                 run_logic.append("The easy run was removed because multiple caution flags suggest recovery is the better use of today.")
                 tags.add("pull_back_day")
             else:
@@ -1454,9 +1629,42 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
         run_logic.append("Used easier pace guidance to match the downshifted intensity.")
         tags.add("easy_pace_substitution")
 
+    bike_substitution = evaluate_bike_substitution(pain, {"run": run}, planned_workout)
+    if bike_substitution["shouldSubstituteBike"] and not (flags["injuryOverride"] or flags["forceRestOrCrossTrain"]):
+        run = map_bike_substitution(planned_workout, {"run": run}, pain, readiness)
+        run_logic = [
+            "Running was replaced with a lower-impact bike session because pain appears tied to impact.",
+            "The bike prescription keeps aerobic work in place without trying to force run-specific stress.",
+        ]
+        tags.update({"bike_substitution", "replace_run_with_bike"})
+        if run["intensity"] in {"easy", "very_easy"}:
+            tags.add("downshift_intensity")
+        if planned_workout["type"] in {"tempo", "intervals", "race_pace", "long_run"}:
+            plan_protection.append("Bike work replaces the original run so the day keeps useful aerobic intent without impact.")
+    elif pain.get("hasPain") and pain.get("painWithRunning") and str(pain.get("painLocation") or "") in {"hip", "low_back", "hamstring", "quad", "other"}:
+        severity = str(pain.get("painSeverity") or "mild")
+        if severity == "moderate":
+            run = {**dict(baseline_run), "action": "replace_with_walk_or_cross_train", "label": "Pull Back Day", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+            run_logic = [
+                "Running pain was not treated as bike-friendly for this area, so the safer call is to pull back instead of forcing another modality.",
+            ]
+            tags.update({"pain_override", "pull_back_day"})
+        elif run.get("shouldRun"):
+            run.update({"action": "replace_with_recovery_run", "label": "Recovery Run", "intensity": "very_easy", "miles": round(max(2.0, float(run.get("miles") or 2.0) * 0.75), 1) if run.get("miles") is not None else None})
+            run["durationMin"] = max(20, int(round((int(run.get("durationMin") or 25)) * 0.8)))
+            run["paceRange"] = _adjusted_pace_range(planned_workout, "very_easy")
+            run_logic = [
+                "Running pain triggered a conservative downshift, and biking was not assumed to be the better substitute for this area.",
+            ]
+            tags.update({"pain_override", "downshift_intensity"})
+
     strength_backlog = context.get("completedStrengthSessionsThisWeek") is not None and context.get("targetStrengthSessionsPerWeek") is not None and int(context["completedStrengthSessionsThisWeek"]) < int(context["targetStrengthSessionsPerWeek"])
     if flags["injuryOverride"] or flags["forceRestOrCrossTrain"]:
         lift = {"action": "no_lift", "label": "No lift today", "shouldLift": False, "guidance": ["Prioritize recovery and reassess tomorrow."]}
+    elif str(run.get("modality") or "run") == "bike":
+        lift = {"action": "no_lift", "label": "No lift today", "shouldLift": False, "guidance": ["Let the bike session be the only training load while pain is present."]}
+    elif not run.get("shouldRun") and planned_workout["type"] != "strength_only":
+        lift = {"action": "no_lift", "label": "No lift today", "shouldLift": False, "guidance": ["Do not stack lifting onto a day that already shifted away from running."]}
     elif planned_workout["type"] == "strength_only":
         if readiness["decision"] == "push":
             lift = {"action": "lift_as_planned", "label": "Strength as planned", "shouldLift": True, "guidance": ["Keep the lift technically clean and stop short of grinding reps."]}
@@ -1491,7 +1699,15 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
         lift_logic.append("Mobility replaces strength loading because readiness does not support more stress.")
         tags.add("mobility_only")
 
-    summary = "Easy Run" if run["shouldRun"] and run["intensity"] == "easy" else "Recovery Run" if run["shouldRun"] and run["intensity"] == "very_easy" else "Recovery Day" if not run["shouldRun"] and not lift["shouldLift"] else "Mobility Day" if not run["shouldRun"] and lift["action"] == "mobility_only" else "Light Strength Day" if not run["shouldRun"] and lift["action"] == "core_only" else run["label"]
+    summary = (
+        run["label"] if str(run.get("modality") or "run") == "bike"
+        else "Easy Run" if run["shouldRun"] and run["intensity"] == "easy"
+        else "Recovery Run" if run["shouldRun"] and run["intensity"] == "very_easy"
+        else "Recovery Day" if not run["shouldRun"] and not lift["shouldLift"]
+        else "Mobility Day" if not run["shouldRun"] and lift["action"] == "mobility_only"
+        else "Light Strength Day" if not run["shouldRun"] and lift["action"] == "core_only"
+        else run["label"]
+    )
     if flags["avoidSpeedWork"]:
         tags.add("avoid_speed_work")
     if flags["mentalDownshift"]:
@@ -1504,6 +1720,8 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
     overall = "The planned session has been adjusted based on readiness and recovery signals. We preserve structure while reducing stress."
     if plan_status == "preserved":
         overall = _preserved_overall_text(readiness, flags, run, tags)
+    elif str(run.get("modality") or "run") == "bike":
+        overall = "Running was replaced with a lower-impact bike session because pain changed the risk of the day, but useful aerobic work can still stay in place."
     elif plan_status == "replaced":
         overall = "The planned session has been replaced due to recovery and risk signals. The priority is protecting the athlete and the rest of the week."
 
@@ -1511,6 +1729,7 @@ def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: di
         "planStatus": plan_status,
         "planStatusLabel": _plan_status_label(plan_status),
         "summaryLabel": summary,
+        "pain": pain,
         "run": run,
         "lift": lift,
         "reasoning": {
@@ -1545,7 +1764,8 @@ def _recommendation_from_daily_map(
 ) -> Recommendation:
     run = mapped["run"]
     lift = mapped["lift"]
-    pace_text = _pace_range_to_text(run.get("paceRange"), str(run.get("intensity") or "rest"), bool(run.get("shouldRun")))
+    primary_modality = str(run.get("modality") or "run")
+    pace_text = str(run.get("bikeZone") or "") if primary_modality == "bike" else _pace_range_to_text(run.get("paceRange"), str(run.get("intensity") or "rest"), bool(run.get("shouldRun")))
     workout = mapped["summaryLabel"] if run.get("shouldRun") else ("Rest and recovery" if not lift.get("shouldLift") else lift.get("label"))
     lift_focus = "No lifting" if lift["action"] == "no_lift" else lift["label"]
     lift_guidance = " ".join(lift.get("guidance") or [])
@@ -1582,6 +1802,10 @@ def _recommendation_from_daily_map(
         planned_pace_guidance=planned_pace,
         pace_model=pace_model.to_dict(),
         weekly_intent=weekly_intent.to_dict(),
+        primary_modality=primary_modality,
+        bike_zone=str(run.get("bikeZone") or ""),
+        bike_cadence=str(run.get("bikeCadence") or ""),
+        endurance_notes=list(run.get("notes") or []),
         daily_adaptation={
             "planned_session": str(planned_workout.get("label") or ""),
             "readiness_status": readiness_status,
@@ -1597,6 +1821,8 @@ def _recommendation_from_daily_map(
             "plan_status": mapped["planStatus"],
             "plan_status_label": mapped["planStatusLabel"],
             "summary_label": mapped["summaryLabel"],
+            "primary_modality": primary_modality,
+            "pain": dict(mapped.get("pain") or {}),
             "run": dict(mapped["run"]),
             "lift": dict(mapped["lift"]),
             "rationale_tags": list(mapped["reasoning"]["rationaleTags"]),

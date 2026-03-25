@@ -64,6 +64,10 @@ class CoachRecommendationTests(unittest.TestCase):
         run_intensity: str = "hard",
         run_miles: float | None = 5.0,
         run_pace: str = "7:20-7:35/mi",
+        run_modality: str = "run",
+        bike_zone: str = "",
+        bike_cadence: str = "",
+        endurance_notes: list[str] | None = None,
         should_lift: bool = False,
         lift_label: str = "No lift today",
         flags: dict | None = None,
@@ -88,7 +92,7 @@ class CoachRecommendationTests(unittest.TestCase):
             intensity=run_intensity,
             duration_minutes=48 if run_miles else 0,
             run_distance_miles=float(run_miles or 0.0),
-            run_pace_guidance=run_pace if run_miles else "Rest day",
+            run_pace_guidance=run_pace if run_miles or run_modality == "bike" else "Rest day",
             lift_focus=lift_label,
             lift_guidance="Keep lifting light." if should_lift else "No lift today.",
             recap=[],
@@ -105,6 +109,10 @@ class CoachRecommendationTests(unittest.TestCase):
             planned_workout=planned_label,
             planned_run_distance_miles=float(planned_miles or 0.0),
             planned_pace_guidance=run_pace if planned_miles else "Rest day",
+            primary_modality=run_modality,
+            bike_zone=bike_zone,
+            bike_cadence=bike_cadence,
+            endurance_notes=list(endurance_notes or []),
             daily_adaptation={
                 "planned_session": planned_label,
                 "readiness_status": "supported" if plan_status == "preserved" else "partly supported" if plan_status == "modified" else "not supported",
@@ -119,13 +127,18 @@ class CoachRecommendationTests(unittest.TestCase):
                 "plan_status": plan_status,
                 "plan_status_label": "As Planned" if plan_status == "preserved" else "Adjusted" if plan_status == "modified" else "Changed",
                 "summary_label": run_label if should_run else "Recovery Day",
+                "primary_modality": run_modality,
                 "run": {
                     "shouldRun": should_run,
+                    "modality": run_modality,
                     "label": run_label if should_run else "Recovery / Cross-Train",
                     "miles": run_miles,
                     "durationMin": 48 if run_miles else 20,
                     "paceRange": {"min": "7:20", "max": "7:35"} if should_run and run_intensity == "hard" else {"min": "9:08", "max": "9:29"} if should_run else None,
                     "intensity": run_intensity if should_run else "rest",
+                    "bikeZone": bike_zone,
+                    "bikeCadence": bike_cadence,
+                    "notes": list(endurance_notes or []),
                 },
                 "lift": {
                     "shouldLift": should_lift,
@@ -562,6 +575,23 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertLessEqual(len(explanation["whyBullets"]), 3)
         self.assertIn("decisionDrivers", explanation)
         self.assertIn("source", explanation)
+
+    def test_bike_substitution_explanation_mentions_bike(self) -> None:
+        explanation = build_template_fallback_explanation(
+            self._make_explanation_inputs(
+                plan_status="replaced",
+                run_label="Aerobic Bike",
+                run_intensity="easy",
+                run_miles=None,
+                run_pace="Zone 2",
+                run_modality="bike",
+                bike_zone="Zone 2",
+                bike_cadence="85-95 rpm",
+                endurance_notes=["Use the bike to preserve aerobic work with less impact."],
+            )
+        )
+        self.assertIn("bike", explanation["summary"].lower())
+        self.assertIn("Decision drivers:", explanation["decisionDrivers"])
 
     def test_build_explanation_prompt_includes_final_plan_status(self) -> None:
         prompt = build_explanation_prompt(self._make_explanation_inputs(plan_status="preserved"))
@@ -1410,6 +1440,145 @@ class CoachRecommendationTests(unittest.TestCase):
 
         self.assertEqual(recommendation.daily_adaptation.get("plan_status"), "modified")
         self.assertLess(recommendation.run_distance_miles, recommendation.planned_run_distance_miles)
+
+    def test_ankle_pain_easy_run_substitutes_bike(self) -> None:
+        today = date(2026, 3, 23)
+        metric = _harness_metric("2026-03-23", 63, 7.5, 53, 8.8)
+        metrics = _harness_metrics_window(today, metric, baseline_rhr=53)
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback={
+                "physical_feeling": "normal",
+                "mental_feeling": "steady",
+                "notes": "ankle overload pain while running",
+                "has_pain": True,
+                "pain_severity": "moderate",
+                "pain_location": "ankle",
+                "pain_with_running": True,
+                "pain_with_walking": False,
+                "pain_with_cycling": False,
+            },
+            weekly_intent=_scenario_weekly_intent(today),
+            mode="conservative",
+        )
+
+        self.assertEqual(recommendation.primary_modality, "bike")
+        self.assertIn(recommendation.workout, {"Aerobic Bike", "Recovery Spin"})
+        self.assertEqual(recommendation.run_pace_guidance, "Zone 2")
+        self.assertEqual(recommendation.daily_adaptation.get("plan_status"), "replaced")
+
+    def test_shin_pain_threshold_day_substitutes_controlled_bike(self) -> None:
+        today = date(2026, 3, 24)
+        metric = _harness_metric("2026-03-24", 76, 7.9, 53, 9.1)
+        metrics = _harness_metrics_window(today, metric, baseline_rhr=53)
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback={
+                "physical_feeling": "normal",
+                "mental_feeling": "steady",
+                "notes": "shin pain only with impact",
+                "has_pain": True,
+                "pain_severity": "mild",
+                "pain_location": "shin",
+                "pain_with_running": True,
+                "pain_with_walking": False,
+                "pain_with_cycling": None,
+            },
+            weekly_intent=_scenario_weekly_intent(today, primary_adaptation="threshold"),
+            mode="conservative",
+        )
+
+        self.assertEqual(recommendation.primary_modality, "bike")
+        self.assertEqual(recommendation.workout, "Steady Bike")
+        self.assertEqual(recommendation.bike_zone, "Zone 2 to low Zone 3")
+
+    def test_hip_pain_does_not_auto_substitute_bike(self) -> None:
+        today = date(2026, 3, 23)
+        metric = _harness_metric("2026-03-23", 63, 7.5, 53, 8.8)
+        metrics = _harness_metrics_window(today, metric, baseline_rhr=53)
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback={
+                "physical_feeling": "normal",
+                "mental_feeling": "steady",
+                "notes": "hip pain when running",
+                "has_pain": True,
+                "pain_severity": "moderate",
+                "pain_location": "hip",
+                "pain_with_running": True,
+                "pain_with_walking": False,
+                "pain_with_cycling": None,
+            },
+            weekly_intent=_scenario_weekly_intent(today),
+            mode="conservative",
+        )
+
+        self.assertEqual(recommendation.primary_modality, "run")
+        self.assertNotIn("Bike", recommendation.workout)
+
+    def test_ankle_pain_with_tingling_does_not_auto_substitute_bike(self) -> None:
+        today = date(2026, 3, 23)
+        metric = _harness_metric("2026-03-23", 63, 7.5, 53, 8.8)
+        metrics = _harness_metrics_window(today, metric, baseline_rhr=53)
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback={
+                "physical_feeling": "normal",
+                "mental_feeling": "steady",
+                "notes": "ankle pain and tingling",
+                "has_pain": True,
+                "pain_severity": "moderate",
+                "pain_location": "ankle",
+                "pain_with_running": True,
+                "pain_with_walking": False,
+                "pain_with_cycling": False,
+            },
+            weekly_intent=_scenario_weekly_intent(today),
+            mode="conservative",
+        )
+
+        self.assertNotEqual(recommendation.primary_modality, "bike")
+        self.assertEqual(recommendation.daily_adaptation.get("plan_status"), "replaced")
+
+    def test_low_readiness_bike_substitution_stays_easy(self) -> None:
+        today = date(2026, 3, 23)
+        metric = _harness_metric("2026-03-23", 42, 5.7, 56, 13.2)
+        metrics = _harness_metrics_window(today, metric, baseline_rhr=53)
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback={
+                "physical_feeling": "heavy",
+                "mental_feeling": "steady",
+                "notes": "mild ankle pain when running",
+                "has_pain": True,
+                "pain_severity": "mild",
+                "pain_location": "ankle",
+                "pain_with_running": True,
+                "pain_with_walking": False,
+                "pain_with_cycling": False,
+            },
+            weekly_intent=_scenario_weekly_intent(today),
+            mode="conservative",
+        )
+
+        self.assertEqual(recommendation.primary_modality, "bike")
+        self.assertIn(recommendation.bike_zone, {"Zone 1-2", "Zone 2"})
+        self.assertNotEqual(recommendation.intensity, "moderate")
 
 
 def _harness_metric(day: str, recovery: int, sleep: float, resting_hr: int, strain: float) -> RecoveryMetrics:

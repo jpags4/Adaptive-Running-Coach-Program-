@@ -59,6 +59,7 @@ def _recommendation_explanation_payload(inputs: dict) -> dict:
     planned_workout = inputs["plannedWorkout"]
     adaptation = dict(recommendation.daily_adaptation or {})
     flags = dict(adaptation.get("flags") or {})
+    pain = dict(adaptation.get("pain") or {})
     run = dict(adaptation.get("run") or {})
     lift = dict(adaptation.get("lift") or {})
     return {
@@ -77,12 +78,16 @@ def _recommendation_explanation_payload(inputs: dict) -> dict:
             "readinessTier": str(adaptation.get("readiness_tier") or ""),
             "decision": str(adaptation.get("decision") or ""),
             "run": {
+                "modality": str(run.get("modality") or adaptation.get("primary_modality") or recommendation.primary_modality or "run"),
                 "shouldRun": bool(run.get("shouldRun")),
                 "label": str(run.get("label") or recommendation.workout or ""),
                 "miles": run.get("miles"),
                 "durationMin": run.get("durationMin"),
                 "paceRange": run.get("paceRange") or _parse_pace_text_range_value(recommendation.run_pace_guidance),
                 "intensity": str(run.get("intensity") or recommendation.intensity or ""),
+                "bikeZone": str(run.get("bikeZone") or recommendation.bike_zone or ""),
+                "bikeCadence": str(run.get("bikeCadence") or recommendation.bike_cadence or ""),
+                "notes": list(run.get("notes") or recommendation.endurance_notes or []),
             },
             "lift": {
                 "shouldLift": bool(lift.get("shouldLift")),
@@ -90,6 +95,7 @@ def _recommendation_explanation_payload(inputs: dict) -> dict:
                 "guidance": list(lift.get("guidance") or ([recommendation.lift_guidance] if recommendation.lift_guidance else [])),
             },
             "flags": flags,
+            "pain": pain,
             "metricSnapshot": _metric_snapshot(recommendation),
             "reasoning": {
                 "rationaleTags": list(adaptation.get("rationale_tags") or []),
@@ -124,13 +130,18 @@ def build_explanation_prompt(inputs: dict) -> dict[str, str]:
         f"- decision: {rec['decision']}\n\n"
         "Key metrics:\n"
         f"- metricSnapshot: {json.dumps(rec['metricSnapshot'])}\n\n"
+        "Pain check-in:\n"
+        f"- {json.dumps(rec['pain'])}\n\n"
         "Run:\n"
+        f"- modality: {rec['run']['modality']}\n"
         f"- shouldRun: {rec['run']['shouldRun']}\n"
         f"- label: {rec['run']['label']}\n"
         f"- miles: {rec['run']['miles']}\n"
         f"- durationMin: {rec['run']['durationMin']}\n"
         f"- paceRange: {json.dumps(rec['run']['paceRange'])}\n"
         f"- intensity: {rec['run']['intensity']}\n\n"
+        f"- bikeZone: {rec['run']['bikeZone']}\n"
+        f"- bikeCadence: {rec['run']['bikeCadence']}\n"
         "Lift:\n"
         f"- shouldLift: {rec['lift']['shouldLift']}\n"
         f"- label: {rec['lift']['label']}\n"
@@ -167,6 +178,7 @@ def build_explanation_prompt(inputs: dict) -> dict[str, str]:
 def _decision_drivers_text(payload: dict) -> str:
     rec = payload["recommendation"]
     flags = dict(rec["flags"] or {})
+    pain = dict(rec.get("pain") or {})
     metric_snapshot = dict(rec.get("metricSnapshot") or {})
     recovery = metric_snapshot.get("recovery")
     strain = metric_snapshot.get("strain")
@@ -174,10 +186,19 @@ def _decision_drivers_text(payload: dict) -> str:
     planned_label = str(payload["plannedWorkout"].get("label") or "the planned session").lower()
     final_label = str(rec.get("summaryLabel") or rec["run"].get("label") or "the final session").lower()
     lift_label = str(rec["lift"].get("label") or "").lower()
+    modality = str(rec["run"].get("modality") or "run").lower()
     low_risk_same_day = plan_status == "preserved" and final_label in {"easy run", "recovery run"} or "easy" in planned_label
 
     if flags.get("injuryOverride") or flags.get("forceRestOrCrossTrain"):
         return "Decision drivers: Pain or injury signals took priority over the plan, so training stress was removed for today."
+
+    if modality == "bike":
+        if plan_status == "replaced":
+            return "Decision drivers: Pain is present with running, but the day's training goal can still be supported with lower-impact aerobic work, so the recommendation shifts from running to biking."
+        return "Decision drivers: Pain changed the impact cost of running, so the day was moved to the bike to preserve aerobic work more safely."
+
+    if pain.get("hasPain") and pain.get("painWithRunning") and str(pain.get("painLocation") or "") in {"hip", "low_back", "hamstring", "quad", "other"}:
+        return "Decision drivers: Pain is present with running, and biking was not assumed to be the better substitute for this area, so recovery takes priority today."
 
     if plan_status == "replaced":
         if recovery is not None and recovery < 50:
@@ -213,6 +234,7 @@ def build_template_fallback_explanation(inputs: dict) -> dict:
     planned_label = str(payload["plannedWorkout"].get("label") or "").strip()
     final_label = str(rec.get("summaryLabel") or "").strip()
     readiness_tier = str(rec.get("readinessTier") or "").strip().lower()
+    modality = str(rec.get("run", {}).get("modality") or "run").strip().lower()
     rationale_tags = set(rec.get("reasoning", {}).get("rationaleTags") or [])
     recovery_influence = list(rec.get("reasoning", {}).get("recoveryInfluence") or [])
     preserved_caution = bool(
@@ -232,6 +254,22 @@ def build_template_fallback_explanation(inputs: dict) -> dict:
         caution_note = "Recent load and recovery signals both point toward keeping today lighter."
 
     decision_drivers = _decision_drivers_text(payload)
+
+    if modality == "bike":
+        summary = "Running is off the table today, but you can still get useful aerobic work in on the bike. Because the pain appears tied to impact and not general movement, a controlled spin is the better option."
+        if planned_label:
+            summary = f"{planned_label} gives way to the bike today. Because the pain appears tied to impact and not general movement, a controlled spin is the better option."
+        return {
+            "summary": summary,
+            "whyBullets": [
+                "The goal is to keep aerobic work without the impact of running.",
+                "The ride should stay smooth and controlled, not turn into a hard replacement workout.",
+            ],
+            "decisionDrivers": decision_drivers,
+            "cautionNote": "Keep the ride smooth and stop if the same area becomes painful on the bike.",
+            "encouragement": "Use the bike to keep momentum, not to force fitness.",
+            "source": "template_fallback",
+        }
 
     if plan_status == "preserved":
         if readiness_tier == "high" and not preserved_caution:
