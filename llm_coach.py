@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import date
 
 from coach import (
@@ -9,6 +10,7 @@ from coach import (
     Recommendation,
     RecoveryMetrics,
     Run,
+    _build_planned_workout_payload,
     adaptive_weekly_reference,
     average_easy_pace,
     build_pace_model,
@@ -20,11 +22,295 @@ from coach import (
     recent_mileage,
     _reschedule_guidance,
     _weekly_goal_phrase,
+    deterministic_recommendation,
 )
 
 
 def openai_enabled() -> bool:
     return bool(os.environ.get("OPENAI_API_KEY", "").strip())
+
+
+def _word_count(text: str) -> int:
+    return len([token for token in str(text or "").strip().split() if token])
+
+
+def _parse_pace_text_range_value(value: str) -> dict | None:
+    text = str(value or "").strip()
+    match = re.match(r"^(\d+:\d{2})-(\d+:\d{2})/mi$", text)
+    if not match:
+        return None
+    return {"min": match.group(1), "max": match.group(2)}
+
+
+def _recommendation_explanation_payload(inputs: dict) -> dict:
+    recommendation = inputs["recommendation"]
+    planned_workout = inputs["plannedWorkout"]
+    adaptation = dict(recommendation.daily_adaptation or {})
+    flags = dict(adaptation.get("flags") or {})
+    run = dict(adaptation.get("run") or {})
+    lift = dict(adaptation.get("lift") or {})
+    return {
+        "athleteName": inputs.get("athleteName"),
+        "plannedWorkout": {
+            "label": str(planned_workout.get("label") or ""),
+            "type": str(planned_workout.get("type") or ""),
+            "plannedMiles": planned_workout.get("plannedMiles"),
+            "plannedPaceRange": planned_workout.get("paceRange"),
+        },
+        "recommendation": {
+            "summaryLabel": str(adaptation.get("summary_label") or recommendation.workout or ""),
+            "planStatus": str(adaptation.get("plan_status") or "modified"),
+            "planStatusLabel": str(adaptation.get("plan_status_label") or "Adjusted"),
+            "readinessScore": int(adaptation.get("readiness_score") or 0),
+            "readinessTier": str(adaptation.get("readiness_tier") or ""),
+            "decision": str(adaptation.get("decision") or ""),
+            "run": {
+                "shouldRun": bool(run.get("shouldRun")),
+                "label": str(run.get("label") or recommendation.workout or ""),
+                "miles": run.get("miles"),
+                "durationMin": run.get("durationMin"),
+                "paceRange": run.get("paceRange") or _parse_pace_text_range_value(recommendation.run_pace_guidance),
+                "intensity": str(run.get("intensity") or recommendation.intensity or ""),
+            },
+            "lift": {
+                "shouldLift": bool(lift.get("shouldLift")),
+                "label": str(lift.get("label") or recommendation.lift_focus or ""),
+                "guidance": list(lift.get("guidance") or ([recommendation.lift_guidance] if recommendation.lift_guidance else [])),
+            },
+            "flags": flags,
+            "reasoning": {
+                "rationaleTags": list(adaptation.get("rationale_tags") or []),
+                "runLogic": list(recommendation.explanation_sections.get("run", "").split(". ")) if recommendation.explanation_sections.get("run") else [],
+                "recoveryInfluence": list(recommendation.warnings or []),
+                "planProtection": [recommendation.explanation_sections.get("recovery")] if recommendation.explanation_sections.get("recovery") else [],
+            },
+        },
+    }
+
+
+def build_explanation_prompt(inputs: dict) -> dict[str, str]:
+    payload = _recommendation_explanation_payload(inputs)
+    planned = payload["plannedWorkout"]
+    rec = payload["recommendation"]
+    system = (
+        "You are a concise running coach writing athlete-facing explanations for a training recommendation. "
+        "The recommendation is already final. Do not change the workout. Do not add medical advice. "
+        "Do not invent facts. Be concise, clear, and coach-like."
+    )
+    user = (
+        "Planned workout:\n"
+        f"- label: {planned['label']}\n"
+        f"- type: {planned['type']}\n"
+        f"- planned miles: {planned['plannedMiles']}\n"
+        f"- planned pace range: {json.dumps(planned['plannedPaceRange'])}\n\n"
+        "Final recommendation:\n"
+        f"- summary label: {rec['summaryLabel']}\n"
+        f"- plan status: {rec['planStatus']}\n"
+        f"- readiness score: {rec['readinessScore']}\n"
+        f"- readiness tier: {rec['readinessTier']}\n"
+        f"- decision: {rec['decision']}\n\n"
+        "Run:\n"
+        f"- shouldRun: {rec['run']['shouldRun']}\n"
+        f"- label: {rec['run']['label']}\n"
+        f"- miles: {rec['run']['miles']}\n"
+        f"- durationMin: {rec['run']['durationMin']}\n"
+        f"- paceRange: {json.dumps(rec['run']['paceRange'])}\n"
+        f"- intensity: {rec['run']['intensity']}\n\n"
+        "Lift:\n"
+        f"- shouldLift: {rec['lift']['shouldLift']}\n"
+        f"- label: {rec['lift']['label']}\n"
+        f"- guidance: {json.dumps(rec['lift']['guidance'])}\n\n"
+        "Reasoning tags:\n"
+        f"- {json.dumps(rec['reasoning']['rationaleTags'])}\n\n"
+        "Run logic:\n"
+        f"- {json.dumps(rec['reasoning']['runLogic'])}\n\n"
+        "Recovery influence:\n"
+        f"- {json.dumps(rec['reasoning']['recoveryInfluence'])}\n\n"
+        "Plan protection:\n"
+        f"- {json.dumps(rec['reasoning']['planProtection'])}\n\n"
+        "Write JSON with this schema only:\n"
+        "{\n"
+        '  "summary": "2-4 sentences max",\n'
+        '  "whyBullets": ["short bullet", "short bullet"],\n'
+        '  "cautionNote": "optional short note or null",\n'
+        '  "encouragement": "optional short line or null"\n'
+        "}\n\n"
+        "Rules:\n"
+        "- Do not change the prescription.\n"
+        "- Do not mention every metric.\n"
+        "- Mention only the most important reasons.\n"
+        "- Keep it under 120 words total.\n"
+        "- If the session is preserved, make that explicit.\n"
+        "- If the session is modified, explain the change plainly.\n"
+        "- If the session is replaced, explain that recovery takes priority today.\n"
+    )
+    return {"system": system, "user": user}
+
+
+def build_template_fallback_explanation(inputs: dict) -> dict:
+    payload = _recommendation_explanation_payload(inputs)
+    rec = payload["recommendation"]
+    flags = dict(rec["flags"] or {})
+    plan_status = str(rec["planStatus"] or "modified")
+    planned_label = str(payload["plannedWorkout"].get("label") or "").strip()
+    final_label = str(rec.get("summaryLabel") or "").strip()
+    caution_note = None
+    if flags.get("injuryOverride") or flags.get("forceRestOrCrossTrain"):
+        caution_note = "Back off today and reassess before returning to normal training."
+    elif plan_status != "preserved" and (flags.get("highStrainCaution") or flags.get("elevatedHrCaution")):
+        caution_note = "Recent load and recovery signals both point toward keeping today lighter."
+
+    if plan_status == "preserved":
+        summary = "Today is a good day to stay with the original session. Your readiness looks solid, and nothing in the current signals is asking us to back off."
+        if planned_label:
+            summary = f"Today is a good day to keep {planned_label.lower()} as planned. Your readiness looks solid, and nothing in the current signals is asking us to back off."
+        return {
+            "summary": summary,
+            "whyBullets": [
+                "The work is supported today.",
+                "No major caution flags are in the way.",
+            ],
+            "cautionNote": caution_note,
+            "encouragement": "Settle in early, then let the session come to you.",
+            "source": "template_fallback",
+        }
+    if plan_status == "replaced":
+        summary = "Today shifts away from the original session. Recovery is the better play here, and backing off now gives the rest of the week a better chance to land well."
+        if planned_label:
+            summary = f"{planned_label} is off the table today. Recovery is the better play here, and backing off now gives the rest of the week a better chance to land well."
+        return {
+            "summary": summary,
+            "whyBullets": [
+                "Current signals say to back off.",
+                "Less stress today sets up a better next session.",
+            ],
+            "cautionNote": caution_note,
+            "encouragement": "Take the reset and come back fresher.",
+            "source": "template_fallback",
+        }
+    summary = "We’re keeping the day on track, but with less stress than originally planned. You still get useful work in, just in a form that fits today better."
+    if planned_label and final_label and planned_label.lower() != final_label.lower():
+        summary = f"We’re moving away from {planned_label.lower()} and making this {final_label.lower()} instead. You still get useful work in, just in a form that fits today better."
+    elif planned_label:
+        summary = f"We’re keeping {planned_label.lower()} in place, but with less stress than originally planned. You still get useful work in, just in a form that fits today better."
+    return {
+        "summary": summary,
+        "whyBullets": [
+            "The structure stays in place.",
+            "The load comes down to match today.",
+        ],
+        "cautionNote": caution_note,
+        "encouragement": "Keep it controlled and let that be enough for today.",
+        "source": "template_fallback",
+    }
+
+
+def _validate_explanation_output(output: dict, inputs: dict) -> bool:
+    payload = _recommendation_explanation_payload(inputs)
+    rec = payload["recommendation"]
+    summary = str(output.get("summary") or "").strip()
+    if not summary or _word_count(summary) > 120:
+        return False
+
+    why_bullets = output.get("whyBullets")
+    if not isinstance(why_bullets, list) or len(why_bullets) > 3:
+        return False
+    cleaned_bullets = []
+    for bullet in why_bullets:
+        text = str(bullet or "").strip()
+        if not text or _word_count(text) > 18:
+            return False
+        cleaned_bullets.append(text)
+
+    caution_note = output.get("cautionNote")
+    if caution_note is not None and not isinstance(caution_note, str):
+        return False
+    encouragement = output.get("encouragement")
+    if encouragement is not None and not isinstance(encouragement, str):
+        return False
+
+    lowered_summary = summary.lower()
+    plan_status = str(rec["planStatus"] or "")
+    if plan_status == "preserved" and any(token in lowered_summary for token in ["adjusted", "replaced", "shifted", "eased", "lighter version"]):
+        return False
+    if plan_status == "modified" and not any(token in lowered_summary for token in ["adjust", "easier", "lighter", "reduced", "pull back", "shift"]):
+        return False
+    if plan_status == "replaced" and not any(token in lowered_summary for token in ["replaced", "recovery", "back off", "pull-back", "pull back"]):
+        return False
+
+    if not rec["run"]["shouldRun"] and any(token in lowered_summary for token in ["run today", "keep the run", "go run"]):
+        return False
+    lowered_encouragement = str(encouragement or "").lower()
+    if not rec["lift"]["shouldLift"] and any(token in lowered_encouragement for token in ["lift", "strength"]):
+        return False
+
+    flags = dict(rec["flags"] or {})
+    if flags.get("injuryOverride") or flags.get("forceRestOrCrossTrain"):
+        caution_text = str(caution_note or "").lower()
+        if caution_text and not any(token in caution_text for token in ["reassess", "recovery", "back off"]):
+            return False
+
+    output["whyBullets"] = cleaned_bullets
+    output["summary"] = summary
+    output["cautionNote"] = str(caution_note).strip() if isinstance(caution_note, str) and caution_note.strip() else None
+    output["encouragement"] = str(encouragement).strip() if isinstance(encouragement, str) and encouragement.strip() else None
+    return True
+
+
+def _request_explanation_json(prompt: dict[str, str]) -> dict:
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        raise RuntimeError("OpenAI SDK is not installed.") from exc
+
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "").strip())
+    response = client.responses.create(
+        model=os.environ.get("OPENAI_EXPLANATION_MODEL", "gpt-5-mini"),
+        temperature=0.2,
+        input=[
+            {"role": "system", "content": prompt["system"]},
+            {"role": "user", "content": prompt["user"]},
+        ],
+    )
+    parsed = _parse_response_json(response)
+    if not isinstance(parsed, dict):
+        raise ValueError("LLM explanation output was not a JSON object.")
+    return parsed
+
+
+def generate_recommendation_explanation(inputs: dict) -> dict:
+    fallback = build_template_fallback_explanation(inputs)
+    if not openai_enabled():
+        return fallback
+
+    prompt = build_explanation_prompt(inputs)
+    try:
+        output = _request_explanation_json(prompt)
+    except Exception:
+        return fallback
+
+    if not _validate_explanation_output(output, inputs):
+        return fallback
+
+    return {
+        "summary": output["summary"],
+        "whyBullets": list(output.get("whyBullets") or []),
+        "cautionNote": output.get("cautionNote"),
+        "encouragement": output.get("encouragement"),
+        "source": "llm",
+    }
+
+
+def buildExplanationPrompt(inputs: dict) -> dict[str, str]:
+    return build_explanation_prompt(inputs)
+
+
+def generateRecommendationExplanation(inputs: dict) -> dict:
+    return generate_recommendation_explanation(inputs)
+
+
+def buildTemplateFallbackExplanation(inputs: dict) -> dict:
+    return build_template_fallback_explanation(inputs)
 
 
 def _recent_runs_payload(runs: list[Run], limit: int = 10) -> list[dict]:
@@ -549,160 +835,31 @@ def llm_recommendation(
     subjective_feedback: dict | None = None,
     weekly_intent=None,
 ) -> tuple[Recommendation, dict]:
-    if not openai_enabled():
-        return _model_unavailable_recommendation(
-            profile,
-            runs,
-            metrics,
-            "OPENAI_API_KEY not set",
-            today=today,
-            weekly_intent=weekly_intent,
-        )
-
-    try:
-        from openai import OpenAI
-    except Exception:
-        return _model_unavailable_recommendation(
-            profile,
-            runs,
-            metrics,
-            "openai package not installed",
-            today=today,
-            weekly_intent=weekly_intent,
-        )
-
-    model = os.environ.get("OPENAI_MODEL", "gpt-5-mini").strip() or "gpt-5-mini"
-    client = OpenAI()
-
-    latest_metric = max(metrics, key=lambda item: item.day)
-    today_str = today.isoformat() if today else latest_metric.day
-    today_value = parse_date(today_str)
-    weekly_intent = weekly_intent or build_weekly_intent(profile, runs, metrics, today=today_value)
-    planned = planned_session_for_day(weekly_intent, profile, today_value)
-    pace_model = build_pace_model(profile, runs)
-    safety_context = _safety_and_progression_context(profile, runs, metrics, today_str, subjective_feedback)
-    context = {
-        "athlete_profile": {
-            "name": profile.name,
-            "goal_race_date": profile.goal_race_date,
-            "preferred_long_run_day": profile.preferred_long_run_day,
-            "adaptive_weekly_target": safety_context.get("adaptive_weekly_target"),
-        },
-        "recent_runs": _recent_runs_payload(runs),
-        "recent_recovery_metrics": _recent_metrics_payload(metrics),
-        "latest_run_summary": _latest_run_summary(runs),
-        "today": today_str,
-        "subjective_feedback": subjective_feedback or {},
-        "weekly_intent": weekly_intent.to_dict(),
-        "planned_session_today": planned,
-        "pace_model": pace_model.to_dict(),
-        "safety_and_progression_context": safety_context,
-        "coach_preferences": [
-            "The recommendation engine should rely on the language model as the source of reasoning rather than earlier hand-written coach logic.",
-            "Use a readiness -> load -> specifics reasoning flow: first decide how hard today should be, then account for recent accumulated strain, then shape the actual run and lift details.",
-            "Every recommendation should explain why the run distance is what it is, why the pace is what it is, why the lifting recommendation is what it is, and how recovery metrics changed the plan.",
-            "Leg durability is often a bigger limiter than cardio, especially on hilly terrain.",
-            "The athlete wants recommendations that feel individualized and grounded in recent activity, not rigid mileage templates.",
-            "Poor sleep, emotional stress, hills, and lingering soreness should meaningfully shape the recommendation.",
-            "When the athlete is ready for a bigger day, say so clearly instead of defaulting conservative.",
-            "Across a normal half marathon week, the athlete wants meaningful variance between easy runs, quality work, and a long run instead of nearly identical daily mileage.",
-            "Weekly structure should usually include at least two low-strain or rest days and no more than three lifting days unless the data strongly justifies otherwise.",
-            "Some days should be run-only days. Do not force a lift recommendation every day; when strength is not appropriate, say clearly that today is a lifting off-day.",
-            "If subjective feedback is provided, weight it meaningfully. Physical soreness, heavy legs, low motivation, or emotional stress should reduce risk and ambition even when biometric data looks decent.",
-            "Use explicit safety and progression rules, not only style preferences. The final system should be grounded in guardrails that prevent aggressive recommendations on poor-readiness days.",
-            "Start from the weekly plan. First decide what was planned for today, then decide whether readiness supports keeping it, scaling it down, or swapping it out while preserving the week's purpose.",
-            "When you adapt today's plan, explicitly preserve the weekly intent in the wording so the athlete understands what changed and what did not.",
-            "Use the pace model anchors instead of inventing one generic pace from a single easy-pace estimate.",
-        ],
-    }
-
-    developer_prompt = (
-        "You are the primary coaching engine for an adaptive running coach app. "
-        "You must produce the training recommendation yourself from the athlete data provided. "
-        "Do not imitate or defer to earlier rule-based logic. "
-        "Return a specific run plan, rough pace guidance, and lifting plan for today. "
-        "Reason carefully from recent training, recent pace history, WHOOP recovery metrics, sleep, strain, and likely leg durability. "
-        "The athlete often has more cardio fitness than leg durability, and hills create extra muscular load. "
-        "If subjective feedback is present, treat it as real signal rather than optional color. "
-        "Treat today's direct check-in as higher priority than older workout notes. "
-        "Recent check-ins from the last few days matter more than older workout notes, especially for deciding whether a skipped day should be absorbed rather than made up. "
-        "Historical workout notes are supporting context only and should not override a current fresh/normal and sharp/steady check-in unless they describe a clearly unresolved severe safety issue. "
-        "Follow the safety and progression context strictly. "
-        "Use explicit guardrails: poor readiness, sickness, sore legs, elevated resting heart rate, poor sleep, or stacked hard days must downshift the recommendation. "
-        "Progress mileage conservatively and avoid jumps that exceed recent training unless there is a compelling race-specific reason. "
-        "Recommendations should be concrete and personalized, not generic. "
-        "Explain the logic behind each major piece of the day in plain English. "
-        "Your explanation_sections object must separately explain: "
-        "overall why this day fits, why the run distance is set where it is, why the pace guidance is set where it is, "
-        "why the lifting recommendation is set where it is, and how recovery metrics changed the recommendation. "
-        "Treat the provided weekly_intent and planned_session_today as the starting plan for the day. "
-        "If readiness supports it, keep the plan. If readiness partly supports it, scale it down. If not, swap or rest while protecting the week's key purpose. "
-        "The explanation array should be a concise bullet-style version of those same ideas. "
-        "The recap should summarize the most relevant recent work and current readiness. "
-        "Keep the pace guidance rough and human-usable, not over-precise. "
-        "Return valid JSON matching the schema."
+    # Compatibility wrapper: the active daily recommendation path is now deterministic.
+    # Keep this function so the existing app/API call sites do not need to change all at once.
+    target_day = today or (parse_date(max(metrics, key=lambda item: item.day).day) if metrics else date.today())
+    weekly_intent = weekly_intent or build_weekly_intent(profile, runs, metrics, today=target_day)
+    recommendation = deterministic_recommendation(
+        profile,
+        runs,
+        metrics,
+        today=target_day,
+        subjective_feedback=subjective_feedback,
+        weekly_intent=weekly_intent,
+        mode="conservative",
     )
-
-    try:
-        response = client.responses.create(
-            model=model,
-            input=[
-                {"role": "developer", "content": developer_prompt},
-                {"role": "user", "content": json.dumps(context)},
-            ],
-            text={
-                "format": {
-                    "type": "json_schema",
-                    "name": "daily_training_recommendation",
-                    "schema": _recommendation_schema(),
-                    "strict": True,
-                }
-            },
-        )
-        payload = _parse_response_json(response)
-        recommendation = Recommendation(
-            date=today_str,
-            workout=payload["workout"],
-            intensity=payload["intensity"],
-            duration_minutes=int(payload["duration_minutes"]),
-            run_distance_miles=float(payload["run_distance_miles"]),
-            run_pace_guidance=payload["run_pace_guidance"],
-            lift_focus=payload["lift_focus"],
-            lift_guidance=payload["lift_guidance"],
-            recap=list(payload["recap"]),
-            explanation=list(payload["explanation"]),
-            explanation_sections=dict(payload["explanation_sections"]),
-            warnings=list(payload["warnings"]),
-            confidence=payload["confidence"],
-            planned_workout=str(planned["workout"]),
-            planned_run_distance_miles=float(planned["distance_miles"]),
-            planned_pace_guidance=str(planned["pace_guidance"]),
-            pace_model=pace_model.to_dict(),
-            weekly_intent=weekly_intent.to_dict(),
-        )
-        recommendation = _apply_guardrails(
-            recommendation,
-            profile,
-            runs,
-            metrics,
-            subjective_feedback=subjective_feedback,
-        )
-        recommendation = _finalize_daily_adaptation(
-            recommendation,
-            profile,
-            runs,
-            metrics,
-            planned,
-            weekly_intent,
-            subjective_feedback=subjective_feedback,
-        )
-        return recommendation, {"source": "openai", "model": model, "reason": None}
-    except Exception as exc:
-        return _model_unavailable_recommendation(
-            profile,
-            runs,
-            metrics,
-            f"OpenAI request failed: {exc}",
-            today=today,
-            weekly_intent=weekly_intent,
-        )
+    planned_workout = _build_planned_workout_payload(weekly_intent, profile, target_day)
+    explanation = generate_recommendation_explanation(
+        {
+            "recommendation": recommendation,
+            "plannedWorkout": planned_workout,
+            "athleteName": profile.name,
+        }
+    )
+    return recommendation, {
+        "source": "deterministic",
+        "model": None,
+        "reason": None,
+        "recommendation_explanation": explanation,
+        "explanation_source": explanation["source"],
+    }

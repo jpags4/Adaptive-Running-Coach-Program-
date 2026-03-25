@@ -888,11 +888,9 @@ function TodayActivityModal({ isOpen, onClose, currentDayStatus, recommendation,
 
 function TrainingCard({
   recommendation,
+  recommendationExplanation,
   today,
   onUpdateCheckIn,
-  recommendationOptions = [],
-  selectedRecommendationKey,
-  onSelectRecommendationOption,
   theme = 'light',
 }) {
   if (!recommendation) return null
@@ -904,7 +902,6 @@ function TrainingCard({
   const liftBlocks = isLiftOffDay ? [] : formatLiftBlocks(recommendation.lift_guidance)
   const intensityLabel = simplifyIntensity(recommendation.intensity)
   const intensityClass = intensityColorClass(intensityLabel)
-  const hasOptions = Array.isArray(recommendationOptions) && recommendationOptions.length > 0
 
   return (
     <section className={`mx-auto max-w-[90rem] rounded-[2rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
@@ -1024,30 +1021,38 @@ function TrainingCard({
         </div>
       </div>
 
-      {hasOptions ? (
-        <div className="mt-6 flex justify-start">
-          <div className={`inline-flex w-fit flex-wrap gap-2 rounded-[1.2rem] border p-2 ${
-            isDark ? 'border-neutral-800 bg-neutral-950/80' : 'border-neutral-200 bg-white/80'
-          }`}>
-            {recommendationOptions.map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => onSelectRecommendationOption?.(option.key)}
-                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-                  selectedRecommendationKey === option.key
-                    ? isDark
-                      ? 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.22)]'
-                      : 'bg-violet-600 text-white shadow-[0_8px_24px_rgba(109,40,217,0.18)]'
-                    : isDark
-                      ? 'bg-transparent text-neutral-300 hover:text-white'
-                      : 'bg-transparent text-neutral-600 hover:text-neutral-950'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+      {recommendationExplanation?.summary ? (
+        <div className={`mt-6 rounded-[1.75rem] border p-5 ${
+          isDark ? 'border-sky-900/40 bg-sky-950/35' : 'border-sky-200 bg-sky-50/80'
+        }`}>
+          <p className={`text-lg leading-8 ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
+            {recommendationExplanation.summary}
+          </p>
+
+          {Array.isArray(recommendationExplanation.whyBullets) && recommendationExplanation.whyBullets.length > 0 ? (
+            <ul className={`mt-4 space-y-2 text-sm leading-7 ${isDark ? 'text-sky-100/90' : 'text-sky-950'}`}>
+              {recommendationExplanation.whyBullets.map((bullet, index) => (
+                <li key={`${bullet}-${index}`} className="flex gap-3">
+                  <span className={`mt-2 inline-block h-1.5 w-1.5 rounded-full ${isDark ? 'bg-sky-300' : 'bg-sky-700'}`} />
+                  <span>{bullet}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {recommendationExplanation.cautionNote ? (
+            <p className={`mt-4 rounded-2xl border px-4 py-3 text-sm leading-7 ${
+              isDark ? 'border-amber-900/50 bg-amber-950/35 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'
+            }`}>
+              {recommendationExplanation.cautionNote}
+            </p>
+          ) : null}
+
+          {recommendationExplanation.encouragement ? (
+            <p className={`mt-4 text-sm font-medium ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+              {recommendationExplanation.encouragement}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -1416,10 +1421,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
 
         <details className={`group mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
           <summary className="list-none cursor-pointer">
-            <div className="flex items-center justify-between gap-4">
-              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Week Details
-              </p>
+            <div className="flex items-center justify-end gap-4">
               <span className={`text-2xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
             </div>
           </summary>
@@ -2410,8 +2412,6 @@ export default function App() {
   })
   const [summaryData, setSummaryData] = useState(null)
   const [recommendationData, setRecommendationData] = useState(null)
-  const [recommendationOptions, setRecommendationOptions] = useState([])
-  const [selectedRecommendationKey, setSelectedRecommendationKey] = useState('conservative')
   const [error, setError] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [physicalFeeling, setPhysicalFeeling] = useState('normal')
@@ -2546,14 +2546,8 @@ export default function App() {
 
       const payload = await response.json()
       setSummaryData(payload)
-      setRecommendationOptions(Array.isArray(payload.recommendation_options) ? payload.recommendation_options : [])
-      setSelectedRecommendationKey(payload.recommended_option_key || 'conservative')
       setProfileSettings(payload.profile_settings ?? null)
-      const initialRecommendation =
-        (payload.recommendation_options || []).find((option) => option.key === (payload.recommended_option_key || 'conservative'))?.recommendation
-        ?? payload.recommendation
-        ?? null
-      setRecommendationData(initialRecommendation)
+      setRecommendationData(payload.recommendation ?? null)
     } catch (err) {
       setError(err.message || 'Unknown error')
     } finally {
@@ -2601,13 +2595,6 @@ export default function App() {
   const adaptiveWeeklyTarget = Number(summaryData.weekly_focus?.mileage_target || 0)
   const recoveryAccent = whoopRecoveryColor(summary.latest_recovery)
   const loadAccent = loadColor(summary.recent_mileage, adaptiveWeeklyTarget)
-  const handleSelectRecommendationOption = (key) => {
-    setSelectedRecommendationKey(key)
-    const option = recommendationOptions.find((item) => item.key === key)
-    if (option?.recommendation) {
-      setRecommendationData(option.recommendation)
-    }
-  }
 
   const handleProfileFieldChange = (field, value) => {
     setProfileSettings((current) => ({ ...(current ?? {}), [field]: value }))
@@ -2669,11 +2656,9 @@ export default function App() {
           <div className="mt-2">
             <TrainingCard
               recommendation={recommendationData}
+              recommendationExplanation={summaryData.recommendation_explanation}
               today={summaryData.today}
               onUpdateCheckIn={() => setIsCheckInModalOpen(true)}
-              recommendationOptions={recommendationOptions}
-              selectedRecommendationKey={selectedRecommendationKey}
-              onSelectRecommendationOption={handleSelectRecommendationOption}
               theme={theme}
             />
           </div>

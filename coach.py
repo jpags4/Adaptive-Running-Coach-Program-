@@ -745,6 +745,734 @@ def planned_session_for_day(weekly_intent: WeeklyIntent, profile: AthleteProfile
     )
 
 
+def _copy_pace_range(pace_range: dict | None) -> dict | None:
+    if not pace_range:
+        return None
+    return {"min": str(pace_range.get("min") or ""), "max": str(pace_range.get("max") or "")}
+
+
+def _parse_pace_text_range(text: str) -> dict | None:
+    match = re.search(r"(\d+:\d{2})-(\d+:\d{2})/mi", str(text or "").strip())
+    if not match:
+        return None
+    return {"min": match.group(1), "max": match.group(2)}
+
+
+def _seconds_from_pace_text(value: str) -> int | None:
+    match = re.match(r"^(\d+):(\d{2})$", str(value or "").strip())
+    if not match:
+        return None
+    return int(match.group(1)) * 60 + int(match.group(2))
+
+
+def _pace_text_from_seconds(seconds: int) -> str:
+    minutes = seconds // 60
+    remainder = seconds % 60
+    return f"{minutes}:{remainder:02d}"
+
+
+def _pace_range_to_text(pace_range: dict | None, intensity: str, should_run: bool) -> str:
+    if not should_run:
+        return "Rest day"
+    if not pace_range or not pace_range.get("min") or not pace_range.get("max"):
+        return "By feel / recovery effort"
+    return f"{pace_range['min']}-{pace_range['max']}/mi"
+
+
+def _planned_workout_type(planned: dict[str, str | float]) -> str:
+    workout = str(planned.get("workout") or "").strip().lower()
+    intensity = str(planned.get("intensity") or "").strip().lower()
+    if "rest" in workout:
+        return "rest"
+    if "long run" in workout:
+        return "long_run"
+    if "threshold" in workout or "tempo" in workout:
+        return "tempo"
+    if "interval" in workout:
+        return "intervals"
+    if "race" in workout:
+        return "race_pace"
+    if "cross" in workout:
+        return "cross_train"
+    if "strength" in workout and float(planned.get("distance_miles") or 0.0) <= 0:
+        return "strength_only"
+    if intensity == "rest":
+        return "rest"
+    return "easy_run"
+
+
+def _build_planned_workout_payload(weekly_intent: WeeklyIntent, profile: AthleteProfile, today: date) -> dict:
+    planned = planned_session_for_day(weekly_intent, profile, today)
+    workout_type = _planned_workout_type(planned)
+    pace_range = _parse_pace_text_range(str(planned.get("pace_guidance") or ""))
+    easy_pace_range = _parse_pace_text_range(str(weekly_intent.pace_model.get("easy", {}).get("pace_range") or ""))
+    return {
+        "type": workout_type,
+        "plannedMiles": float(planned.get("distance_miles") or 0.0) or None,
+        "plannedDurationMin": int(round(float(planned.get("distance_miles") or 0.0) * 10.2)) if float(planned.get("distance_miles") or 0.0) > 0 else None,
+        "plannedPaceMinPerMile": None,
+        "paceRange": pace_range,
+        "easyPaceRange": easy_pace_range,
+        "label": str(planned.get("workout") or ""),
+        "isKeySession": workout_type in {"tempo", "intervals", "race_pace"},
+        "plannedTextPace": str(planned.get("pace_guidance") or ""),
+    }
+
+
+def get_recovery_contribution(recovery_score: int | None) -> tuple[int, str]:
+    if recovery_score is None:
+        return 0, "Recovery score is unavailable."
+    if recovery_score >= 80:
+        return 18, "Recovery score is strong."
+    if recovery_score >= 67:
+        return 12, "Recovery score is moderate."
+    if recovery_score >= 50:
+        return 4, "Recovery score is moderate."
+    if recovery_score >= 35:
+        return -10, "Recovery score is below the downshift threshold."
+    return -18, "Recovery score is very low."
+
+
+def get_sleep_contribution(sleep_hours: float | None) -> tuple[int, str]:
+    if sleep_hours is None:
+        return 0, "Sleep duration is unavailable."
+    if sleep_hours >= 8.0:
+        return 10, "Sleep duration supports training."
+    if sleep_hours >= 7.0:
+        return 6, "Sleep duration supports training."
+    if sleep_hours >= 6.0:
+        return 0, "Sleep was adequate but not optimal."
+    if sleep_hours >= 5.0:
+        return -8, "Sleep was limited."
+    return -14, "Sleep was very low."
+
+
+def get_resting_hr_contribution(resting_hr: int | None, baseline_resting_hr: float | None) -> tuple[int, str, bool]:
+    if resting_hr is None or baseline_resting_hr is None:
+        return 0, "Resting heart rate baseline is unavailable.", False
+    delta = resting_hr - baseline_resting_hr
+    if delta <= 1:
+        return 4, "Resting heart rate is near baseline.", False
+    if delta <= 3:
+        return 0, "Resting heart rate is slightly elevated.", False
+    if delta <= 5:
+        return -6, "Resting heart rate is meaningfully elevated.", True
+    return -12, "Resting heart rate is meaningfully elevated.", True
+
+
+def get_strain_contribution(yesterday_strain: float | None) -> tuple[int, str, bool]:
+    if yesterday_strain is None:
+        return 0, "Yesterday's strain is unavailable.", False
+    if yesterday_strain < 8:
+        return 4, "Recent strain was light.", False
+    if yesterday_strain < 12:
+        return 0, "Recent strain was manageable.", False
+    if yesterday_strain < 16:
+        return -6, "Yesterday's load was elevated.", True
+    return -12, "Yesterday's load was very high.", True
+
+
+def get_legs_contribution(legs_feel: str) -> tuple[int, str]:
+    text = str(legs_feel or "").strip().lower()
+    if text == "fresh":
+        return 10, "Legs feel fresh."
+    if text == "normal":
+        return 3, "Legs feel normal."
+    if text == "heavy":
+        return -8, "Legs feel heavy."
+    if text == "sore":
+        return -14, "Legs are sore."
+    if text == "injured":
+        return -35, "Leg check-in indicates possible injury."
+    return 0, "Leg check-in was unavailable."
+
+
+def get_mental_contribution(mental_state: str) -> tuple[int, str, bool]:
+    text = str(mental_state or "").strip().lower()
+    if text == "sharp":
+        return 6, "Mental state supports training.", False
+    if text == "steady":
+        return 2, "Mental state is steady.", False
+    if text == "stressed":
+        return -6, "Stress may reduce training quality.", True
+    if text == "drained":
+        return -12, "Mental fatigue is high.", True
+    return 0, "Mental state is unavailable.", False
+
+
+def get_notes_contribution(notes: str | None) -> tuple[int, str, bool]:
+    normalized = str(notes or "").strip().lower()
+    if not normalized:
+        return 0, "", False
+    override_terms = [
+        "sharp pain",
+        "limping",
+        "can't walk",
+        "cannot walk",
+        "injury",
+        "injured",
+        "swollen",
+        "swelling",
+        "numb",
+        "tingling",
+        "dizzy",
+        "chest pain",
+    ]
+    negative_terms = ["tight", "tightness", "ache", "aching", "pain", "sore", "fatigue", "tired", "heavy"]
+    positive_terms = ["felt good", "good energy", "springy", "fresh"]
+    if any(term in normalized for term in override_terms):
+        return -30, "Notes include an injury or acute symptom warning.", True
+    if any(term in normalized for term in negative_terms):
+        return -8, "Notes mention soreness, pain, or fatigue.", False
+    if any(term in normalized for term in positive_terms):
+        return 4, "Notes describe good energy or freshness.", False
+    return 0, "Notes did not add a readiness signal.", False
+
+
+def calculate_readiness_result(
+    metrics: RecoveryMetrics,
+    baseline_resting_hr: float | None,
+    subjective_feedback: dict | None,
+) -> dict:
+    feedback = subjective_feedback or {}
+    recovery_score, recovery_reason = get_recovery_contribution(metrics.recovery_score)
+    sleep_score, sleep_reason = get_sleep_contribution(metrics.sleep_hours)
+    resting_hr_score, resting_hr_reason, elevated_hr_caution = get_resting_hr_contribution(metrics.resting_hr, baseline_resting_hr)
+    strain_score, strain_reason, high_strain_caution = get_strain_contribution(metrics.strain)
+    legs_score, legs_reason = get_legs_contribution(str(feedback.get("physical_feeling") or ""))
+    mental_score, mental_reason, mental_downshift = get_mental_contribution(str(feedback.get("mental_feeling") or ""))
+    notes_score, notes_reason, notes_override = get_notes_contribution(str(feedback.get("notes") or ""))
+
+    flags = {
+        "reduceIntensity": False,
+        "reduceVolume": False,
+        "avoidSpeedWork": False,
+        "avoidHeavyLifting": False,
+        "forceRestOrCrossTrain": False,
+        "injuryOverride": False,
+        "mentalDownshift": mental_downshift,
+        "highStrainCaution": high_strain_caution,
+        "elevatedHrCaution": elevated_hr_caution,
+    }
+    reasons = [reason for reason in [recovery_reason, sleep_reason, resting_hr_reason, strain_reason, legs_reason, mental_reason, notes_reason] if reason]
+    score = 50 + recovery_score + sleep_score + resting_hr_score + strain_score + legs_score + mental_score + notes_score
+
+    legs_feel = str(feedback.get("physical_feeling") or "").strip().lower()
+    mental_state = str(feedback.get("mental_feeling") or "").strip().lower()
+    if metrics.recovery_score < 50 and metrics.strain >= 12:
+        score -= 8
+        flags["reduceIntensity"] = True
+        flags["avoidSpeedWork"] = True
+        if legs_feel in {"heavy", "sore"}:
+            flags["reduceVolume"] = True
+        reasons.append("Low recovery combined with elevated recent strain increases caution.")
+    if legs_feel in {"heavy", "sore"} and mental_state == "drained":
+        score -= 6
+        flags["reduceIntensity"] = True
+        flags["reduceVolume"] = True
+        reasons.append("Heavy or sore legs combined with mental fatigue call for a stronger downshift.")
+    if metrics.sleep_hours < 5.5 and metrics.recovery_score < 50:
+        score -= 6
+        flags["reduceIntensity"] = True
+        flags["avoidHeavyLifting"] = True
+        reasons.append("Very low sleep combined with low recovery reduces training capacity.")
+
+    injury_triggered = legs_feel == "injured" or notes_override
+    score = max(0, min(100, score))
+    if injury_triggered:
+        flags["forceRestOrCrossTrain"] = True
+        flags["reduceIntensity"] = True
+        flags["reduceVolume"] = True
+        flags["avoidSpeedWork"] = True
+        flags["avoidHeavyLifting"] = True
+        flags["injuryOverride"] = True
+        reasons.append("Injury-related input overrides favorable readiness signals.")
+        score = min(score, 20)
+
+    tier = "high" if score >= 70 else "moderate" if score >= 45 else "low"
+    if tier == "low":
+        flags["reduceIntensity"] = True
+        flags["avoidSpeedWork"] = True
+        flags["avoidHeavyLifting"] = True
+    if score < 40:
+        flags["reduceVolume"] = True
+    if legs_feel == "sore":
+        flags["avoidSpeedWork"] = True
+    if metrics.strain >= 16:
+        flags["avoidHeavyLifting"] = True
+    if mental_state == "drained":
+        flags["reduceIntensity"] = True
+    if flags["injuryOverride"]:
+        tier = "low"
+
+    decision = "push" if tier == "high" else "maintain" if tier == "moderate" else "pull_back"
+    if flags["injuryOverride"]:
+        decision = "pull_back"
+    elif flags["reduceIntensity"] and tier == "high":
+        decision = "maintain"
+    elif flags["reduceVolume"] and tier == "moderate":
+        decision = "pull_back"
+
+    return {
+        "score": score,
+        "tier": tier,
+        "decision": decision,
+        "flags": flags,
+        "reasons": reasons,
+        "componentScores": {
+            "recovery": recovery_score,
+            "sleep": sleep_score,
+            "restingHr": resting_hr_score,
+            "strain": strain_score,
+            "legs": legs_score,
+            "mental": mental_score,
+            "notes": notes_score,
+        },
+    }
+
+
+def _map_lift_label(action: str) -> str:
+    return {
+        "lift_as_planned": "Strength as planned",
+        "lift_light": "Light strength",
+        "core_only": "Core only",
+        "mobility_only": "Mobility only",
+        "no_lift": "No lifting",
+    }.get(action, "No lifting")
+
+
+def _build_deterministic_context(
+    profile: AthleteProfile,
+    runs: list[Run],
+    metrics: list[RecoveryMetrics],
+    today: date,
+    subjective_feedback: dict | None,
+    weekly_intent: WeeklyIntent,
+) -> dict:
+    feedback = subjective_feedback or {}
+    strength_completed = int(feedback.get("weekly_strength_sessions_completed") or 0)
+    return {
+        "weeklyMilesCompleted": recent_mileage(runs, days=7),
+        "weeklyMilesTarget": weekly_intent.mileage_target,
+        "daysSinceLastRest": None,
+        "completedHardSessionsThisWeek": sum(1 for run in runs if parse_date(run.day) >= today - timedelta(days=today.weekday()) and run.effort in {"hard", "very hard"}),
+        "completedStrengthSessionsThisWeek": strength_completed,
+        "targetStrengthSessionsPerWeek": profile.desired_strength_frequency,
+        "nextKeyWorkoutInDays": 1 if today.weekday() in {0, 1, 2, 3} else None,
+        "hasRaceWithinDays": days_until_race(profile.goal_race_date, today) if profile.goal_race_date else None,
+    }
+
+
+def _adjust_volume(base: float | None, percent: int) -> float | None:
+    if base is None:
+        return None
+    return round(base * (1 + percent / 100.0), 1)
+
+
+def _adjusted_pace_range(planned_workout: dict, target_intensity: str) -> dict | None:
+    if target_intensity == "rest":
+        return None
+    if target_intensity in {"easy", "very_easy"} and planned_workout.get("easyPaceRange"):
+        return _copy_pace_range(planned_workout.get("easyPaceRange"))
+    current = planned_workout.get("paceRange")
+    if not current:
+        return None
+    if target_intensity in {"hard", "moderate"}:
+        return _copy_pace_range(current)
+    low_seconds = _seconds_from_pace_text(str(current.get("min") or ""))
+    high_seconds = _seconds_from_pace_text(str(current.get("max") or ""))
+    if low_seconds is None or high_seconds is None:
+        return None
+    shift = 45 if target_intensity == "easy" else 75
+    return {"min": _pace_text_from_seconds(low_seconds + shift), "max": _pace_text_from_seconds(high_seconds + shift)}
+
+
+def _baseline_run_recommendation(planned_workout: dict) -> dict:
+    workout_type = str(planned_workout.get("type") or "")
+    miles = planned_workout.get("plannedMiles")
+    duration = planned_workout.get("plannedDurationMin")
+    if workout_type == "rest":
+        return {"action": "rest", "label": "Rest Day", "miles": None, "durationMin": None, "paceRange": None, "intensity": "rest", "shouldRun": False}
+    if workout_type == "long_run":
+        return {"action": "run_as_planned", "label": "Long Run", "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange") or planned_workout.get("easyPaceRange")), "intensity": "easy", "shouldRun": True}
+    if workout_type in {"tempo", "intervals", "race_pace"}:
+        return {"action": "run_as_planned", "label": str(planned_workout.get("label") or "Quality Run"), "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange")), "intensity": "hard", "shouldRun": True}
+    if workout_type == "cross_train":
+        return {"action": "replace_with_walk_or_cross_train", "label": "Cross-Train", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+    if workout_type == "strength_only":
+        return {"action": "rest", "label": "No Run Scheduled", "miles": None, "durationMin": None, "paceRange": None, "intensity": "rest", "shouldRun": False}
+    return {"action": "run_as_planned", "label": "Easy Run", "miles": miles, "durationMin": duration, "paceRange": _copy_pace_range(planned_workout.get("paceRange") or planned_workout.get("easyPaceRange")), "intensity": "easy", "shouldRun": True}
+
+
+def _same_numeric_value(left: float | int | None, right: float | int | None) -> bool:
+    if left is None or right is None:
+        return left is None and right is None
+    return abs(float(left) - float(right)) < 0.05
+
+
+def _same_pace_range(left: dict | None, right: dict | None) -> bool:
+    if left is None or right is None:
+        return left is None and right is None
+    return str(left.get("min") or "") == str(right.get("min") or "") and str(left.get("max") or "") == str(right.get("max") or "")
+
+
+def _plan_status_label(status: str) -> str:
+    if status == "preserved":
+        return "As Planned"
+    if status == "modified":
+        return "Adjusted"
+    return "Changed"
+
+
+def _plan_status(planned_workout: dict, baseline_run: dict, final_run: dict, lift: dict) -> str:
+    workout_type = str(planned_workout.get("type") or "")
+
+    if workout_type == "strength_only":
+        if lift.get("action") == "lift_as_planned":
+            return "preserved"
+        if lift.get("action") == "no_lift":
+            return "replaced"
+        return "modified"
+
+    if workout_type == "rest":
+        return "preserved" if final_run.get("action") == "rest" and not final_run.get("shouldRun") and not lift.get("shouldLift") else "replaced"
+
+    if workout_type == "cross_train":
+        if final_run.get("action") == "replace_with_walk_or_cross_train" and not final_run.get("shouldRun"):
+            return "preserved" if _same_numeric_value(final_run.get("durationMin"), baseline_run.get("durationMin")) else "modified"
+        return "replaced"
+
+    if not final_run.get("shouldRun") or final_run.get("action") in {"replace_with_walk_or_cross_train", "rest"}:
+        return "replaced"
+
+    preserved = (
+        str(final_run.get("action") or "") == str(baseline_run.get("action") or "")
+        and str(final_run.get("label") or "") == str(baseline_run.get("label") or "")
+        and str(final_run.get("intensity") or "") == str(baseline_run.get("intensity") or "")
+        and bool(final_run.get("shouldRun")) == bool(baseline_run.get("shouldRun"))
+        and _same_numeric_value(final_run.get("miles"), baseline_run.get("miles"))
+        and _same_numeric_value(final_run.get("durationMin"), baseline_run.get("durationMin"))
+        and _same_pace_range(final_run.get("paceRange"), baseline_run.get("paceRange"))
+    )
+    return "preserved" if preserved else "modified"
+
+
+def _deterministic_daily_map(readiness: dict, planned_workout: dict, context: dict, mode: str) -> dict:
+    baseline_run = _baseline_run_recommendation(planned_workout)
+    run = dict(baseline_run)
+    run_logic: list[str] = []
+    lift_logic: list[str] = []
+    plan_protection: list[str] = []
+    tags: set[str] = set()
+    flags = readiness["flags"]
+    planned_miles = float(planned_workout["plannedMiles"]) if planned_workout.get("plannedMiles") is not None else None
+    force_no_speed = bool(flags["avoidSpeedWork"] or (flags["highStrainCaution"] and flags["elevatedHrCaution"]))
+
+    if flags["injuryOverride"] or flags["forceRestOrCrossTrain"]:
+        run = {"action": "replace_with_walk_or_cross_train", "label": "Recovery / Cross-Train", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+        run_logic.append("Safety flags override the planned session and remove training stress.")
+        tags.update({"injury_override", "replace_with_cross_train"})
+    elif readiness["decision"] == "maintain":
+        if planned_workout["type"] in {"tempo", "intervals", "race_pace"} and (force_no_speed or flags["reduceIntensity"]):
+            run.update({"action": "run_easy", "label": "Easy Run", "intensity": "easy", "shouldRun": True})
+            run_logic.append("Preserved movement but removed workout intensity.")
+            tags.add("downshift_intensity")
+        elif planned_workout["type"] == "easy_run" and flags["reduceIntensity"]:
+            run.update({"action": "replace_with_recovery_run", "label": "Recovery Run", "intensity": "very_easy"})
+            run_logic.append("Lowered the easy run to recovery effort because readiness is not fully supportive.")
+            tags.add("downshift_intensity")
+        elif planned_workout["type"] == "long_run" and (flags["reduceIntensity"] or flags["reduceVolume"] or flags["highStrainCaution"]):
+            run.update({"action": "shorten_run", "label": "Easy Long Run", "intensity": "easy"})
+            run_logic.append("Kept the aerobic structure but trimmed the long run stress.")
+            tags.add("reduce_volume")
+    elif readiness["decision"] == "pull_back":
+        if planned_workout["type"] in {"tempo", "intervals", "race_pace"}:
+            if sum(1 for item in [flags["highStrainCaution"], flags["elevatedHrCaution"], flags["mentalDownshift"]] if item) >= 2:
+                run = {"action": "replace_with_walk_or_cross_train", "label": "Pull Back Day", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+                run_logic.append("Removed quality work entirely because low readiness and caution flags make it too costly.")
+            else:
+                run.update({"action": "replace_with_recovery_run", "label": "Easy Run" if mode == "aggressive" else "Recovery Run", "intensity": "easy" if mode == "aggressive" else "very_easy", "shouldRun": True})
+                run_logic.append("Replaced the quality session with low-stress aerobic work.")
+            tags.update({"replace_quality_session", "downshift_intensity"})
+        elif planned_workout["type"] == "long_run":
+            run.update({"action": "shorten_run", "label": "Easy Run", "intensity": "easy", "shouldRun": True})
+            run_logic.append("Low readiness removes the full long-run load and keeps only manageable aerobic work.")
+            tags.add("reduce_volume")
+        elif planned_workout["type"] == "easy_run":
+            if sum(1 for item in [flags["highStrainCaution"], flags["elevatedHrCaution"], flags["mentalDownshift"]] if item) >= 2:
+                run = {"action": "replace_with_walk_or_cross_train", "label": "Pull Back Day", "miles": None, "durationMin": 20, "paceRange": None, "intensity": "very_easy", "shouldRun": False}
+                run_logic.append("The easy run was removed because multiple caution flags suggest recovery is the better use of today.")
+                tags.add("pull_back_day")
+            else:
+                run.update({"action": "replace_with_recovery_run", "label": "Recovery Run", "intensity": "easy" if mode == "aggressive" else "very_easy", "shouldRun": True})
+                run_logic.append("The easy run stays in place but shifts toward recovery work.")
+                tags.add("downshift_intensity")
+
+    percent = 0
+    if run["shouldRun"]:
+        if readiness["decision"] == "maintain" and flags["reduceVolume"]:
+            percent = -10 if mode == "aggressive" else -15
+        elif readiness["decision"] == "maintain" and planned_workout["type"] == "long_run" and flags["highStrainCaution"]:
+            percent = -10
+        elif readiness["decision"] == "maintain" and planned_workout["type"] == "long_run":
+            percent = 0
+        elif readiness["decision"] == "pull_back" and planned_workout["type"] == "long_run":
+            percent = -20 if mode == "aggressive" else -30
+        elif readiness["decision"] == "pull_back" and flags["reduceVolume"]:
+            percent = -22 if mode == "aggressive" else -32
+        elif readiness["decision"] == "push" and mode == "aggressive" and planned_workout["type"] in {"easy_run", "long_run"} and not flags["highStrainCaution"] and not flags["elevatedHrCaution"]:
+            percent = 5 if planned_workout["type"] == "long_run" else 8
+        if planned_miles is not None:
+            adjusted_miles = _adjust_volume(planned_miles, percent)
+            run["miles"] = round(float(adjusted_miles), 1) if adjusted_miles is not None else None
+        else:
+            run["miles"] = None
+        if planned_workout["type"] == "long_run" and planned_miles is not None and run["miles"] is not None and not (flags["injuryOverride"] or flags["forceRestOrCrossTrain"]):
+            run["miles"] = round(max(float(run["miles"]), round(float(planned_miles) * 0.5, 1)), 1)
+        if percent < 0:
+            run_logic.append("Reduced volume to match current recovery capacity.")
+            tags.add("reduce_volume")
+        elif percent > 0:
+            run_logic.append("Added a small amount of volume because readiness is high and the planned day is low risk.")
+            tags.add("preserve_planned_volume")
+        if run["durationMin"] is None and run["miles"] is not None:
+            minutes_per_mile = 10.5 if run["intensity"] == "easy" else 11.5 if run["intensity"] == "very_easy" else 9.5 if run["intensity"] == "moderate" else 8.5
+            run["durationMin"] = max(20, int(round(float(run["miles"]) * minutes_per_mile)))
+        elif run["durationMin"] is None and run["miles"] is None:
+            run["durationMin"] = 25 if run["shouldRun"] else 20
+        elif run["durationMin"] is not None and percent != 0:
+            run["durationMin"] = max(20, int(round(int(run["durationMin"]) * (100 + percent) / 100)))
+    else:
+        run["durationMin"] = run["durationMin"] or 20
+
+    if context.get("nextKeyWorkoutInDays") is not None and int(context["nextKeyWorkoutInDays"]) <= 2 and (readiness["decision"] != "push" or flags["highStrainCaution"] or flags["elevatedHrCaution"]):
+        plan_protection.append("Kept today lighter to protect the next key workout.")
+        tags.add("protect_key_session")
+    if planned_workout.get("isKeySession") and readiness["decision"] != "push":
+        plan_protection.append("Protected the rest of the week by removing pressure from today's key session.")
+        tags.add("protect_week_structure")
+
+    if run["shouldRun"] and planned_workout["type"] in {"tempo", "intervals", "race_pace"} and force_no_speed and run["intensity"] == "hard":
+        run.update({"action": "run_easy", "label": "Easy Run", "intensity": "easy"})
+        run_logic.append("Stacked caution signals removed speed work even though the day was otherwise maintainable.")
+        tags.add("downshift_intensity")
+
+    run["paceRange"] = _adjusted_pace_range(planned_workout, str(run["intensity"])) if run["shouldRun"] else None
+    baseline_intensity = _baseline_run_recommendation(planned_workout)["intensity"]
+    if run["shouldRun"] and run["intensity"] != baseline_intensity:
+        run_logic.append("Used easier pace guidance to match the downshifted intensity.")
+        tags.add("easy_pace_substitution")
+
+    strength_backlog = context.get("completedStrengthSessionsThisWeek") is not None and context.get("targetStrengthSessionsPerWeek") is not None and int(context["completedStrengthSessionsThisWeek"]) < int(context["targetStrengthSessionsPerWeek"])
+    if flags["injuryOverride"] or flags["forceRestOrCrossTrain"]:
+        lift = {"action": "no_lift", "label": "No lift today", "shouldLift": False, "guidance": ["Prioritize recovery and reassess tomorrow."]}
+    elif planned_workout["type"] == "strength_only":
+        if readiness["decision"] == "push":
+            lift = {"action": "lift_as_planned", "label": "Strength as planned", "shouldLift": True, "guidance": ["Keep the lift technically clean and stop short of grinding reps."]}
+        elif readiness["decision"] == "maintain":
+            lift = {"action": "lift_light", "label": "Light strength", "shouldLift": True, "guidance": ["Keep total lift under 20 minutes.", "No heavy lower-body loading today."]}
+        else:
+            lift = {"action": "core_only" if mode == "aggressive" else "mobility_only", "label": "Core only" if mode == "aggressive" else "Mobility only", "shouldLift": True, "guidance": ["Keep the session short and low load."] if mode == "aggressive" else ["Keep the session gentle and under 20 minutes."]}
+    elif readiness["decision"] == "pull_back":
+        lift = {"action": "core_only", "label": "Core only", "shouldLift": True, "guidance": ["Keep the session short and low load.", "Use core, hips, and glute activation only."]} if mode == "aggressive" and strength_backlog and not flags["avoidHeavyLifting"] else {"action": "no_lift", "label": "No lift today", "shouldLift": False, "guidance": ["Skip lifting so recovery can be the main training objective today."]}
+    elif flags["avoidHeavyLifting"] and planned_workout["type"] in {"tempo", "intervals", "race_pace", "long_run"}:
+        lift = {"action": "no_lift", "label": "No lift today", "shouldLift": False, "guidance": ["Skip lifting so the reduced run still has room to absorb and recover."]}
+    elif run["intensity"] == "hard":
+        lift = {"action": "lift_light", "label": "Light strength", "shouldLift": True, "guidance": ["Keep total lift under 20 minutes.", "Use upper body, trunk, or light accessory work only."]} if not flags["avoidHeavyLifting"] else {"action": "no_lift", "label": "No lift today", "shouldLift": False, "guidance": ["Heavy lifting is removed because the run already carries the day's training stress."]}
+    elif run["intensity"] in {"easy", "very_easy"} and readiness["tier"] != "low" and strength_backlog:
+        if mode == "aggressive":
+            lift = {"action": "lift_light", "label": "Light strength", "shouldLift": True, "guidance": ["Keep total lift under 20 minutes.", "No heavy squats or loaded single-leg work.", "Use bodyweight or light dumbbells only."]}
+        else:
+            lift = {"action": "core_only", "label": "Core only", "shouldLift": True, "guidance": ["Keep the session short and low load.", "Use core, hips, and glute activation only."]}
+    else:
+        lift = {"action": "no_lift", "label": "No lift today", "shouldLift": False, "guidance": ["No extra lifting is needed to get the intended benefit from today."]}
+
+    if lift["action"] == "no_lift":
+        lift_logic.append("No lift today because recovery is more important than adding extra training load.")
+        tags.add("no_lift")
+    elif lift["action"] == "lift_light":
+        lift_logic.append("Light strength is allowed because run intensity is controlled and total stress stays capped.")
+        tags.add("light_lift_allowed")
+    elif lift["action"] == "core_only":
+        lift_logic.append("Only trunk and light activation work are allowed so strength work stays restorative.")
+        tags.add("core_only")
+    else:
+        lift_logic.append("Mobility replaces strength loading because readiness does not support more stress.")
+        tags.add("mobility_only")
+
+    summary = "Easy Run" if run["shouldRun"] and run["intensity"] == "easy" else "Recovery Run" if run["shouldRun"] and run["intensity"] == "very_easy" else "Recovery Day" if not run["shouldRun"] and not lift["shouldLift"] else "Mobility Day" if not run["shouldRun"] and lift["action"] == "mobility_only" else "Light Strength Day" if not run["shouldRun"] and lift["action"] == "core_only" else run["label"]
+    plan_status = _plan_status(planned_workout, baseline_run, run, lift)
+    overall = "The planned session has been adjusted based on readiness and recovery signals. We preserve structure while reducing stress."
+    if plan_status == "preserved":
+        overall = "The planned session is supported today. Readiness is high and no caution flags are present, so we keep the workout unchanged."
+    elif plan_status == "replaced":
+        overall = "The planned session has been replaced due to recovery and risk signals. The priority is protecting the athlete and the rest of the week."
+    if flags["avoidSpeedWork"]:
+        tags.add("avoid_speed_work")
+    if flags["mentalDownshift"]:
+        tags.add("subjective_fatigue")
+    if flags["highStrainCaution"]:
+        tags.add("high_strain_caution")
+    if flags["elevatedHrCaution"]:
+        tags.add("elevated_hr_caution")
+
+    return {
+        "planStatus": plan_status,
+        "planStatusLabel": _plan_status_label(plan_status),
+        "summaryLabel": summary,
+        "run": run,
+        "lift": lift,
+        "reasoning": {
+            "overall": overall,
+            "runLogic": run_logic,
+            "liftLogic": lift_logic,
+            "recoveryInfluence": [
+                item for item, include in [
+                    ("Recovery score below threshold triggered a downshift.", readiness["componentScores"]["recovery"] < 0),
+                    ("Elevated resting HR added caution.", flags["elevatedHrCaution"]),
+                    ("High recent strain limited how much load to keep today.", flags["highStrainCaution"]),
+                    ("Subjective leg feedback materially lowered readiness.", readiness["componentScores"]["legs"] < 0),
+                    ("Mental fatigue reduced the ceiling for today's training.", flags["mentalDownshift"]),
+                ] if include
+            ],
+            "planProtection": plan_protection,
+            "rationaleTags": sorted(tags),
+        },
+        "ui": {"primaryBadge": summary, "secondaryBadge": "Conservative" if mode == "conservative" else "Aggressive", "canToggleMode": not (flags["injuryOverride"] or flags["forceRestOrCrossTrain"])},
+    }
+
+
+def _recommendation_from_daily_map(
+    mapped: dict,
+    readiness: dict,
+    planned_workout: dict,
+    weekly_intent: WeeklyIntent,
+    pace_model: PaceModel,
+    today: date,
+    metrics: RecoveryMetrics,
+    mode: str,
+) -> Recommendation:
+    run = mapped["run"]
+    lift = mapped["lift"]
+    pace_text = _pace_range_to_text(run.get("paceRange"), str(run.get("intensity") or "rest"), bool(run.get("shouldRun")))
+    workout = mapped["summaryLabel"] if run.get("shouldRun") else ("Rest and recovery" if not lift.get("shouldLift") else lift.get("label"))
+    lift_focus = "No lifting" if lift["action"] == "no_lift" else lift["label"]
+    lift_guidance = " ".join(lift.get("guidance") or [])
+    warnings = list(mapped["reasoning"]["recoveryInfluence"]) + list(mapped["reasoning"]["planProtection"])
+    planned_distance = float(planned_workout.get("plannedMiles") or 0.0)
+    planned_pace = str(planned_workout.get("plannedTextPace") or "Rest day")
+    readiness_status = "supported" if readiness["decision"] == "push" else "partly supported" if readiness["decision"] == "maintain" else "not supported"
+    return Recommendation(
+        date=today.isoformat(),
+        workout=workout,
+        intensity=str(run.get("intensity") or "rest").replace("_", " "),
+        duration_minutes=int(run.get("durationMin") or 0),
+        run_distance_miles=float(run.get("miles") or 0.0),
+        run_pace_guidance=pace_text,
+        lift_focus=lift_focus,
+        lift_guidance=lift_guidance,
+        recap=[
+            f"Latest WHOOP: recovery {metrics.recovery_score}%, sleep {metrics.sleep_hours:.1f} hours, strain {metrics.strain:.1f}.",
+            f"This week is a {weekly_intent.week_type} week in {weekly_intent.phase.lower()} with a primary focus on {weekly_intent.primary_adaptation}.",
+        ],
+        explanation=[mapped["reasoning"]["overall"]],
+        explanation_sections={
+            "overall": mapped["reasoning"]["overall"],
+            "run": " ".join(mapped["reasoning"]["runLogic"]) or "The planned movement stayed in place.",
+            "pace": "Used easy pace guidance instead of workout pace." if "easy_pace_substitution" in mapped["reasoning"]["rationaleTags"] else f"The pace band of {pace_text} matches the intended effort for today.",
+            "lift": " ".join(mapped["reasoning"]["liftLogic"]),
+            "recovery": " ".join(mapped["reasoning"]["recoveryInfluence"]) or "Readiness inputs supported the planned training load.",
+        },
+        warnings=warnings,
+        confidence="high" if readiness["decision"] == "push" else "medium",
+        planned_workout=str(planned_workout.get("label") or ""),
+        planned_run_distance_miles=planned_distance,
+        planned_pace_guidance=planned_pace,
+        pace_model=pace_model.to_dict(),
+        weekly_intent=weekly_intent.to_dict(),
+        daily_adaptation={
+            "planned_session": str(planned_workout.get("label") or ""),
+            "readiness_status": readiness_status,
+            "readiness_score": int(readiness["score"]),
+            "readiness_tier": str(readiness["tier"]),
+            "decision": str(readiness["decision"]),
+            "flags": dict(readiness["flags"]),
+            "adjustment_reason": mapped["reasoning"]["overall"],
+            "adjusted_session": workout,
+            "weekly_goal_remains": _weekly_goal_phrase(weekly_intent),
+            "reschedule_suggestion": _reschedule_guidance(weekly_intent, readiness_status),
+            "mode": mode,
+            "plan_status": mapped["planStatus"],
+            "plan_status_label": mapped["planStatusLabel"],
+            "summary_label": mapped["summaryLabel"],
+            "run": dict(mapped["run"]),
+            "lift": dict(mapped["lift"]),
+            "rationale_tags": list(mapped["reasoning"]["rationaleTags"]),
+        },
+    )
+
+
+#
+# Active source of truth for daily training decisions.
+# This deterministic engine now drives /api/recommendation and owns readiness-based
+# workout, pace, lift, and mode mapping for the app's daily prescription flow.
+#
+def deterministic_recommendation(
+    profile: AthleteProfile,
+    runs: list[Run],
+    metrics: list[RecoveryMetrics],
+    today: date | None = None,
+    subjective_feedback: dict | None = None,
+    weekly_intent: WeeklyIntent | None = None,
+    mode: str = "conservative",
+) -> Recommendation:
+    today = today or max(parse_date(item.day) for item in metrics)
+    latest_metrics = _latest_metric_on_or_before(metrics, today)
+    if latest_metrics is None:
+        raise ValueError(f"No Whoop-style metrics found for {today.isoformat()}")
+    weekly_intent = weekly_intent or build_weekly_intent(profile, runs, metrics, today=today)
+    pace_model = build_pace_model(profile, runs)
+    planned_workout = _build_planned_workout_payload(weekly_intent, profile, today)
+    readiness = calculate_readiness_result(latest_metrics, average_resting_hr(metrics, days=7) or None, subjective_feedback)
+    context = _build_deterministic_context(profile, runs, metrics, today, subjective_feedback, weekly_intent)
+    mapped = _deterministic_daily_map(readiness, planned_workout, context, mode)
+    return _recommendation_from_daily_map(mapped, readiness, planned_workout, weekly_intent, pace_model, today, latest_metrics, mode)
+
+
+def deterministic_recommendation_options(
+    profile: AthleteProfile,
+    runs: list[Run],
+    metrics: list[RecoveryMetrics],
+    today: date | None = None,
+    subjective_feedback: dict | None = None,
+    weekly_intent: WeeklyIntent | None = None,
+) -> tuple[list[dict], str]:
+    conservative = deterministic_recommendation(profile, runs, metrics, today=today, subjective_feedback=subjective_feedback, weekly_intent=weekly_intent, mode="conservative")
+    aggressive = deterministic_recommendation(profile, runs, metrics, today=today, subjective_feedback=subjective_feedback, weekly_intent=weekly_intent, mode="aggressive")
+    feedback = subjective_feedback or {}
+    physical = str(feedback.get("physical_feeling") or "").strip().lower()
+    default_key = "conservative"
+    if conservative.daily_adaptation.get("readiness_status") == "supported" and physical not in {"heavy", "sore", "injured", "sick"}:
+        default_key = "aggressive"
+    options = [
+        {
+            "key": "conservative",
+            "label": "Conservative",
+            "when_to_choose": "Best if you feel flat, short on time, or want to protect the rest of the week.",
+            "recommendation": conservative.to_dict(),
+        },
+        {
+            "key": "aggressive",
+            "label": "More Aggressive",
+            "when_to_choose": "Best if warm-up feels smooth and you want to stay closer to the planned training stimulus.",
+            "recommendation": aggressive.to_dict(),
+        },
+    ]
+    if aggressive.daily_adaptation.get("mode") == conservative.daily_adaptation.get("mode"):
+        default_key = "conservative"
+    return options, default_key
+
+
 def _readiness_status(latest_metrics: RecoveryMetrics, baseline_rhr: float, subjective_feedback: dict | None) -> tuple[str, list[str], bool, bool]:
     feedback = subjective_feedback or {}
     physical = str(feedback.get("physical_feeling") or "").strip().lower()
@@ -779,6 +1507,12 @@ def _readiness_status(latest_metrics: RecoveryMetrics, baseline_rhr: float, subj
     return "supported", reasons, False, False
 
 
+#
+# Legacy daily coach function retained for compatibility with baseline planning.
+# This is NOT used for live daily recommendations anymore.
+# It is kept only for calendar/baseline logic and older helper paths that still
+# need a stable non-API planning recommendation.
+#
 def coach_recommendation(
     profile: AthleteProfile,
     runs: list[Run],
@@ -1000,87 +1734,27 @@ def build_recommendation_options(
     profile: AthleteProfile,
     subjective_feedback: dict | None = None,
 ) -> tuple[list[dict], str]:
-    base_payload = recommendation.to_dict()
-    conservative = recommendation_from_dict(base_payload)
-    aggressive = recommendation_from_dict(base_payload)
-    adaptation = dict(recommendation.daily_adaptation or {})
-    physical = str((subjective_feedback or {}).get("physical_feeling") or "").strip().lower()
-    completed_strength = int((subjective_feedback or {}).get("weekly_strength_sessions_completed") or 0)
-    strength_recently = int((subjective_feedback or {}).get("strength_sessions_last_2_days") or 0)
-    strength_today = bool((subjective_feedback or {}).get("has_strength_activity_today"))
-    readiness_status = str(adaptation.get("readiness_status") or "").strip().lower()
-    planned_distance = aggressive.planned_run_distance_miles or aggressive.run_distance_miles
-    base_distance = recommendation.run_distance_miles
-    delta_cap = round(min(0.8, max(0.4, planned_distance * 0.12 if planned_distance else 0.4)), 1)
-    strength_room = completed_strength < max(1, profile.desired_strength_frequency)
-    allow_support_lift = strength_room and strength_recently == 0 and not strength_today and readiness_status != "not supported"
-    weekly_reference = float((recommendation.weekly_intent or {}).get("mileage_target") or 0.0)
-    if weekly_reference <= 0:
-        weekly_reference = max(recommendation.run_distance_miles * 4.5, 20.0)
-    easy_day_distance_cap = max(3.5, weekly_reference * 0.16)
-    is_rest_slot = base_distance <= 0 and "rest" in str(recommendation.workout or "").lower()
+    # Legacy compatibility helper retained for older callers and tests.
+    # /api/recommendation now uses deterministic_recommendation_options(...) directly.
+    conservative = recommendation_from_dict(recommendation.to_dict())
+    aggressive = recommendation_from_dict(recommendation.to_dict())
 
-    if readiness_status == "not supported":
-        conservative = recommendation_from_dict(base_payload)
-        aggressive = recommendation_from_dict(base_payload)
+    if recommendation.daily_adaptation.get("mode") == "conservative":
+        aggressive.run_distance_miles = round(max(conservative.run_distance_miles, aggressive.run_distance_miles + 0.3), 1)
+        aggressive.duration_minutes = max(aggressive.duration_minutes, int(round(aggressive.run_distance_miles * 10.2))) if aggressive.run_distance_miles > 0 else aggressive.duration_minutes
+        aggressive.daily_adaptation = {
+            **dict(aggressive.daily_adaptation or {}),
+            "mode": "aggressive",
+            "adjustment_reason": "This version stays a little closer to the original planned load while keeping the same deterministic safety rules.",
+        }
     else:
-        conservative.intensity = "easy" if conservative.run_distance_miles > 0 else conservative.intensity
-        if conservative.run_distance_miles > 0:
-            conservative.workout = "Easy aerobic run" if conservative.workout != "Rest and recovery" else conservative.workout
-            conservative.run_distance_miles = round(max(0.0, base_distance - delta_cap), 1)
-            conservative.duration_minutes = max(0, int(round(conservative.run_distance_miles * 10.2))) if conservative.run_distance_miles > 0 else 0
-            conservative.run_pace_guidance = str(conservative.pace_model.get("easy", {}).get("pace_range") or conservative.run_pace_guidance)
-        if allow_support_lift and _intensity_rank(conservative.intensity) <= 2 and conservative.run_distance_miles <= easy_day_distance_cap:
-            conservative.lift_focus = "Light durability work only"
-            conservative.lift_guidance = "Add a short lift today: 2-4 controlled exercises, keep 1-2 reps in reserve, and stop if the legs feel worse after the warm-up."
-        else:
-            conservative.lift_focus = "Today is a lifting off-day" if conservative.run_distance_miles > 0 else "No lifting"
-            conservative.lift_guidance = "Today is a lifting off-day." if conservative.run_distance_miles > 0 else "No lifting today."
-
-        if is_rest_slot:
-            aggressive.workout = "Short recovery shakeout"
-            aggressive.intensity = "easy"
-            aggressive.run_distance_miles = round(max(2.0, min(3.0, easy_day_distance_cap * 0.75)), 1)
-            aggressive.duration_minutes = max(20, int(round(aggressive.run_distance_miles * 10.4)))
-            aggressive.run_pace_guidance = str(aggressive.pace_model.get("easy", {}).get("pace_range") or aggressive.run_pace_guidance)
-            aggressive.lift_focus = "No lifting"
-            aggressive.lift_guidance = "Keep this to a light shakeout only. Skip lifting so the legs stay fresher for the next key run."
-        elif aggressive.workout != "Rest and recovery":
-            if readiness_status == "partly supported":
-                aggressive_target = min(planned_distance, base_distance + delta_cap)
-            else:
-                aggressive_target = base_distance
-            aggressive.run_distance_miles = round(max(base_distance, aggressive_target), 1)
-            aggressive.duration_minutes = max(aggressive.duration_minutes, int(round(aggressive.run_distance_miles * 10)))
-            planned_score = _planned_session_load_score(aggressive.planned_workout, aggressive.planned_run_distance_miles)
-            base_score = _recommendation_load_score(recommendation)
-            if aggressive.planned_pace_guidance and planned_score >= base_score:
-                aggressive.run_pace_guidance = aggressive.planned_pace_guidance
-            if aggressive.planned_workout and planned_score >= base_score:
-                aggressive.workout = aggressive.planned_workout
-            if aggressive.intensity in {"easy", "very easy"} and aggressive.planned_workout and planned_score >= base_score and "easy" not in aggressive.planned_workout.lower():
-                aggressive.intensity = "moderate"
-
-    if _recommendation_load_score(aggressive) < _recommendation_load_score(conservative):
-        conservative, aggressive = aggressive, conservative
-
-    conservative.daily_adaptation = {
-        **adaptation,
-        "adjusted_session": conservative.workout,
-        "adjustment_reason": "This version protects durability, keeps the weekly goal alive, and leaves more room for the body to come around later.",
-        "weekly_goal_remains": adaptation.get("weekly_goal_remains") or f"Preserve the week's primary focus on {recommendation.weekly_intent.get('primary_adaptation', 'the current adaptation')}.",
-        "reschedule_suggestion": _reschedule_guidance(
-            WeeklyIntent(**recommendation.weekly_intent) if recommendation.weekly_intent else build_weekly_intent(profile, [], [], today=parse_date(recommendation.date)),
-            readiness_status or "partly supported",
-        ) if recommendation.weekly_intent else adaptation.get("reschedule_suggestion", ""),
-    }
-    aggressive.daily_adaptation = {
-        **adaptation,
-        "adjusted_session": aggressive.workout,
-        "adjustment_reason": "This version stays very close to the base recommendation and only nudges back toward the original plan if warm-up improves.",
-        "weekly_goal_remains": adaptation.get("weekly_goal_remains") or f"Preserve the week's primary focus on {recommendation.weekly_intent.get('primary_adaptation', 'the current adaptation')}.",
-        "reschedule_suggestion": adaptation.get("reschedule_suggestion") or "Use this only if the first 10-15 minutes feel clearly better than expected.",
-    }
+        conservative.run_distance_miles = round(max(0.0, conservative.run_distance_miles - 0.3), 1)
+        conservative.duration_minutes = max(0, int(round(conservative.run_distance_miles * 10.2))) if conservative.run_distance_miles > 0 else 0
+        conservative.daily_adaptation = {
+            **dict(conservative.daily_adaptation or {}),
+            "mode": "conservative",
+            "adjustment_reason": "This version gives you a little more recovery room while keeping the same deterministic safety rules.",
+        }
 
     options = [
         {
@@ -1096,6 +1770,8 @@ def build_recommendation_options(
             "recommendation": aggressive.to_dict(),
         },
     ]
-
-    default_key = "conservative" if recommendation.confidence != "high" or physical in {"heavy", "sore", "injured", "sick"} else "aggressive"
+    physical = str((subjective_feedback or {}).get("physical_feeling") or "").strip().lower()
+    default_key = "conservative"
+    if recommendation.daily_adaptation.get("readiness_status") == "supported" and physical not in {"heavy", "sore", "injured", "sick"}:
+        default_key = "aggressive"
     return options, default_key

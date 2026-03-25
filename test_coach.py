@@ -21,6 +21,7 @@ from app import (
 )
 from storage import load_tokens
 from coach import (
+    _build_planned_workout_payload,
     AthleteProfile,
     Recommendation,
     RecoveryMetrics,
@@ -29,7 +30,10 @@ from coach import (
     build_pace_model,
     build_recommendation_options,
     build_weekly_intent,
+    calculate_readiness_result,
     coach_recommendation,
+    deterministic_recommendation,
+    planned_session_for_day,
 )
 from integrations import (
     build_strava_authorize_url,
@@ -39,10 +43,110 @@ from integrations import (
     whoop_workout_preview,
 )
 from llm_coach import _apply_guardrails, _finalize_daily_adaptation, _safety_and_progression_context, llm_recommendation
+from llm_coach import (
+    build_explanation_prompt,
+    build_template_fallback_explanation,
+    generate_recommendation_explanation,
+)
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 
 
 class CoachRecommendationTests(unittest.TestCase):
+    def _make_explanation_inputs(
+        self,
+        *,
+        plan_status: str,
+        planned_type: str = "tempo",
+        planned_label: str = "Threshold Intervals",
+        planned_miles: float | None = 5.0,
+        should_run: bool = True,
+        run_label: str = "Threshold Intervals",
+        run_intensity: str = "hard",
+        run_miles: float | None = 5.0,
+        run_pace: str = "7:20-7:35/mi",
+        should_lift: bool = False,
+        lift_label: str = "No lift today",
+        flags: dict | None = None,
+    ) -> dict:
+        default_flags = {
+            "reduceIntensity": False,
+            "reduceVolume": False,
+            "avoidSpeedWork": False,
+            "avoidHeavyLifting": False,
+            "forceRestOrCrossTrain": False,
+            "injuryOverride": False,
+            "mentalDownshift": False,
+            "highStrainCaution": False,
+            "elevatedHrCaution": False,
+        }
+        if flags:
+            default_flags.update(flags)
+
+        recommendation = Recommendation(
+            date="2026-03-25",
+            workout=run_label if should_run else "Rest and recovery",
+            intensity=run_intensity,
+            duration_minutes=48 if run_miles else 0,
+            run_distance_miles=float(run_miles or 0.0),
+            run_pace_guidance=run_pace if run_miles else "Rest day",
+            lift_focus=lift_label,
+            lift_guidance="Keep lifting light." if should_lift else "No lift today.",
+            recap=[],
+            explanation=[],
+            explanation_sections={
+                "overall": "",
+                "run": "Preserved movement but removed workout intensity." if plan_status != "preserved" else "Kept the planned movement in place.",
+                "pace": "Used easier pace guidance instead of workout pace." if plan_status != "preserved" else "The planned pace still fits today.",
+                "lift": "No lift today because recovery is more important than adding extra training load.",
+                "recovery": "Recovery signals shaped the recommendation.",
+            },
+            warnings=["Elevated resting HR added caution."] if default_flags["elevatedHrCaution"] else [],
+            confidence="high",
+            planned_workout=planned_label,
+            planned_run_distance_miles=float(planned_miles or 0.0),
+            planned_pace_guidance=run_pace if planned_miles else "Rest day",
+            daily_adaptation={
+                "planned_session": planned_label,
+                "readiness_status": "supported" if plan_status == "preserved" else "partly supported" if plan_status == "modified" else "not supported",
+                "readiness_score": 86 if plan_status == "preserved" else 58 if plan_status == "modified" else 24,
+                "readiness_tier": "high" if plan_status == "preserved" else "moderate" if plan_status == "modified" else "low",
+                "decision": "push" if plan_status == "preserved" else "maintain" if plan_status == "modified" else "pull_back",
+                "flags": default_flags,
+                "adjustment_reason": "",
+                "adjusted_session": run_label if should_run else "Rest and recovery",
+                "weekly_goal_remains": "Keep the week moving.",
+                "reschedule_suggestion": "Reassess tomorrow.",
+                "plan_status": plan_status,
+                "plan_status_label": "As Planned" if plan_status == "preserved" else "Adjusted" if plan_status == "modified" else "Changed",
+                "summary_label": run_label if should_run else "Recovery Day",
+                "run": {
+                    "shouldRun": should_run,
+                    "label": run_label if should_run else "Recovery / Cross-Train",
+                    "miles": run_miles,
+                    "durationMin": 48 if run_miles else 20,
+                    "paceRange": {"min": "7:20", "max": "7:35"} if should_run and run_intensity == "hard" else {"min": "9:08", "max": "9:29"} if should_run else None,
+                    "intensity": run_intensity if should_run else "rest",
+                },
+                "lift": {
+                    "shouldLift": should_lift,
+                    "label": lift_label,
+                    "guidance": ["Keep total lift under 20 minutes."] if should_lift else ["Prioritize recovery and reassess tomorrow."],
+                },
+                "rationale_tags": ["preserve_structure"] if plan_status == "preserved" else ["reduce_volume"] if plan_status == "modified" else ["injury_override"],
+            },
+        )
+        planned_workout = {
+            "label": planned_label,
+            "type": planned_type,
+            "plannedMiles": planned_miles,
+            "paceRange": {"min": "7:20", "max": "7:35"} if planned_miles else None,
+        }
+        return {
+            "recommendation": recommendation,
+            "plannedWorkout": planned_workout,
+            "athleteName": "Taylor",
+        }
+
     def test_returns_easy_day_for_post_workout_sample(self) -> None:
         recommendation = coach_recommendation(
             SAMPLE_PROFILE,
@@ -361,18 +465,105 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertIn("felt sick", context["recent_workout_notes"].lower())
 
     @mock.patch.dict("os.environ", {}, clear=False)
-    def test_llm_recommendation_reports_unavailable_without_key(self) -> None:
+    def test_llm_recommendation_uses_deterministic_backend_engine(self) -> None:
         recommendation, meta = llm_recommendation(
             SAMPLE_PROFILE,
             SAMPLE_RUNS,
             SAMPLE_METRICS,
             today=date(2026, 3, 14),
         )
-        self.assertEqual(meta["source"], "unavailable")
-        self.assertNotEqual(recommendation.workout, "Recommendation unavailable")
-        self.assertIn("OPENAI_API_KEY not set", recommendation.warnings)
+        self.assertEqual(meta["source"], "deterministic")
         self.assertIn("overall", recommendation.explanation_sections)
-        self.assertIn("built-in coaching rules", recommendation.explanation_sections["overall"])
+        self.assertNotIn("OPENAI_API_KEY not set", recommendation.warnings)
+        self.assertIn(recommendation.explanation_sections["overall"], {
+            "The planned session is supported today. Readiness is high and no caution flags are present, so we keep the workout unchanged.",
+            "The planned session has been adjusted based on readiness and recovery signals. We preserve structure while reducing stress.",
+            "The planned session has been replaced due to recovery and risk signals. The priority is protecting the athlete and the rest of the week.",
+        })
+        self.assertIn("recommendation_explanation", meta)
+        self.assertIn(meta["recommendation_explanation"]["source"], {"llm", "template_fallback"})
+
+    def test_preserved_explanation_says_workout_is_supported(self) -> None:
+        explanation = build_template_fallback_explanation(self._make_explanation_inputs(plan_status="preserved"))
+        self.assertTrue(any(token in explanation["summary"].lower() for token in ["good day", "original session", "readiness looks solid"]))
+        self.assertEqual(explanation["source"], "template_fallback")
+
+    def test_modified_explanation_says_session_is_adjusted(self) -> None:
+        explanation = build_template_fallback_explanation(
+            self._make_explanation_inputs(
+                plan_status="modified",
+                run_label="Easy Run",
+                run_intensity="easy",
+                run_pace="9:08-9:29/mi",
+            )
+        )
+        self.assertTrue(any(token in explanation["summary"].lower() for token in ["less stress", "fits today better", "keeping the day on track"]))
+
+    def test_replaced_explanation_says_recovery_takes_priority(self) -> None:
+        explanation = build_template_fallback_explanation(
+            self._make_explanation_inputs(
+                plan_status="replaced",
+                should_run=False,
+                run_label="Recovery Day",
+                run_intensity="rest",
+                run_miles=None,
+                planned_type="easy_run",
+            )
+        )
+        self.assertTrue(any(token in explanation["summary"].lower() for token in ["replaced", "recovery", "priority"]))
+
+    def test_injury_override_adds_caution_note(self) -> None:
+        explanation = build_template_fallback_explanation(
+            self._make_explanation_inputs(
+                plan_status="replaced",
+                should_run=False,
+                run_label="Recovery Day",
+                run_intensity="rest",
+                run_miles=None,
+                flags={"injuryOverride": True, "forceRestOrCrossTrain": True},
+            )
+        )
+        self.assertTrue(explanation["cautionNote"])
+        self.assertIn("reassess", explanation["cautionNote"].lower())
+
+    @mock.patch("llm_coach.openai_enabled", return_value=True)
+    @mock.patch("llm_coach._request_explanation_json", side_effect=ValueError("bad json"))
+    def test_malformed_llm_json_uses_fallback(self, _request, _enabled) -> None:
+        explanation = generate_recommendation_explanation(self._make_explanation_inputs(plan_status="modified"))
+        self.assertEqual(explanation["source"], "template_fallback")
+
+    @mock.patch("llm_coach.openai_enabled", return_value=True)
+    @mock.patch("llm_coach._request_explanation_json")
+    def test_no_run_recommendation_cannot_return_run_language(self, request_mock, _enabled) -> None:
+        request_mock.return_value = {
+            "summary": "Go run today and keep it short.",
+            "whyBullets": ["Easy day."],
+            "cautionNote": None,
+            "encouragement": None,
+        }
+        explanation = generate_recommendation_explanation(
+            self._make_explanation_inputs(
+                plan_status="replaced",
+                should_run=False,
+                run_label="Recovery Day",
+                run_intensity="rest",
+                run_miles=None,
+                flags={"injuryOverride": True, "forceRestOrCrossTrain": True},
+            )
+        )
+        self.assertEqual(explanation["source"], "template_fallback")
+        self.assertNotIn("go run", explanation["summary"].lower())
+
+    def test_fallback_output_has_valid_structure(self) -> None:
+        explanation = build_template_fallback_explanation(self._make_explanation_inputs(plan_status="modified"))
+        self.assertTrue(explanation["summary"])
+        self.assertIsInstance(explanation["whyBullets"], list)
+        self.assertLessEqual(len(explanation["whyBullets"]), 3)
+        self.assertIn("source", explanation)
+
+    def test_build_explanation_prompt_includes_final_plan_status(self) -> None:
+        prompt = build_explanation_prompt(self._make_explanation_inputs(plan_status="preserved"))
+        self.assertIn("plan status: preserved", prompt["user"])
 
     def test_projected_calendar_has_two_rest_days_and_three_lifts_per_week(self) -> None:
         recommendation = coach_recommendation(
@@ -457,7 +648,7 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertAlmostEqual(recommendation.run_distance_miles + current_week_future, 30.0, delta=0.6)
         self.assertAlmostEqual(next_week, 33.0, delta=0.6)
 
-    def test_rest_day_offers_aggressive_shakeout_option_when_readiness_is_not_supported_false(self) -> None:
+    def test_rest_day_keeps_rest_when_readiness_is_low_in_deterministic_options(self) -> None:
         recommendation = coach_recommendation(
             SAMPLE_PROFILE,
             SAMPLE_RUNS,
@@ -475,9 +666,8 @@ class CoachRecommendationTests(unittest.TestCase):
 
         aggressive = next(option for option in options if option["key"] == "aggressive")["recommendation"]
         self.assertEqual(default_key, "conservative")
-        self.assertGreater(aggressive["run_distance_miles"], 0.0)
-        self.assertEqual(aggressive["intensity"], "easy")
-        self.assertIn("shakeout", aggressive["workout"].lower())
+        self.assertEqual(aggressive["run_distance_miles"], 0.0)
+        self.assertIn(aggressive["intensity"], {"rest", "very easy"})
 
     def test_projected_calendar_uses_pace_text_for_all_run_days(self) -> None:
         recommendation = Recommendation(
@@ -1171,6 +1361,342 @@ class CoachRecommendationTests(unittest.TestCase):
         quality_pace = _pace_text_for_type("quality", recommendation, weekly_intent=weekly_intent.to_dict())
 
         self.assertNotEqual(easy_pace, quality_pace)
+
+    def test_deterministic_recommendation_removes_hard_work_when_high_strain_and_elevated_hr_stack(self) -> None:
+        today = date(2026, 3, 24)
+        metrics = [
+            RecoveryMetrics(day="2026-03-18", recovery_score=74, sleep_hours=7.8, resting_hr=53, hrv_ms=66, strain=8.4),
+            RecoveryMetrics(day="2026-03-19", recovery_score=71, sleep_hours=7.4, resting_hr=52, hrv_ms=64, strain=9.2),
+            RecoveryMetrics(day="2026-03-20", recovery_score=69, sleep_hours=7.1, resting_hr=53, hrv_ms=63, strain=10.1),
+            RecoveryMetrics(day="2026-03-21", recovery_score=68, sleep_hours=7.0, resting_hr=54, hrv_ms=62, strain=9.5),
+            RecoveryMetrics(day="2026-03-22", recovery_score=72, sleep_hours=7.6, resting_hr=52, hrv_ms=65, strain=8.8),
+            RecoveryMetrics(day="2026-03-23", recovery_score=70, sleep_hours=7.3, resting_hr=53, hrv_ms=64, strain=9.0),
+            RecoveryMetrics(day="2026-03-24", recovery_score=57, sleep_hours=7.2, resting_hr=57, hrv_ms=61, strain=13.4),
+        ]
+        weekly_intent = _scenario_weekly_intent(today, primary_adaptation="threshold")
+
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback={"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            weekly_intent=weekly_intent,
+            mode="conservative",
+        )
+
+        self.assertEqual(recommendation.intensity, "easy")
+        self.assertNotIn("threshold", recommendation.workout.lower())
+        self.assertEqual(recommendation.run_pace_guidance, "10:00-10:21/mi")
+        self.assertEqual(recommendation.daily_adaptation.get("plan_status"), "modified")
+
+    def test_plan_status_is_modified_when_long_run_is_trimmed(self) -> None:
+        today = date(2026, 3, 29)
+        metric = _harness_metric("2026-03-29", 54, 7.4, 54, 15.2)
+        metrics = _harness_metrics_window(today, metric, baseline_rhr=53)
+        weekly_intent = _scenario_weekly_intent(today)
+
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback={"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            weekly_intent=weekly_intent,
+            mode="conservative",
+        )
+
+        self.assertEqual(recommendation.daily_adaptation.get("plan_status"), "modified")
+        self.assertLess(recommendation.run_distance_miles, recommendation.planned_run_distance_miles)
+
+
+def _harness_metric(day: str, recovery: int, sleep: float, resting_hr: int, strain: float) -> RecoveryMetrics:
+    return RecoveryMetrics(
+        day=day,
+        recovery_score=recovery,
+        sleep_hours=sleep,
+        resting_hr=resting_hr,
+        hrv_ms=65,
+        strain=strain,
+    )
+
+
+def _harness_metrics_window(today: date, current_metric: RecoveryMetrics, baseline_rhr: int = 53) -> list[RecoveryMetrics]:
+    metrics: list[RecoveryMetrics] = []
+    for days_back, strain in zip(range(6, 0, -1), [8.4, 9.2, 10.1, 9.5, 8.8, 9.0]):
+        day_value = today.fromordinal(today.toordinal() - days_back)
+        resting_hr = baseline_rhr if days_back % 2 == 0 else baseline_rhr - 1
+        metrics.append(
+            RecoveryMetrics(
+                day=day_value.isoformat(),
+                recovery_score=72,
+                sleep_hours=7.4,
+                resting_hr=resting_hr,
+                hrv_ms=64,
+                strain=strain,
+            )
+        )
+    metrics.append(current_metric)
+    return metrics
+
+
+def _scenario_weekly_intent(today: date, primary_adaptation: str | None = None, week_type: str | None = None):
+    weekly_intent = build_weekly_intent(SAMPLE_PROFILE, SAMPLE_RUNS, SAMPLE_METRICS, today=today)
+    if primary_adaptation:
+        weekly_intent.primary_adaptation = primary_adaptation
+    if week_type:
+        weekly_intent.week_type = week_type
+    return weekly_intent
+
+
+def _format_flag_summary(flags: dict) -> str:
+    active = [key for key, value in flags.items() if value]
+    return ", ".join(active) if active else "none"
+
+
+def print_deterministic_recommendation_harness() -> None:
+    baseline_rhr = 53.0
+    scenarios = [
+        {
+            "name": "1. Green Easy Monday",
+            "today": date(2026, 3, 23),
+            "metric": _harness_metric("2026-03-23", 84, 8.1, 52, 7.0),
+            "feedback": {"physical_feeling": "fresh", "mental_feeling": "sharp", "notes": "felt good yesterday"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 23)),
+        },
+        {
+            "name": "2. Tempo Day Downgraded",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 57, 7.2, 57, 13.4),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+            "metrics": _harness_metrics_window(date(2026, 3, 24), _harness_metric("2026-03-24", 57, 7.2, 57, 13.4), baseline_rhr=53),
+        },
+        {
+            "name": "3. Low-Readiness Easy Monday",
+            "today": date(2026, 3, 30),
+            "metric": _harness_metric("2026-03-30", 38, 5.4, 58, 14.8),
+            "feedback": {"physical_feeling": "heavy", "mental_feeling": "drained", "notes": "fatigue and heavy legs"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 30)),
+        },
+        {
+            "name": "4. Long Run Trimmed",
+            "today": date(2026, 3, 29),
+            "metric": _harness_metric("2026-03-29", 54, 7.4, 54, 15.2),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 29)),
+        },
+        {
+            "name": "5. Injury Override",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 82, 8.0, 52, 8.3),
+            "feedback": {"physical_feeling": "injured", "mental_feeling": "steady", "notes": "calf tightness and tingling"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+        },
+        {
+            "name": "6. Rest Day Stays Rest",
+            "today": date(2026, 3, 25),
+            "metric": _harness_metric("2026-03-25", 79, 7.9, 53, 7.5),
+            "feedback": {"physical_feeling": "fresh", "mental_feeling": "sharp", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 25)),
+        },
+        {
+            "name": "7. Race-Specific Day Supported",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 81, 7.8, 53, 9.0),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "sharp", "notes": "good energy"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="race-specific stamina"),
+        },
+        {
+            "name": "8. Subjective Fatigue Overrides Okay Biometrics",
+            "today": date(2026, 3, 27),
+            "metric": _harness_metric("2026-03-27", 72, 7.6, 54, 9.8),
+            "feedback": {"physical_feeling": "sore", "mental_feeling": "drained", "notes": "aching and tired"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 27)),
+        },
+        {
+            "name": "9. Moderate Easy Day With Elevated HR",
+            "today": date(2026, 3, 27),
+            "metric": _harness_metric("2026-03-27", 63, 6.8, 59, 10.5),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 27)),
+        },
+        {
+            "name": "10. Very Low Sleep Preserves Recovery",
+            "today": date(2026, 3, 28),
+            "metric": _harness_metric("2026-03-28", 44, 4.8, 56, 11.2),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "stressed", "notes": "tired but no pain"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 28)),
+        },
+    ]
+
+    for scenario in scenarios:
+        today = scenario["today"]
+        metric = scenario["metric"]
+        feedback = scenario["feedback"]
+        weekly_intent = scenario["weekly_intent"]
+        metrics = scenario.get("metrics") or [metric]
+        planned = planned_session_for_day(weekly_intent, SAMPLE_PROFILE, today)
+        readiness = calculate_readiness_result(metric, baseline_rhr, feedback)
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback=feedback,
+            weekly_intent=weekly_intent,
+            mode="conservative",
+        )
+
+        print(f"\n=== {scenario['name']} ===")
+        print(
+            f"planned: {planned['workout']} | biometrics: recovery {metric.recovery_score}, "
+            f"sleep {metric.sleep_hours:.1f}h, rhr {metric.resting_hr} vs baseline {baseline_rhr:.0f}, strain {metric.strain:.1f}"
+        )
+        print(
+            f"check-in: legs={feedback['physical_feeling']}, mental={feedback['mental_feeling']}, notes={repr(feedback['notes'])}"
+        )
+        print(
+            f"readiness: {readiness['score']} ({readiness['tier']}) | decision: {readiness['decision']} | "
+            f"flags: {_format_flag_summary(readiness['flags'])}"
+        )
+        print(
+            f"run: {recommendation.workout} | {recommendation.run_distance_miles:.1f} mi | "
+            f"{recommendation.run_pace_guidance} | intensity={recommendation.intensity}"
+        )
+        print(f"lift: {recommendation.lift_focus} | guidance={recommendation.lift_guidance or '-'}")
+
+
+def print_plan_preserved_scenarios() -> None:
+    print("\nPlan Preserved Scenarios")
+    baseline_rhr = 53.0
+    scenarios = [
+        {
+            "name": "A. Tempo Supported",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 86, 8.2, 52, 7.4),
+            "feedback": {"physical_feeling": "fresh", "mental_feeling": "sharp", "notes": "felt good yesterday"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+        },
+        {
+            "name": "B. Intervals Supported",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 88, 8.0, 53, 7.1),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "sharp", "notes": "good energy"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+            "force_label": "Intervals",
+            "force_type": "intervals",
+        },
+        {
+            "name": "C. Long Run Supported",
+            "today": date(2026, 3, 29),
+            "metric": _harness_metric("2026-03-29", 83, 8.1, 53, 7.8),
+            "feedback": {"physical_feeling": "fresh", "mental_feeling": "steady", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 29)),
+        },
+    ]
+
+    for scenario in scenarios:
+        today = scenario["today"]
+        metric = scenario["metric"]
+        feedback = scenario["feedback"]
+        weekly_intent = scenario["weekly_intent"]
+        planned = planned_session_for_day(weekly_intent, SAMPLE_PROFILE, today)
+        if scenario.get("force_label"):
+            planned["workout"] = scenario["force_label"]
+        if scenario.get("force_type") == "intervals":
+            weekly_intent.primary_adaptation = "threshold"
+        readiness = calculate_readiness_result(metric, baseline_rhr, feedback)
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            SAMPLE_METRICS[:-1] + [metric],
+            today=today,
+            subjective_feedback=feedback,
+            weekly_intent=weekly_intent,
+            mode="conservative",
+        )
+
+        print(f"\n=== {scenario['name']} ===")
+        print(
+            f"planned: {planned['workout']} | biometrics: recovery {metric.recovery_score}, "
+            f"sleep {metric.sleep_hours:.1f}h, rhr {metric.resting_hr} vs baseline {baseline_rhr:.0f}, strain {metric.strain:.1f}"
+        )
+        print(
+            f"check-in: legs={feedback['physical_feeling']}, mental={feedback['mental_feeling']}, notes={repr(feedback['notes'])}"
+        )
+        print(
+            f"readiness: {readiness['score']} ({readiness['tier']}) | decision: {readiness['decision']} | "
+            f"flags: {_format_flag_summary(readiness['flags'])}"
+        )
+        print(
+            f"run: {recommendation.workout} | {recommendation.run_distance_miles:.1f} mi | "
+            f"{recommendation.run_pace_guidance} | intensity={recommendation.intensity}"
+        )
+        print(f"lift: {recommendation.lift_focus} | guidance={recommendation.lift_guidance or '-'}")
+        print(f"overall: {recommendation.explanation_sections.get('overall', '')}")
+
+
+def print_recommendation_explanation_harness() -> None:
+    scenarios = [
+        {
+            "name": "Preserved",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 86, 8.2, 52, 7.4),
+            "feedback": {"physical_feeling": "fresh", "mental_feeling": "sharp", "notes": "felt good yesterday"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+        },
+        {
+            "name": "Modified",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 57, 7.2, 57, 13.4),
+            "feedback": {"physical_feeling": "normal", "mental_feeling": "steady", "notes": ""},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+            "metrics": _harness_metrics_window(date(2026, 3, 24), _harness_metric("2026-03-24", 57, 7.2, 57, 13.4), baseline_rhr=53),
+        },
+        {
+            "name": "Replaced",
+            "today": date(2026, 3, 24),
+            "metric": _harness_metric("2026-03-24", 42, 5.2, 58, 15.0),
+            "feedback": {"physical_feeling": "injured", "mental_feeling": "drained", "notes": "calf tightness and tingling"},
+            "weekly_intent": _scenario_weekly_intent(date(2026, 3, 24), primary_adaptation="threshold"),
+        },
+    ]
+
+    print("\nRecommendation Explanation Harness")
+    for scenario in scenarios:
+        today = scenario["today"]
+        metric = scenario["metric"]
+        feedback = scenario["feedback"]
+        weekly_intent = scenario["weekly_intent"]
+        metrics = scenario.get("metrics") or (SAMPLE_METRICS[:-1] + [metric])
+        recommendation = deterministic_recommendation(
+            SAMPLE_PROFILE,
+            SAMPLE_RUNS,
+            metrics,
+            today=today,
+            subjective_feedback=feedback,
+            weekly_intent=weekly_intent,
+            mode="conservative",
+        )
+        planned_workout = _build_planned_workout_payload(weekly_intent, SAMPLE_PROFILE, today)
+        explanation = generate_recommendation_explanation(
+            {
+                "recommendation": recommendation,
+                "plannedWorkout": planned_workout,
+                "athleteName": SAMPLE_PROFILE.name,
+            }
+        )
+        adaptation = recommendation.daily_adaptation or {}
+
+        print(f"\n=== {scenario['name']} ===")
+        print(f"recommendation summaryLabel: {adaptation.get('summary_label', recommendation.workout)}")
+        print(f"planStatus: {adaptation.get('plan_status', '-')}")
+        print(f"explanation source: {explanation.get('source', '-')}")
+        print(f"summary: {explanation.get('summary', '-')}")
+        print(f"whyBullets: {explanation.get('whyBullets', [])}")
+        print(f"cautionNote: {explanation.get('cautionNote')}")
+        print(f"encouragement: {explanation.get('encouragement')}")
 
 
 if __name__ == "__main__":
