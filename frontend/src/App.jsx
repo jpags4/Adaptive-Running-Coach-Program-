@@ -85,18 +85,11 @@ function RunningShoeIcon({ className = 'h-5 w-5' }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.65"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
       className={className}
       aria-hidden="true"
     >
-      <path d="M3.5 16.25h14.4c1.55 0 2.6-.46 2.6-1.62c0-.56-.3-.95-.86-1.11l-4.36-1.16a3.7 3.7 0 0 1-2.05-1.45l-1.5-2.16c-.32-.47-.93-.71-1.48-.59l-1.48.34l-.44 2.53a1.28 1.28 0 0 1-.72.95l-2.9 1.3h-.96c-.69 0-1.25.56-1.25 1.25v1.72Z" />
-      <path d="M9.55 12.55h1.45" />
-      <path d="M12.15 11.85h1.4" />
-      <path d="M14.5 12.45h1.22" />
+      <path d="M21.481 14.068l-2.2-6.585a1 1 0 0 0-.949-.683a4.865 4.865 0 0 1-2.893-.907A7.623 7.623 0 0 1 13.976 2.78a1 1 0 0 0-1.683-.487l-6 6a1 1 0 0 0 .016 1.43l12.537 12a1 1 0 0 0 1.4-.016l1.654-1.658a3.75 3.75 0 0 0 0-5.3a1.751 1.751 0 0 1-.419-.681Zm-.992 4.567l-.967.967L8.43 8.984l4.114-4.114a7.358 7.358 0 0 0 1.486 2.437A6.076 6.076 0 0 0 17.6 8.757l1.983 5.943a3.778 3.778 0 0 0 .906 1.464a1.75 1.75 0 0 1 0 2.471ZM1 17a1 1 0 0 1 1-1h8a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1Zm0-4a1 1 0 0 1 1-1H6a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1Zm0 8a1 1 0 0 1 1-1H14a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1Z" />
     </svg>
   )
 }
@@ -105,17 +98,25 @@ function HeartOutlineIcon({ className = 'h-5 w-5' }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
       className={className}
       aria-hidden="true"
     >
-      <g transform="translate(0.45 0)">
-        <path d="M12 20s-6-4.4-6-10a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 10c0 5.6-6 10-6 10Z" />
-      </g>
+      <path d="M10.0932 10.7463c-.6848 0-1.4564.6075-1.8639.922l-.0439.034-.182.1401c-.1238.0954-.2779.1255-.4258.0831-.1479-.0424-.276-.1535-.3539-.3067l-.9948-1.9576l-1.1058 4.423c-.0748.2991-.3222.5136-.6277.5444c-.3056.0307-.6095-.1282-.7711-.4035L2.1808 11.3055c-.1854-.3588-.0448-.8002.314-.9856c.3588-.1854.8002-.0448.9856.314l.748 1.4471l1.0864-4.3457c.0716-.2863.3077-.4968.6017-.5368c.2939-.04.5904.0981.7334.351l1.1678 2.0695c.4983-.3832 1.5443-1.1664 2.2752-1.1664h2.5408c.4041 0 .7317.3276.7317.7317c0 .4041-.3276.7317-.7317.7317h-2.5408Z" />
+      <path d="M22.75 9.26043c0 2.88077-1.7199 5.72377-4.949 8.63717c-1.3345 1.2037-2.6914 2.1611-3.7107 2.8247c-.5105.3324-.9362.5913-1.2348.7658c-.1494.0873-.2671.1542-.3478.1992c-.0404.0225-.0716.0393-.0925.0505l-.0236.0126l-.0064.0033l-.0018.0009c-.0005.0003-.0008.0004-.0012.0006c-.0003.0002-.0006.0003-.332.6263l-.3314-.6266c-.0004-.0002-.0007-.0004-.0012-.0006l-.0018-.0009l-.0064-.0033l-.0236-.0126c-.0209-.0112-.0521-.028-.0925-.0505c-.0807-.045-.1984-.1119-.3478-.1992c-.2986-.1745-.7243-.4334-1.2348-.7658c-1.0193-.6636-2.37617-1.621-3.71073-2.8247C2.96986 14.9842 1.25 12.1412 1.25 9.26043C1.25 4.60841 4.49119 1.25 8.4273 1.25c1.808 0 3.5061.85755 4.5727 2.26064C14.0666 2.10755 15.7647 1.25 17.5727 1.25C21.5088 1.25 22.75 4.60841 22.75 9.26043Zm-9.3877 11.53097c.962-.6265 2.2536-1.5391 3.4592-2.6268c3.1245-2.8187 4.4648-5.2575 4.4648-7.90315C21.2863 5.31377 18.6068 2.7134 17.5727 2.7134c-1.5781 0-3.0739.92917-3.8776 2.31171c-.4604.7919-1.5956.7919-2.056 0C10.8351 3.64257 9.33931 2.7134 8.4273 2.7134C5.39316 2.7134 2.71345 5.31377 2.71345 9.26043c0 2.64565 1.34031 5.08445 4.46486 7.90315c1.20557 1.0877 2.49719 2.0003 3.45919 2.6268c.4808.313.872.551.9575.6019c.0855-.0509.4767-.2889.9575-.6019Z" />
+    </svg>
+  )
+}
+
+function BatteryIcon({ className = 'h-5 w-5' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M20 10V8.33A1.34 1.34 0 0 0 18.67 7H3.34A1.34 1.34 0 0 0 2 8.33v7.33A1.34 1.34 0 0 0 3.33 17H18.67A1.34 1.34 0 0 0 20 15.67V14h2v-4Zm-8.5 3v2L4 11H9.5V9L17 13Z" />
     </svg>
   )
 }
@@ -246,17 +247,15 @@ function BikeIcon({ className = 'h-5 w-5' }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <circle cx="6" cy="17" r="3.5" />
-      <circle cx="18" cy="17" r="3.5" />
-      <path d="M10 6h3l2 4" />
-      <path d="M10 6 7 12h5l3 5" />
-      <path d="M14 10h4" />
+      <path d="M7 12.5 8.5 9.5M8.5 9.5H16m-7.5 0 2.25 6m0 0L13 11m-2.25 4.5H6.5m6.5-4.5h2.94a2 2 0 0 0 1.84-1.22L19 7.5M18.5 15.5h-3" />
+      <circle cx="18.5" cy="15.5" r="3.5" />
+      <circle cx="6.5" cy="15.5" r="3.5" />
     </svg>
   )
 }
@@ -1046,7 +1045,7 @@ function TrainingCard({
         <div className={`self-start rounded-[1.9rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
           <div className={`flex items-center gap-2.5 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-              <RouteIcon />
+              {isBikeDay ? <BikeIcon /> : <RunningShoeIcon />}
             </div>
             <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
               {isBikeDay ? 'Bike' : 'Run'}
@@ -2174,7 +2173,7 @@ function ActivityLogSection({
     .sort((a, b) => String(b.day || '').localeCompare(String(a.day || '')))
   const filterOptions = [
     { key: 'all', label: 'All Workouts', icon: <SparkleIcon className="h-4 w-4" /> },
-    { key: 'runs', label: 'Running', icon: <RouteIcon className="h-4 w-4" /> },
+    { key: 'runs', label: 'Running', icon: <RunningShoeIcon className="h-4 w-4" /> },
     { key: 'strength', label: 'Weightlifting', icon: <DumbbellIcon className="h-4 w-4" /> },
     { key: 'spin', label: 'Spin', icon: <BikeIcon className="h-4 w-4" /> },
   ]
@@ -2854,7 +2853,7 @@ export default function App() {
             theme={theme}
           />
           <StatCard
-            icon={<Icon path="M3 12h4l2-5l4 10l2-5h6" />}
+            icon={<BatteryIcon />}
             label="Recovery"
             value={summary.latest_recovery ? `${summary.latest_recovery}%` : '-'}
             subtext="Latest WHOOP recovery score"
@@ -2880,7 +2879,7 @@ export default function App() {
             theme={theme}
           />
           <StatCard
-            icon={<Icon path="M13 2L4 14h6l-1 8l9-12h-6l1-8Z" />}
+            icon={<Icon path="M3 12h4l2-5l4 10l2-5h6" />}
             label="Yesterday’s Strain"
             value={summary.latest_strain ? `${summary.latest_strain}` : '-'}
             subtext="WHOOP strain from yesterday"
@@ -2889,7 +2888,7 @@ export default function App() {
             theme={theme}
           />
           <StatCard
-            icon={<RouteIcon />}
+            icon={<RunningShoeIcon />}
             label="Last Run Mileage"
             value={previousRun.distance_miles ? `${previousRun.distance_miles} mi` : '-'}
             subtext={
