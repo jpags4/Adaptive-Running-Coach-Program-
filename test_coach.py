@@ -343,6 +343,47 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertTrue(any(activity.get("name") == "Run" for activity in friday["activities"]))
         self.assertTrue(any(activity.get("name") == "Weightlifting" for activity in friday["activities"]))
 
+    def test_calendar_days_includes_spin_activity_on_correct_day(self) -> None:
+        cards = calendar_days(
+            activity_feed=[
+                {
+                    "day": "2026-03-18",
+                    "name": "Run",
+                    "sport": "Run",
+                    "distance_miles": 4.2,
+                    "duration_minutes": 34,
+                    "category": "running",
+                },
+                {
+                    "day": "2026-03-19",
+                    "name": "Cycling",
+                    "sport": "Cycling",
+                    "duration_minutes": 47,
+                    "strain": 11.1,
+                    "category": "spin",
+                    "title": "Spin",
+                },
+                {
+                    "day": "2026-03-20",
+                    "name": "Weightlifting",
+                    "sport": "Weightlifting",
+                    "duration_minutes": 40,
+                    "category": "weightlifting",
+                },
+            ],
+            metrics=SAMPLE_METRICS,
+            today="2026-03-19",
+            profile=SAMPLE_PROFILE,
+            weekly_plan={},
+        )
+
+        thursday = next(card for card in cards if card["day"] == "2026-03-19")
+        self.assertTrue(any(activity.get("category") == "spin" for activity in thursday["activities"]))
+        spin = next(activity for activity in thursday["activities"] if activity.get("category") == "spin")
+        self.assertEqual(spin.get("title"), "Spin")
+        self.assertEqual(spin.get("duration_minutes"), 47)
+        self.assertEqual(spin.get("strain"), 11.1)
+
     def test_attach_activity_notes_annotates_activity(self) -> None:
         activity = {
             "source": "Strava",

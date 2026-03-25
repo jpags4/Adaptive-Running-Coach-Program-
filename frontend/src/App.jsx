@@ -1005,6 +1005,11 @@ function TrainingCard({
   const bikeZone = String(recommendation.bike_zone || recommendation.run_pace_guidance || '').trim()
   const bikeCadence = String(recommendation.bike_cadence || '').trim()
   const enduranceNotes = Array.isArray(recommendation.endurance_notes) ? recommendation.endurance_notes.filter(Boolean) : []
+  const [isCoachSummaryExpanded, setIsCoachSummaryExpanded] = useState(false)
+
+  useEffect(() => {
+    setIsCoachSummaryExpanded(false)
+  }, [recommendationExplanation?.summary, recommendation?.date, recommendation?.workout])
 
   return (
     <section className={`mx-auto max-w-[90rem] rounded-[2rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
@@ -1129,10 +1134,15 @@ function TrainingCard({
       </div>
 
       {recommendationExplanation?.summary ? (
-        <details className={`group mt-6 overflow-hidden rounded-[1.9rem] border ${
+        <section className={`mt-6 overflow-hidden rounded-[1.9rem] border ${
           isDark ? `border-sky-900/40 bg-sky-950/30 ${darkGlow(true)}` : 'border-sky-200 bg-sky-50/80'
         }`}>
-          <summary className="list-none cursor-pointer px-6 py-6">
+          <button
+            type="button"
+            aria-expanded={isCoachSummaryExpanded}
+            onClick={() => setIsCoachSummaryExpanded((current) => !current)}
+            className="w-full cursor-pointer px-6 py-6 text-left"
+          >
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 items-start gap-3">
                 <div className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
@@ -1154,14 +1164,15 @@ function TrainingCard({
               </div>
               <span
                 aria-hidden="true"
-                className={`mt-1 shrink-0 text-2xl transition duration-200 group-open:rotate-180 ${isDark ? 'text-sky-200/70' : 'text-sky-700'}`}
+                className={`mt-1 shrink-0 text-2xl transition duration-200 ${isCoachSummaryExpanded ? 'rotate-180' : ''} ${isDark ? 'text-sky-200/70' : 'text-sky-700'}`}
               >
                 ⌄
               </span>
             </div>
-          </summary>
+          </button>
 
-          <div className="px-6 pb-6">
+          {isCoachSummaryExpanded ? (
+            <div className="px-6 pb-6">
             {Array.isArray(recommendationExplanation.whyBullets) && recommendationExplanation.whyBullets.length > 0 ? (
               <ul className={`space-y-2 text-base leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 {recommendationExplanation.whyBullets.slice(0, 2).map((bullet, index) => (
@@ -1199,8 +1210,9 @@ function TrainingCard({
                 {recommendationExplanation.encouragement}
               </p>
             ) : null}
-          </div>
-        </details>
+            </div>
+          ) : null}
+        </section>
       ) : null}
     </section>
   )
@@ -1657,10 +1669,13 @@ function CalendarCard({ card, theme = 'light' }) {
 
 function CalendarActivity({ activity, theme = 'light' }) {
   const isDark = theme === 'dark'
-  const isRun = /run/i.test(String(activity.name || '')) || /run/i.test(String(activity.sport || ''))
+  const category = activityCategory(activity)
+  const isRun = category === 'running'
+  const isSpin = category === 'spin'
+  const isStrength = category === 'weightlifting'
   const intensity = simplifyIntensity(activity.intensity || activity.workout_type || '')
   const liftLabel = calendarLiftFocus(activity)
-  const showIntensityPill = isRun ? intensity !== '-' : Boolean(intensity && intensity !== '-' && liftLabel)
+  const showIntensityPill = isRun || isSpin ? intensity !== '-' : Boolean(intensity && intensity !== '-' && liftLabel)
 
   return (
     <div className="pb-2.5 last:pb-0">
@@ -1671,12 +1686,33 @@ function CalendarActivity({ activity, theme = 'light' }) {
           </p>
           <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{calendarPace(activity)}</p>
         </>
-      ) : (
+      ) : isSpin ? (
+        <>
+          <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            Spin
+          </p>
+          <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            {[
+              activity.duration_minutes ? `${activity.duration_minutes} min` : '',
+              activity.strain ? `Strain ${trimNumber(activity.strain)}` : '',
+            ].filter(Boolean).join(' • ') || 'Bike session'}
+          </p>
+        </>
+      ) : isStrength ? (
         liftLabel ? (
           <p className={`text-sm leading-6 ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`}>
             {liftLabel}
           </p>
         ) : null
+      ) : (
+        <p className={`text-sm leading-6 ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`}>
+          {activity.title || activitySourceLabel(activity) || 'Activity'}
+          {(activity.duration_minutes || activity.strain) ? (
+            <span className={`mt-1 block text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              {[activity.duration_minutes ? `${activity.duration_minutes} min` : '', activity.strain ? `Strain ${trimNumber(activity.strain)}` : ''].filter(Boolean).join(' • ')}
+            </span>
+          ) : null}
+        </p>
       )}
 
       {showIntensityPill ? (
@@ -1857,17 +1893,14 @@ function certaintyPillClass(value, theme = 'light') {
 
 function calendarStripeClass(activities) {
   const first = activities[0]
-  const kind = /run/i.test(String(first?.name || '')) || /run/i.test(String(first?.sport || ''))
-    ? 'run'
-    : /weight|strength|lift|mobility|stretch|yoga|pilates|core/i.test(String(first?.lift_focus || first?.name || first?.sport || ''))
-      ? 'strength'
-      : ''
+  const kind = activityCategory(first)
   const intensity = simplifyIntensity(first?.intensity || first?.workout_type || '')
   const text = intensity.toLowerCase()
   if (text.includes('hard')) return 'bg-rose-500'
   if (text.includes('moderate')) return 'bg-amber-400'
   if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-500'
-  if (kind === 'strength') return 'bg-sky-400'
+  if (kind === 'weightlifting') return 'bg-violet-500'
+  if (kind === 'spin') return 'bg-sky-500'
   return 'bg-neutral-300'
 }
 

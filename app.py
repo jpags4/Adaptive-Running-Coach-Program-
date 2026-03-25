@@ -308,6 +308,28 @@ def _attach_activity_notes(activities: list[dict], notes_by_key: dict[str, dict]
     return annotated
 
 
+def _normalize_activity_item(activity: dict) -> dict:
+    item = dict(activity)
+    category = normalize_workout_category(item)
+    title = {
+        "running": "Run",
+        "weightlifting": "Weight Training",
+        "spin": "Spin",
+        "activity": "Activity",
+    }.get(category, "Activity")
+    raw_type = str(item.get("sport") or item.get("sport_name") or item.get("type") or item.get("raw_type") or "").strip() or None
+    source_title = str(item.get("name") or item.get("title") or item.get("source_title") or "").strip() or None
+    item["category"] = category
+    item["title"] = title
+    item["raw_type"] = raw_type
+    item["source_title"] = source_title
+    item["date"] = str(item.get("day") or "")
+    item["duration_min"] = item.get("duration_minutes")
+    item["distance"] = item.get("distance_miles")
+    item["pace"] = item.get("pace_text") or item.get("run_pace_guidance")
+    return item
+
+
 def _parse_activity_timestamp(value: str | None) -> datetime | None:
     text = str(value or "").strip()
     if not text:
@@ -414,29 +436,15 @@ def dedupe_workout_log_items(items: list[dict]) -> list[dict]:
     return deduped
 
 
-def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
-    def normalize_item(activity: dict) -> dict:
-        item = dict(activity)
-        category = normalize_workout_category(item)
-        title = {
-            "running": "Run",
-            "weightlifting": "Weight Training",
-            "spin": "Spin",
-            "activity": "Activity",
-        }.get(category, "Activity")
-        raw_type = str(item.get("sport") or item.get("sport_name") or item.get("type") or "").strip() or None
-        source_title = str(item.get("name") or item.get("title") or "").strip() or None
-        item["category"] = category
-        item["title"] = title
-        item["raw_type"] = raw_type
-        item["source_title"] = source_title
-        item["date"] = str(item.get("day") or "")
-        item["duration_min"] = item.get("duration_minutes")
-        item["distance"] = item.get("distance_miles")
-        item["pace"] = item.get("pace_text") or item.get("run_pace_guidance")
-        return item
+def _prepare_calendar_activity_feed(activities: list[dict], notes_by_key: dict[str, dict]) -> list[dict]:
+    normalized = [_normalize_activity_item(item) for item in activities]
+    deduped = dedupe_workout_log_items(normalized)
+    ordered = sorted(deduped, key=lambda item: (item.get("day", ""), item.get("start_time") or "", int(item.get("duration_minutes") or 0)), reverse=True)
+    return _attach_activity_notes(ordered, notes_by_key)
 
-    normalized = dedupe_workout_log_items([normalize_item(item) for item in activities])
+
+def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
+    normalized = dedupe_workout_log_items([_normalize_activity_item(item) for item in activities])
     runs = [item for item in normalized if item.get("category") == "running"]
     strength = [item for item in normalized if item.get("category") == "weightlifting"]
     spin = [item for item in normalized if item.get("category") == "spin"]
@@ -1319,6 +1327,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     full_activity_feed = _filter_calendar_activities(sorted(all_activities, key=lambda item: item.get("day", ""), reverse=True))
     full_logged_activity_feed = sorted(logged_activities, key=lambda item: item.get("day", ""), reverse=True)
     annotated_activity_feed = _attach_activity_notes(full_activity_feed, activity_notes)
+    annotated_calendar_feed = _prepare_calendar_activity_feed(all_activities, activity_notes)
     annotated_activity_log = _activity_log_payload(_attach_activity_notes(full_logged_activity_feed, activity_notes))
     recommendation_feedback.update(_recommendation_training_context(annotated_activity_feed, today_iso))
     notes_context = _activity_notes_context(
@@ -1363,7 +1372,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             "latest_resting_hr": metrics[-1].resting_hr,
             "latest_hrv": metrics[-1].hrv_ms,
             "previous_run": previous_run_summary(runs),
-            "current_day_status": _current_day_status(today_iso, annotated_activity_feed, recommendation),
+            "current_day_status": _current_day_status(today_iso, annotated_calendar_feed, recommendation),
         },
         "recommendation": recommendation.to_dict() if recommendation else None,
         "recommendation_explanation": recommendation_meta.get("recommendation_explanation") if recommendation_meta else None,
@@ -1375,10 +1384,10 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         "training_roadmap": roadmap,
         "weekly_plan_key": _week_plan_key(today_date),
         "weekly_plan_generated_from_day": weekly_plan_bundle.get("planned_from_day"),
-        "activity_feed": annotated_activity_feed,
+        "activity_feed": annotated_calendar_feed,
         "activity_log": annotated_activity_log,
         "activity_calendar": calendar_days(
-            annotated_activity_feed,
+            annotated_calendar_feed,
             metrics,
             recommendation=recommendation,
             today=today_iso,
