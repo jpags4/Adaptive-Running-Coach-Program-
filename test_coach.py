@@ -16,7 +16,9 @@ from app import (
     _pace_text_for_type,
     _profile_settings_payload,
     _recommendation_training_context,
+    build_canonical_workouts,
     dedupe_workout_log_items,
+    match_strava_run_to_whoop_workout,
     normalize_workout_category,
     build_training_roadmap,
     calendar_days,
@@ -282,6 +284,26 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(len(preview), 1)
         self.assertEqual(preview[0]["day"], "2026-03-20")
 
+    def test_whoop_workout_preview_keeps_running_sessions(self) -> None:
+        snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "id": "whoop-run-1",
+                        "start": "2026-03-24T11:00:00Z",
+                        "end": "2026-03-24T11:32:00Z",
+                        "sport_name": "Running",
+                        "score": {"strain": 10.2},
+                    }
+                ]
+            }
+        }
+
+        preview = whoop_workout_preview(snapshot)
+
+        self.assertEqual(len(preview), 1)
+        self.assertEqual(normalize_workout_category(preview[0]), "running")
+
     def test_calendar_days_keeps_projected_run_with_recorded_future_strength(self) -> None:
         recommendation = Recommendation(
             date="2026-03-19",
@@ -383,6 +405,238 @@ class CoachRecommendationTests(unittest.TestCase):
         self.assertEqual(spin.get("title"), "Spin")
         self.assertEqual(spin.get("duration_minutes"), 47)
         self.assertEqual(spin.get("strain"), 11.1)
+
+    def test_match_strava_run_to_whoop_workout_returns_none_when_ambiguous(self) -> None:
+        whoop_workout = {
+            "category": "running",
+            "day": "2026-03-24",
+            "duration_minutes": 32,
+            "start_time": "2026-03-24T11:00:00+00:00",
+        }
+        strava_candidates = [
+            {
+                "source_id": "strava-1",
+                "name": "Run",
+                "sport": "Run",
+                "day": "2026-03-24",
+                "duration_minutes": 31,
+                "start_time": "2026-03-24T11:03:00+00:00",
+            },
+            {
+                "source_id": "strava-2",
+                "name": "Run",
+                "sport": "Run",
+                "day": "2026-03-24",
+                "duration_minutes": 31,
+                "start_time": "2026-03-24T11:03:00+00:00",
+            },
+        ]
+
+        match = match_strava_run_to_whoop_workout(whoop_workout, strava_candidates)
+
+        self.assertIsNone(match)
+
+    def test_build_canonical_workouts_uses_whoop_as_source_of_truth_for_spin(self) -> None:
+        whoop_snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "id": "whoop-spin-1",
+                        "start": "2026-03-24T07:00:00Z",
+                        "end": "2026-03-24T07:47:00Z",
+                        "sport_name": "Cycling",
+                        "score": {"strain": 11.1},
+                    }
+                ]
+            }
+        }
+        strava_snapshot = {
+            "activities": [
+                {
+                    "id": "strava-ride-1",
+                    "type": "Ride",
+                    "sport_type": "Ride",
+                    "start_date_local": "2026-03-24T07:00:00Z",
+                    "moving_time": 2820,
+                    "distance": 16093.4,
+                    "name": "Morning Ride",
+                }
+            ]
+        }
+
+        canonical = build_canonical_workouts(whoop_snapshot, strava_snapshot)
+
+        self.assertEqual(len(canonical), 1)
+        self.assertEqual(canonical[0]["source_of_truth"], "whoop")
+        self.assertEqual(canonical[0]["category"], "spin")
+        self.assertEqual(canonical[0]["strain"], 11.1)
+        self.assertFalse(canonical[0]["enrichment"]["stravaMatched"])
+
+    def test_build_canonical_workouts_enriches_matched_whoop_run_with_strava(self) -> None:
+        whoop_snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "id": "whoop-run-1",
+                        "start": "2026-03-24T11:00:00Z",
+                        "end": "2026-03-24T11:32:00Z",
+                        "sport_name": "Running",
+                        "score": {"strain": 10.4},
+                    }
+                ]
+            }
+        }
+        strava_snapshot = {
+            "activities": [
+                {
+                    "id": "strava-run-1",
+                    "type": "Run",
+                    "sport_type": "Run",
+                    "start_date_local": "2026-03-24T11:04:00Z",
+                    "moving_time": 1860,
+                    "distance": 6437.36,
+                    "name": "Lunch Run",
+                }
+            ]
+        }
+
+        canonical = build_canonical_workouts(whoop_snapshot, strava_snapshot)
+
+        self.assertEqual(len(canonical), 1)
+        self.assertEqual(canonical[0]["source_of_truth"], "whoop")
+        self.assertEqual(canonical[0]["category"], "running")
+        self.assertAlmostEqual(canonical[0]["distance_miles"], 4.0, places=1)
+        self.assertTrue(canonical[0]["enrichment"]["stravaMatched"])
+        self.assertEqual(canonical[0]["enrichment"]["stravaActivityId"], "strava-run-1")
+
+    def test_build_canonical_workouts_skips_ambiguous_strava_run_enrichment(self) -> None:
+        whoop_snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "id": "whoop-run-1",
+                        "start": "2026-03-24T11:00:00Z",
+                        "end": "2026-03-24T11:32:00Z",
+                        "sport_name": "Running",
+                        "score": {"strain": 10.4},
+                    }
+                ]
+            }
+        }
+        strava_snapshot = {
+            "activities": [
+                {
+                    "id": "strava-run-1",
+                    "type": "Run",
+                    "sport_type": "Run",
+                    "start_date_local": "2026-03-24T11:04:00Z",
+                    "moving_time": 1860,
+                    "distance": 6437.36,
+                    "name": "Lunch Run",
+                },
+                {
+                    "id": "strava-run-2",
+                    "type": "Run",
+                    "sport_type": "Run",
+                    "start_date_local": "2026-03-24T11:04:00Z",
+                    "moving_time": 1860,
+                    "distance": 6437.36,
+                    "name": "Lunch Run 2",
+                },
+            ]
+        }
+
+        canonical = build_canonical_workouts(whoop_snapshot, strava_snapshot)
+
+        self.assertEqual(len(canonical), 1)
+        self.assertFalse(canonical[0]["enrichment"]["stravaMatched"])
+
+    def test_build_canonical_workouts_handles_lift_and_generic_without_strava_rows(self) -> None:
+        whoop_snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "id": "whoop-lift-1",
+                        "start": "2026-03-23T12:00:00Z",
+                        "end": "2026-03-23T12:40:00Z",
+                        "sport_name": "Weightlifting",
+                        "score": {"strain": 8.8},
+                    },
+                    {
+                        "id": "whoop-activity-1",
+                        "start": "2026-03-22T18:00:00Z",
+                        "end": "2026-03-22T18:21:00Z",
+                        "sport_name": "Yoga",
+                        "score": {"strain": 4.5},
+                    },
+                ]
+            }
+        }
+        strava_snapshot = {
+            "activities": [
+                {
+                    "id": "strava-ride-1",
+                    "type": "Ride",
+                    "sport_type": "Ride",
+                    "start_date_local": "2026-03-23T12:00:00Z",
+                    "moving_time": 2400,
+                    "distance": 12000,
+                    "name": "Ride",
+                }
+            ]
+        }
+
+        canonical = build_canonical_workouts(whoop_snapshot, strava_snapshot)
+        categories = [item["category"] for item in canonical]
+
+        self.assertEqual(categories, ["weightlifting", "activity"])
+
+    def test_workout_log_and_calendar_share_same_canonical_sessions(self) -> None:
+        whoop_snapshot = {
+            "workouts": {
+                "records": [
+                    {
+                        "id": "whoop-spin-1",
+                        "start": "2026-03-24T07:00:00Z",
+                        "end": "2026-03-24T07:47:00Z",
+                        "sport_name": "Cycling",
+                        "score": {"strain": 11.1},
+                    },
+                    {
+                        "id": "whoop-run-1",
+                        "start": "2026-03-25T11:00:00Z",
+                        "end": "2026-03-25T11:32:00Z",
+                        "sport_name": "Running",
+                        "score": {"strain": 10.4},
+                    },
+                ]
+            }
+        }
+        strava_snapshot = {
+            "activities": [
+                {
+                    "id": "strava-run-1",
+                    "type": "Run",
+                    "sport_type": "Run",
+                    "start_date_local": "2026-03-25T11:04:00Z",
+                    "moving_time": 1860,
+                    "distance": 6437.36,
+                    "name": "Lunch Run",
+                }
+            ]
+        }
+
+        canonical = build_canonical_workouts(whoop_snapshot, strava_snapshot)
+        activity_log = _activity_log_payload(canonical)
+        cards = calendar_days(canonical, SAMPLE_METRICS, today="2026-03-25", profile=SAMPLE_PROFILE, weekly_plan={})
+
+        flattened_log = activity_log["runs"] + activity_log["strength"] + activity_log["spin"] + activity_log["activity"]
+        calendar_sessions = [activity for card in cards for activity in card["activities"] if not activity.get("projected")]
+
+        self.assertEqual(len(flattened_log), 2)
+        self.assertEqual(len(calendar_sessions), 2)
+        self.assertTrue(any(item.get("category") == "spin" for item in flattened_log))
+        self.assertTrue(any(item.get("category") == "running" for item in flattened_log))
 
     def test_attach_activity_notes_annotates_activity(self) -> None:
         activity = {

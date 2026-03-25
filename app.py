@@ -463,6 +463,109 @@ def _prepare_calendar_activity_feed(activities: list[dict], notes_by_key: dict[s
     return _attach_activity_notes(ordered, notes_by_key)
 
 
+def match_strava_run_to_whoop_workout(whoop_workout: dict, strava_activities: list[dict]) -> dict | None:
+    if normalize_workout_category(whoop_workout) != "running":
+        return None
+
+    day = str(whoop_workout.get("day") or "")
+    if not day:
+        return None
+
+    whoop_start = _parse_activity_timestamp(whoop_workout.get("start_time"))
+    whoop_duration = int(whoop_workout.get("duration_minutes") or 0)
+    candidates: list[tuple[tuple[int, int], dict]] = []
+    for activity in strava_activities:
+        if normalize_workout_category(activity) != "running":
+            continue
+        if str(activity.get("day") or "") != day:
+            continue
+
+        strava_duration = int(activity.get("duration_minutes") or 0)
+        duration_gap = abs(whoop_duration - strava_duration)
+        if whoop_duration and strava_duration and duration_gap > 8:
+            continue
+
+        strava_start = _parse_activity_timestamp(activity.get("start_time"))
+        time_gap_minutes = 9999
+        if whoop_start is not None and strava_start is not None:
+            time_gap_minutes = int(abs((whoop_start - strava_start).total_seconds()) / 60)
+            if time_gap_minutes > 90:
+                continue
+
+        candidates.append(((time_gap_minutes, duration_gap), activity))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item[0])
+    if len(candidates) > 1 and candidates[0][0] == candidates[1][0]:
+        return None
+    return candidates[0][1]
+
+
+def _apply_strava_run_enrichment(canonical: dict, strava_match: dict | None) -> dict:
+    enriched = dict(canonical)
+    enrichment = dict(enriched.get("enrichment") or {})
+    if not strava_match:
+        enrichment["stravaMatched"] = False
+        enriched["enrichment"] = enrichment
+        return enriched
+
+    enrichment.update(
+        {
+            "stravaMatched": True,
+            "stravaActivityId": strava_match.get("source_id"),
+            "stravaTitle": strava_match.get("source_title") or strava_match.get("name"),
+            "distance": strava_match.get("distance_miles"),
+            "pace": strava_match.get("pace_text") or strava_match.get("run_pace_guidance"),
+            "movingTimeMin": strava_match.get("duration_minutes"),
+        }
+    )
+
+    if float(strava_match.get("distance_miles") or 0.0) > 0:
+        enriched["distance_miles"] = strava_match.get("distance_miles")
+        enriched["distance"] = strava_match.get("distance_miles")
+    if float(strava_match.get("average_pace_min_per_mile") or 0.0) > 0:
+        enriched["average_pace_min_per_mile"] = strava_match.get("average_pace_min_per_mile")
+    if strava_match.get("pace_text") or strava_match.get("run_pace_guidance"):
+        enriched["pace"] = strava_match.get("pace_text") or strava_match.get("run_pace_guidance")
+    if strava_match.get("source_title") and not enriched.get("source_title"):
+        enriched["source_title"] = strava_match.get("source_title")
+    enriched["enrichment"] = enrichment
+    return enriched
+
+
+def build_canonical_workouts(whoop_snapshot: dict | None, strava_snapshot: dict | None = None) -> list[dict]:
+    if not whoop_snapshot:
+        return []
+
+    whoop_workouts = whoop_workout_preview(whoop_snapshot)
+    strava_activities = strava_activity_preview((strava_snapshot or {}).get("activities", [])) if strava_snapshot else []
+    used_strava_ids: set[str] = set()
+    canonical: list[dict] = []
+
+    for workout in whoop_workouts:
+        normalized = _normalize_activity_item(workout)
+        normalized["id"] = f"whoop:{workout.get('source_id') or _activity_key(workout)}"
+        normalized["source_of_truth"] = "whoop"
+        normalized["raw_whoop_type"] = workout.get("raw_type")
+        normalized["raw_whoop_title"] = workout.get("source_title") or workout.get("name")
+        normalized["notes"] = workout.get("note")
+        normalized["enrichment"] = {"stravaMatched": False}
+
+        strava_match = None
+        if normalized.get("category") == "running":
+            candidate = match_strava_run_to_whoop_workout(normalized, [item for item in strava_activities if str(item.get("source_id") or "") not in used_strava_ids])
+            if candidate:
+                strava_match = candidate
+                if candidate.get("source_id") is not None:
+                    used_strava_ids.add(str(candidate.get("source_id")))
+
+        canonical.append(_apply_strava_run_enrichment(normalized, strava_match))
+
+    return dedupe_workout_log_items(canonical)
+
+
 def _activity_log_payload(activities: list[dict]) -> dict[str, list[dict]]:
     normalized = dedupe_workout_log_items([_normalize_activity_item(item) for item in activities])
     runs = [item for item in normalized if item.get("category") == "running"]
@@ -1253,9 +1356,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     runs = SAMPLE_RUNS
     metrics = SAMPLE_METRICS
     live_preview = {"mode": "sample"}
-    activity_feed = sample_activity_preview(runs)
-    all_activities = list(activity_feed)
-    logged_activities: list[dict] = []
+    canonical_activities = [_normalize_activity_item(item) for item in sample_activity_preview(runs)]
 
     try:
         live_strava = None
@@ -1294,10 +1395,7 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
                 profile = merged["profile"]
                 runs = merged["runs"]
                 metrics = merged["metrics"]
-                all_activities = strava_activity_preview(live_strava.get("activities", [])) + whoop_workout_preview(live_whoop)
-                logged_activities = list(all_activities)
-                activity_feed = list(all_activities)
-                activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))
+                canonical_activities = build_canonical_workouts(live_whoop, live_strava)
                 live_preview = {
                     "mode": "live",
                     "strava_runs_found": len(runs),
@@ -1306,23 +1404,12 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         else:
             if live_strava:
                 runs = strava_runs_to_model(live_strava.get("activities", [])) or runs
-                all_activities = strava_activity_preview(live_strava.get("activities", []))
-                logged_activities = list(all_activities)
-                activity_feed = list(all_activities)
+                canonical_activities = []
             if live_whoop:
                 metrics = whoop_metrics_to_model(live_whoop) or metrics
-                whoop_activities = whoop_workout_preview(live_whoop)
-                if live_strava:
-                    all_activities = all_activities + whoop_activities
-                    logged_activities = logged_activities + whoop_activities
-                    activity_feed = activity_feed + whoop_activities
-                elif whoop_activities:
-                    all_activities = whoop_activities
-                    logged_activities = whoop_activities
-                    activity_feed = whoop_activities
+                canonical_activities = build_canonical_workouts(live_whoop, live_strava)
 
             if live_strava or live_whoop:
-                activity_feed = _filter_calendar_activities(sorted(activity_feed, key=lambda item: item.get("day", ""), reverse=True))
                 live_preview = {
                     "mode": "mixed",
                     "strava_runs_found": len(runs) if live_strava else 0,
@@ -1344,10 +1431,10 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     recommendation_meta = {"source": None, "model": None, "reason": None}
     recommendation_feedback = dict(subjective_feedback or {})
     activity_notes = load_activity_notes()
-    full_activity_feed = _filter_calendar_activities(sorted(all_activities, key=lambda item: item.get("day", ""), reverse=True))
-    full_logged_activity_feed = sorted(logged_activities, key=lambda item: item.get("day", ""), reverse=True)
+    full_activity_feed = _filter_calendar_activities(sorted(canonical_activities, key=lambda item: item.get("day", ""), reverse=True))
+    full_logged_activity_feed = sorted(canonical_activities, key=lambda item: item.get("day", ""), reverse=True)
     annotated_activity_feed = _attach_activity_notes(full_activity_feed, activity_notes)
-    annotated_calendar_feed = _prepare_calendar_activity_feed(all_activities, activity_notes)
+    annotated_calendar_feed = _prepare_calendar_activity_feed(canonical_activities, activity_notes)
     annotated_activity_log = _activity_log_payload(_attach_activity_notes(full_logged_activity_feed, activity_notes))
     recommendation_feedback.update(_recommendation_training_context(annotated_activity_feed, today_iso))
     notes_context = _activity_notes_context(

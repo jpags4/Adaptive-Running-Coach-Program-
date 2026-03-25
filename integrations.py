@@ -563,8 +563,6 @@ def whoop_workout_preview(snapshot: dict) -> list[dict]:
             or workout.get("workout_type")
             or "Workout"
         )
-        if str(sport_name).lower() in {"run", "running"}:
-            continue
         strain = workout.get("score", {}).get("strain")
         duration_minutes = 0
         if start and end:
