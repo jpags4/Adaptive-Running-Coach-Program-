@@ -383,13 +383,13 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   return (
     <header className="flex items-start justify-between gap-8 pb-6">
       <div>
-        <h1 className={`text-6xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+        <h1 className={`text-5xl font-semibold uppercase italic tracking-[0.04em] md:text-6xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>
           {greeting}, {name || 'Athlete'}
         </h1>
-        <p className={`mt-7 text-sm font-semibold uppercase tracking-[0.24em] ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+        <p className={`mt-7 text-xs font-medium uppercase tracking-[0.28em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
           Adaptive Running Coach
         </p>
-        <p className={`mt-3 text-xl ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{formatDate(today)}</p>
+        <p className={`mt-3 text-lg uppercase tracking-[0.12em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{formatDate(today)}</p>
       </div>
 
       <div className="flex flex-col items-end gap-6 pt-1 text-right">
@@ -409,10 +409,10 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
         <div>
-          <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+          <p className={`text-xs font-medium uppercase tracking-[0.24em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
             Race Goal
           </p>
-          <p className={`mt-3 text-2xl font-medium tracking-tight ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
+          <p className={`mt-3 text-xl uppercase tracking-[0.12em] ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
             Half Marathon · {formatRaceGoal(goalRaceDate)}
           </p>
         </div>
@@ -1231,7 +1231,7 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
               Current Week
             </p>
             <div className={`mt-3 inline-flex rounded-[1.5rem] border px-5 py-3 ${isDark ? 'border-violet-800/60 bg-violet-950/50 text-white' : 'border-violet-100 bg-violet-50/80 text-neutral-950'}`}>
-              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              <h2 className="text-3xl font-semibold uppercase italic tracking-[0.05em] md:text-4xl">
                 {weeklyFocus.phase || 'Weekly focus'}
               </h2>
             </div>
@@ -1491,7 +1491,9 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
                 : 'border-violet-200 bg-violet-50/85 shadow-[inset_4px_0_0_0_rgba(124,58,237,0.85)]'
             }`}>
               <h3 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-violet-100' : 'text-violet-900'}`}>
+                <span className="uppercase italic tracking-[0.05em]">
                 {weeklyFocus.phase || 'Weekly focus'}
+                </span>
               </h3>
             </div>
             <p className={`mt-3 max-w-4xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
@@ -1521,7 +1523,7 @@ function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) 
                       <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                         Week {index + 2} · {formatRoadmapWeekSpan(week)}
                       </p>
-                      <h4 className={`mt-2 text-xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                      <h4 className={`mt-2 text-xl font-semibold uppercase italic tracking-[0.05em] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                         {week.phase}
                       </h4>
                       <p className={`mt-2 max-w-4xl text-sm leading-6 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
