@@ -1450,6 +1450,7 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
   const safeFutureIndex = Math.min(selectedFutureWeekIndex, Math.max(0, futureWeekPlans.length - 1))
   const selectedFutureWeek = futureWeekPlans[safeFutureIndex] || null
   const selectedFutureFocus = selectedFutureWeek?.weekly_focus || {}
+  const selectedFutureProjection = selectedFutureWeek?.future_projection || {}
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
@@ -1489,39 +1490,31 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
 
         {futureWeekPlans.length > 0 ? (
           <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-            <button
-              type="button"
-              onClick={() => setIsFuturePlannerExpanded((value) => !value)}
-              aria-expanded={isFuturePlannerExpanded}
-              className={`group flex w-full items-center justify-between rounded-[1.2rem] border px-4 py-3.5 text-left transition ${
-                isDark
-                  ? 'border-neutral-800 bg-neutral-950/70 hover:border-violet-700/60'
-                  : 'border-neutral-200 bg-white hover:border-violet-200'
-              }`}
-            >
-              <div className="min-w-0">
+            <div className={`rounded-[1.35rem] border ${isDark ? 'border-neutral-800 bg-neutral-950/78' : 'border-neutral-200 bg-white'}`}>
+              <button
+                type="button"
+                onClick={() => setIsFuturePlannerExpanded((value) => !value)}
+                aria-expanded={isFuturePlannerExpanded}
+                className="group flex w-full items-center justify-between px-4 py-3.5 text-left transition"
+              >
                 <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                   Future Planner
                 </p>
-              </div>
-              <span
-                className={`ml-6 inline-flex h-10 w-10 flex-none items-center justify-center rounded-full border transition ${
-                  isDark
-                    ? 'border-neutral-700 bg-neutral-900 text-neutral-200 group-hover:border-violet-500 group-hover:text-white'
-                    : 'border-neutral-200 bg-stone-50 text-neutral-700 group-hover:border-violet-300 group-hover:text-neutral-950'
-                } ${isFuturePlannerExpanded ? 'rotate-180' : ''}`}
-              >
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 8l5 5 5-5" />
-                </svg>
-              </span>
-            </button>
+                <span
+                  className={`ml-6 inline-flex h-10 w-10 flex-none items-center justify-center rounded-full border transition ${
+                    isDark
+                      ? 'border-neutral-700 bg-neutral-900 text-neutral-200 group-hover:border-violet-500 group-hover:text-white'
+                      : 'border-neutral-200 bg-stone-50 text-neutral-700 group-hover:border-violet-300 group-hover:text-neutral-950'
+                  } ${isFuturePlannerExpanded ? 'rotate-180' : ''}`}
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 8l5 5 5-5" />
+                  </svg>
+                </span>
+              </button>
 
-            {isFuturePlannerExpanded && selectedFutureWeek ? (
-              <div className={`mt-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                <div className={`rounded-[1.35rem] border px-5 py-5 ${
-                  isDark ? 'border-neutral-800 bg-neutral-950/75' : 'border-neutral-200 bg-white'
-                }`}>
+              {isFuturePlannerExpanded && selectedFutureWeek ? (
+                <div className={`border-t px-4 py-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0 flex-1">
                       <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
@@ -1533,18 +1526,18 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
                             ? 'border-violet-800/70 bg-violet-950/35 text-violet-100'
                             : 'border-violet-200 bg-violet-50/85 text-violet-900'
                         }`}>
-                          {selectedFutureWeek?.focus_title || selectedFutureFocus.phase || 'Weekly focus'}
+                          {selectedFutureProjection.phaseTitle || selectedFutureWeek?.focus_title || selectedFutureFocus.phase || 'Weekly focus'}
                         </span>
                       </div>
                       <p className={`mt-3 text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                        {selectedFutureWeek?.focus_summary || selectedFutureFocus.progression_note || selectedFutureFocus.race_connection || 'Future guidance will appear here.'}
+                        {selectedFutureWeek?.focus_summary || selectedFutureProjection.summary || selectedFutureFocus.progression_note || selectedFutureFocus.race_connection || 'Future guidance will appear here.'}
                       </p>
-                      {selectedFutureFocus.mileage_target || selectedFutureFocus.quality_sessions || selectedFutureFocus.long_run_target ? (
+                      {(selectedFutureProjection.targetMileage || selectedFutureProjection.longRunTarget || selectedFutureProjection.keySessionSummary) ? (
                         <p className={`mt-3 text-xs font-medium uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
                           {[
-                            selectedFutureFocus.mileage_target ? `${trimNumber(selectedFutureFocus.mileage_target)} mi target` : '',
-                            selectedFutureFocus.quality_sessions ? `${selectedFutureFocus.quality_sessions} key sessions` : '',
-                            selectedFutureFocus.long_run_target ? `${trimNumber(selectedFutureFocus.long_run_target)} mi long run` : '',
+                            selectedFutureProjection.targetMileage ? `${trimNumber(selectedFutureProjection.targetMileage)} mi target` : '',
+                            selectedFutureProjection.longRunTarget ? `${trimNumber(selectedFutureProjection.longRunTarget)} mi long run` : '',
+                            selectedFutureProjection.keySessionSummary || '',
                           ].filter(Boolean).join(' · ')}
                         </p>
                       ) : null}
@@ -1587,8 +1580,8 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
         ) : null}
       </div>

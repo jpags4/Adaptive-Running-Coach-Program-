@@ -1234,6 +1234,94 @@ def _load_or_create_weekly_plan(anchor, profile, runs, metrics) -> dict:
     return plan
 
 
+def _projected_long_run_miles(value) -> float | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    match = re.search(r"(\d+(?:\.\d+)?)", text)
+    if not match:
+        return None
+    try:
+        return round(float(match.group(1)), 1)
+    except ValueError:
+        return None
+
+
+def _future_phase_title(*, week_offset: int, week_type: str, primary_adaptation: str, days_to_race: int) -> str:
+    if week_type == "taper" or days_to_race <= 14:
+        return "Race Taper"
+    if week_type == "absorb":
+        return "Recovery Week"
+    if primary_adaptation == "race-specific stamina" or days_to_race <= 35:
+        return "Race-Specific Stamina"
+    if primary_adaptation == "threshold":
+        return "Threshold Build" if week_offset == 1 else "Threshold Development"
+    if primary_adaptation == "volume":
+        return "Base Building" if week_offset == 1 else "Aerobic Development"
+    return "Aerobic Support"
+
+
+def _future_key_session_summary(phase_title: str, intent: WeeklyIntent, week_offset: int) -> str:
+    if phase_title == "Race Taper":
+        return "1 light sharpening session"
+    if phase_title == "Recovery Week":
+        return "1 controlled aerobic session"
+    if phase_title == "Race-Specific Stamina":
+        return "1 race-pace stamina session"
+    if phase_title == "Threshold Development":
+        return "1 sustained threshold session"
+    if phase_title == "Threshold Build":
+        return "1 threshold session"
+    if phase_title in {"Base Building", "Aerobic Development", "Aerobic Support"}:
+        return "1 aerobic support session" if week_offset > 1 else "1 steady aerobic session"
+    return intent.quality_session_target or "1 key session"
+
+
+def _future_projection_summary(
+    *,
+    phase_title: str,
+    projected_miles: float,
+    week_offset: int,
+    week_type: str,
+    days_to_race: int,
+) -> str:
+    if phase_title == "Race Taper":
+        return "Mileage comes down so you stay fresh while keeping enough rhythm to feel sharp."
+    if phase_title == "Recovery Week":
+        return "Load eases back this week so fatigue can absorb before the next build."
+    if phase_title == "Race-Specific Stamina":
+        return "Training shifts toward sustained half-marathon-specific work without overreaching the weekly load."
+    if phase_title == "Threshold Development":
+        return "This week nudges load up again and extends threshold work into more sustained efforts."
+    if phase_title == "Threshold Build":
+        return "This week builds slightly on recent load while introducing more controlled threshold work."
+    if phase_title == "Aerobic Development":
+        return f"This week keeps the volume durable at roughly {projected_miles:.0f} miles while building aerobic consistency."
+    if phase_title == "Base Building":
+        return "This week reinforces easy volume and long-run consistency without forcing intensity."
+    if week_type == "steady":
+        return "This week keeps training steady so quality stays controlled and repeatable."
+    if days_to_race <= 49:
+        return "This week keeps the work specific enough to support race-day durability without adding noise."
+    return "This week advances the next training step without asking for a large jump in stress."
+
+
+def _future_projection_metadata(
+    *,
+    phase_title: str,
+    projected_miles: float,
+    long_run_miles: float | None,
+    key_session_summary: str,
+) -> dict:
+    return {
+        "targetMileage": round(projected_miles, 1),
+        "longRunTarget": round(long_run_miles, 1) if long_run_miles is not None else None,
+        "keySessionSummary": key_session_summary,
+        "qualitySessions": 1 if "1 " in key_session_summary else 0,
+        "phaseTitle": phase_title,
+    }
+
+
 def build_training_roadmap(anchor, profile, runs, metrics, weeks: int = 4) -> list[dict]:
     roadmap: list[dict] = []
     current_week_start = sunday_week_start(anchor)
@@ -1253,19 +1341,31 @@ def build_training_roadmap(anchor, profile, runs, metrics, weeks: int = 4) -> li
             projected_miles = round(max(projected_miles * 1.04, float(intent.mileage_target or projected_miles)), 1)
         else:
             projected_miles = round(max(projected_miles * 0.99, float(intent.mileage_target or projected_miles)), 1)
+        projected_long_run = _projected_long_run_miles(intent.long_run_target)
+        if projected_long_run is None:
+            projected_long_run = round(max(6.0, projected_miles * (0.3 if intent.week_type == "absorb" else 0.33)), 1)
+        phase_title = _future_phase_title(
+            week_offset=week_offset,
+            week_type=intent.week_type,
+            primary_adaptation=intent.primary_adaptation,
+            days_to_race=days_until_race(profile.goal_race_date, week_start),
+        )
+        key_session_summary = _future_key_session_summary(phase_title, intent, week_offset)
+        summary = _future_projection_summary(
+            phase_title=phase_title,
+            projected_miles=projected_miles,
+            week_offset=week_offset,
+            week_type=intent.week_type,
+            days_to_race=days_until_race(profile.goal_race_date, week_start),
+        )
         hard_days = 1 if intent.primary_adaptation in {"threshold", "race-specific stamina"} else 0
         rest_days = 3 if intent.week_type in {"absorb", "taper"} else 2
-        summary = (
-            f"{intent.phase} week focused on {intent.primary_adaptation}."
-            if intent.primary_adaptation
-            else intent.phase
-        )
         roadmap.append(
             {
                 "week_start": week_start.isoformat(),
                 "week_end": week_end.isoformat(),
                 "label": f"Week of {week_start.strftime('%b')} {week_start.day}",
-                "phase": intent.phase,
+                "phase": phase_title,
                 "week_type": intent.week_type,
                 "primary_adaptation": intent.primary_adaptation,
                 "mileage_range": f"{max(10.0, projected_miles - 1.5):.0f}-{projected_miles + 1.5:.0f} miles",
@@ -1274,13 +1374,19 @@ def build_training_roadmap(anchor, profile, runs, metrics, weeks: int = 4) -> li
                 "estimated_rest_days": rest_days,
                 "long_run_target": intent.long_run_target,
                 "quality_session_target": intent.quality_session_target,
-                "progression_note": intent.progression_note,
+                "progression_note": summary,
                 "race_connection": intent.race_connection,
                 "summary": summary,
                 "strength_target": intent.strength_target,
                 "strain_constraints": list(intent.strain_constraints),
                 "non_negotiables": list(intent.non_negotiables),
                 "flex_points": list(intent.flex_points),
+                "future_projection": _future_projection_metadata(
+                    phase_title=phase_title,
+                    projected_miles=projected_miles,
+                    long_run_miles=projected_long_run,
+                    key_session_summary=key_session_summary,
+                ),
                 "certainty": certainty,
                 "confidence_note": (
                     "Most likely next step if recovery and training stay on track."
@@ -1428,6 +1534,7 @@ def build_weekly_plan_views(
                 "focus_summary": week.get("progression_note") or week.get("summary") or "",
                 "focus_tag": week.get("phase") or "Weekly focus",
                 "weekly_focus": week,
+                "future_projection": week.get("future_projection") or {},
                 "days": cards,
             }
         )
