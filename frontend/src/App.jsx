@@ -328,26 +328,36 @@ function DashboardLoading({ theme = 'light' }) {
         }
 
         .arc-modal-scroll {
-          scrollbar-color: #0a0a0a #1b1b1b;
+          scrollbar-width: thin;
+          scrollbar-color: #1a1a1a #141414;
         }
 
         .arc-modal-scroll::-webkit-scrollbar {
-          width: 12px;
+          width: 10px;
+          background-color: #141414;
         }
 
         .arc-modal-scroll::-webkit-scrollbar-track {
-          background: #0a0a0a;
+          background: #141414;
           border-radius: 999px;
+        }
+
+        .arc-modal-scroll::-webkit-scrollbar-track-piece {
+          background: #141414;
         }
 
         .arc-modal-scroll::-webkit-scrollbar-thumb {
-          background: #2a2a2a;
+          background: #1a1a1a;
           border-radius: 999px;
-          border: 2px solid #0a0a0a;
+          border: 2px solid #141414;
         }
 
         .arc-modal-scroll::-webkit-scrollbar-thumb:hover {
-          background: #343434;
+          background: #222222;
+        }
+
+        .arc-modal-scroll::-webkit-scrollbar-corner {
+          background: #141414;
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
@@ -898,35 +908,35 @@ function CheckInModal({
       <section className={`relative z-10 flex max-h-[90vh] w-full max-w-[72rem] flex-col overflow-hidden rounded-[2rem] border shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
         isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
       }`}>
-        <div className="flex items-start justify-between gap-6 px-7 pb-0 pt-7 md:px-8 md:pt-8">
-          <div className="max-w-3xl">
-            <p className={`text-sm font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-              Recommendation Prompts
-            </p>
-            <h2 className={`mt-4 max-w-4xl text-[2.45rem] font-semibold leading-[1.08] tracking-tight md:text-[2.85rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-              Fill this out, then generate today&apos;s recommendation.
-            </h2>
-            <p className={`mt-4 max-w-3xl text-[1.04rem] leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-              Your biometrics and recent running load are already on the page. These prompts let the model account
-              for how your legs feel, how your head feels, and anything else you want it to weigh.
-            </p>
+        <div className="arc-modal-scroll flex-1 overflow-y-auto px-7 pb-0 pt-7 md:px-8 md:pt-8">
+          <div className="flex items-start justify-between gap-6">
+            <div className="max-w-3xl">
+              <p className={`text-sm font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                Recommendation Prompts
+              </p>
+              <h2 className={`mt-4 max-w-4xl text-[2.45rem] font-semibold leading-[1.08] tracking-tight md:text-[2.85rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                Fill this out, then generate today&apos;s recommendation.
+              </h2>
+              <p className={`mt-4 max-w-3xl text-[1.04rem] leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                Your biometrics and recent running load are already on the page. These prompts let the model account
+                for how your legs feel, how your head feels, and anything else you want it to weigh.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-lg transition ${
+                isDark
+                  ? 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-violet-500 hover:text-white'
+                  : 'border-neutral-200 bg-white text-neutral-500 hover:border-violet-300 hover:text-neutral-900'
+              }`}
+              aria-label="Close recommendation prompts"
+            >
+              ×
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-lg transition ${
-              isDark
-                ? 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-violet-500 hover:text-white'
-                : 'border-neutral-200 bg-white text-neutral-500 hover:border-violet-300 hover:text-neutral-900'
-            }`}
-            aria-label="Close recommendation prompts"
-          >
-            ×
-          </button>
-        </div>
 
-        <div className="arc-modal-scroll flex-1 overflow-y-auto px-7 pb-0 pt-9 md:px-8">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <div className="mt-9 grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div>
               <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                 How do your legs feel?
