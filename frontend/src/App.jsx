@@ -571,11 +571,11 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
         <div className="w-full max-w-[220px] text-left md:text-right">
-          <p className={`text-[1.65rem] font-medium uppercase tracking-[0.02em] ${isDark ? 'text-neutral-100/95' : 'text-neutral-950'}`}>
-            {raceWeeksOutLabel(goalRaceDate)}
+          <p className={`text-[1.5rem] font-medium tracking-[-0.01em] ${isDark ? 'text-neutral-100/95' : 'text-neutral-950'}`}>
+            Half-Marathon
           </p>
-          <p className={`mt-1 text-[0.95rem] ${isDark ? 'text-neutral-300/70' : 'text-neutral-500/90'}`}>
-            {goalRaceDate ? formatRaceGoal(goalRaceDate) : 'Date TBD'}
+          <p className={`mt-1 text-[0.98rem] uppercase tracking-[0.04em] ${isDark ? 'text-neutral-300/72' : 'text-neutral-500/90'}`}>
+            {raceWeeksOutLabel(goalRaceDate).toLowerCase()}
           </p>
         </div>
       </div>
