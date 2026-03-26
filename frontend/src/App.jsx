@@ -422,7 +422,7 @@ function ErrorScreen({ message, theme = 'light' }) {
   )
 }
 
-function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile }) {
+function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile, dailyContextBar = null }) {
   const isDark = theme === 'dark'
   const greeting = timeOfDayGreeting()
   const firstName = firstNameFromDisplayName(name)
@@ -442,6 +442,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           Adaptive Running Coach
         </p>
         <p className={`mt-1.5 text-[14px] uppercase tracking-[0.06em] ${isDark ? 'text-neutral-400/80' : 'text-neutral-500/90'}`}>{formatDate(today)}</p>
+        {dailyContextBar ? <div className="mt-4 max-w-full">{dailyContextBar}</div> : null}
       </div>
 
       <div className="flex shrink-0 flex-col gap-4 md:items-end">
@@ -1055,16 +1056,16 @@ function DailyContextBar({
   const prefix = yesterdayStrain ? `Yesterday: ${trimNumber(yesterdayStrain)} strain` : ''
 
   return (
-    <div className="mb-10">
+    <div className="max-w-full">
       <div
-        className={`flex w-full items-center gap-3 rounded-full border px-4 py-3 text-sm font-medium ${
+        className={`inline-flex max-w-full items-center gap-3 rounded-full border px-4 py-2.5 text-sm font-medium ${
           isDark
             ? 'border-violet-900/60 bg-neutral-900/85 text-neutral-300 shadow-[0_0_0_1px_rgba(168,85,247,0.12),0_0_24px_rgba(168,85,247,0.1)]'
             : 'border-violet-200 bg-white/85 text-neutral-700 shadow-[0_0_0_1px_rgba(196,181,253,0.4),0_0_18px_rgba(196,181,253,0.18)]'
         }`}
       >
         <span className={`inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${dotClass}`} />
-        <span className="min-w-0 truncate">
+        <span className="min-w-0 max-w-full text-left leading-6">
           {prefix ? `${prefix} • ${mainText}` : mainText}
         </span>
       </div>
@@ -2873,6 +2874,17 @@ export default function App() {
   const roundedAdaptiveWeeklyTarget = adaptiveWeeklyTarget ? Math.round(adaptiveWeeklyTarget) : 0
   const recoveryAccent = whoopRecoveryColor(summary.latest_recovery)
   const loadAccent = loadColor(summary.recent_mileage, adaptiveWeeklyTarget)
+  const headerDailyContextBar = (
+    <DailyContextBar
+      today={summaryData.today}
+      activityCalendar={summaryData.activity_calendar}
+      currentDayStatus={currentDayStatus}
+      recommendation={recommendationData}
+      recoveryScore={summary.latest_recovery}
+      yesterdayStrain={summary.latest_strain}
+      theme={theme}
+    />
+  )
 
   const handleProfileFieldChange = (field, value) => {
     setProfileSettings((current) => ({ ...(current ?? {}), [field]: value }))
@@ -2899,6 +2911,7 @@ export default function App() {
           theme={theme}
           onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
           onOpenProfile={() => setIsProfileOpen(true)}
+          dailyContextBar={headerDailyContextBar}
         />
 
         <RecommendationLauncher
@@ -3036,16 +3049,6 @@ export default function App() {
               theme={theme}
             />
           </div>
-
-          <DailyContextBar
-            today={summaryData.today}
-            activityCalendar={summaryData.activity_calendar}
-            currentDayStatus={currentDayStatus}
-            recommendation={recommendationData}
-            recoveryScore={summary.latest_recovery}
-            yesterdayStrain={summary.latest_strain}
-            theme={theme}
-          />
         </section>
 
         <MasterTrainingCalendar
