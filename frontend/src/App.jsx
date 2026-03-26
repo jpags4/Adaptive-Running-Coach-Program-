@@ -427,13 +427,13 @@ function raceWeeksOutLabel(goalRaceDate) {
 }
 
 function useTypedText(text, enabled, speed = 28) {
-  const [typed, setTyped] = useState(enabled ? '' : text)
-  const [complete, setComplete] = useState(!enabled)
+  const [typed, setTyped] = useState('')
+  const [complete, setComplete] = useState(false)
 
   useEffect(() => {
     if (!enabled) {
-      setTyped(text)
-      setComplete(true)
+      setTyped('')
+      setComplete(false)
       return
     }
 
@@ -549,9 +549,6 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
             className="text-[clamp(0.98rem,1.8vw,1.15rem)] font-semibold leading-[1.2]"
           />
         </div>
-        <p className={`mt-3 text-[12px] font-medium uppercase tracking-[0.12em] ${isDark ? 'text-neutral-500/75' : 'text-neutral-500/80'}`}>
-          Adaptive Running Coach
-        </p>
       </div>
 
       <div className="flex shrink-0 flex-col gap-4 md:items-end">
