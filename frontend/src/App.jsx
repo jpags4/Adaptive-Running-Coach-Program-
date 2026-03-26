@@ -422,7 +422,7 @@ function ErrorScreen({ message, theme = 'light' }) {
   )
 }
 
-function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile, dailyContextBar = null }) {
+function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile }) {
   const isDark = theme === 'dark'
   const greeting = timeOfDayGreeting()
   const firstName = firstNameFromDisplayName(name)
@@ -442,7 +442,6 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           Adaptive Running Coach
         </p>
         <p className={`mt-1.5 text-[14px] uppercase tracking-[0.06em] ${isDark ? 'text-neutral-400/80' : 'text-neutral-500/90'}`}>{formatDate(today)}</p>
-        {dailyContextBar ? <div className="mt-4 max-w-full">{dailyContextBar}</div> : null}
       </div>
 
       <div className="flex shrink-0 flex-col gap-4 md:items-end">
@@ -990,85 +989,6 @@ function CheckInModal({
           </div>
         </div>
       </section>
-    </div>
-  )
-}
-
-function dailyContextRecoveryTone(recoveryScore, theme = 'light') {
-  const isDark = theme === 'dark'
-  const score = Number(recoveryScore)
-  if (!score) return isDark ? 'bg-neutral-400' : 'bg-neutral-500'
-  if (score >= 67) return isDark ? 'bg-emerald-400' : 'bg-emerald-500'
-  if (score >= 34) return isDark ? 'bg-amber-400' : 'bg-amber-500'
-  return isDark ? 'bg-red-400' : 'bg-red-500'
-}
-
-function dailyContextTargetText(activity) {
-  if (!activity) return ''
-  if (activity.distance_miles) return `${trimNumber(activity.distance_miles)} mi`
-  if (activity.duration_minutes) return `${activity.duration_minutes} min`
-  return ''
-}
-
-function recommendationTargetText(recommendation) {
-  if (!recommendation) return ''
-  const modality = String(recommendation.primary_modality || 'run').toLowerCase()
-  if (modality === 'bike') {
-    return recommendation.duration_minutes ? `${recommendation.duration_minutes} min` : ''
-  }
-  if (recommendation.run_distance_miles) return `${trimNumber(recommendation.run_distance_miles)} mi`
-  if (recommendation.duration_minutes) return `${recommendation.duration_minutes} min`
-  return ''
-}
-
-function DailyContextBar({
-  today,
-  activityCalendar,
-  currentDayStatus,
-  recommendation,
-  recoveryScore,
-  yesterdayStrain,
-  theme = 'light',
-}) {
-  const isDark = theme === 'dark'
-  const todayCard = Array.isArray(activityCalendar) ? activityCalendar.find((card) => card.day === today) : null
-  const completedActivities = Array.isArray(todayCard?.activities)
-    ? todayCard.activities.filter((activity) => !activity.projected)
-    : []
-  const completedPrimary = completedActivities[0] || null
-
-  let dotClass = isDark ? 'bg-neutral-400' : 'bg-neutral-500'
-  let mainText = `Recovery ${Number(recoveryScore || 0)}% • No session yet`
-
-  if (completedPrimary && currentDayStatus) {
-    const target = dailyContextTargetText(completedPrimary)
-    dotClass = workoutIntensityIndicator(completedPrimary)
-    mainText = `Today: ${workoutCatalogTitle(completedPrimary)} completed${target ? ` • ${target}` : ''}`
-  } else if (recommendation) {
-    const label = shortWorkoutTitle(recommendation.workout)
-    const target = recommendationTargetText(recommendation)
-    dotClass = intensityIndicator(recommendation.intensity)
-    mainText = `Planned: ${label}${target ? ` • ${target}` : ''}`
-  } else {
-    dotClass = dailyContextRecoveryTone(recoveryScore, theme)
-  }
-
-  const prefix = yesterdayStrain ? `Yesterday: ${trimNumber(yesterdayStrain)} strain` : ''
-
-  return (
-    <div className="max-w-full">
-      <div
-        className={`inline-flex max-w-full items-center gap-3 rounded-full border px-4 py-2.5 text-sm font-medium ${
-          isDark
-            ? 'border-violet-900/60 bg-neutral-900/85 text-neutral-300 shadow-[0_0_0_1px_rgba(168,85,247,0.12),0_0_24px_rgba(168,85,247,0.1)]'
-            : 'border-violet-200 bg-white/85 text-neutral-700 shadow-[0_0_0_1px_rgba(196,181,253,0.4),0_0_18px_rgba(196,181,253,0.18)]'
-        }`}
-      >
-        <span className={`inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${dotClass}`} />
-        <span className="min-w-0 max-w-full text-left leading-6">
-          {prefix ? `${prefix} • ${mainText}` : mainText}
-        </span>
-      </div>
     </div>
   )
 }
@@ -1850,7 +1770,6 @@ function CalendarActivity({ activity, theme = 'light' }) {
   const isSpin = category === 'spin'
   const isStrength = category === 'weightlifting'
   const intensity = activityIntensityLabel(activity)
-  const liftLabel = calendarLiftFocus(activity)
   const showIntensityPill = intensity !== '-'
 
   return (
@@ -1879,9 +1798,12 @@ function CalendarActivity({ activity, theme = 'light' }) {
           <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
             Weight Training
           </p>
-          {liftLabel ? (
+          {(activity.duration_minutes || activity.strain) ? (
             <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              {liftLabel}
+              {[
+                activity.duration_minutes ? `${activity.duration_minutes} min` : '',
+                activity.strain ? `Strain ${trimNumber(activity.strain)}` : '',
+              ].filter(Boolean).join(' • ')}
             </p>
           ) : null}
         </>
@@ -2920,17 +2842,6 @@ export default function App() {
   const roundedAdaptiveWeeklyTarget = adaptiveWeeklyTarget ? Math.round(adaptiveWeeklyTarget) : 0
   const recoveryAccent = whoopRecoveryColor(summary.latest_recovery)
   const loadAccent = loadColor(summary.recent_mileage, adaptiveWeeklyTarget)
-  const headerDailyContextBar = (
-    <DailyContextBar
-      today={summaryData.today}
-      activityCalendar={summaryData.activity_calendar}
-      currentDayStatus={currentDayStatus}
-      recommendation={recommendationData}
-      recoveryScore={summary.latest_recovery}
-      yesterdayStrain={summary.latest_strain}
-      theme={theme}
-    />
-  )
 
   const handleProfileFieldChange = (field, value) => {
     setProfileSettings((current) => ({ ...(current ?? {}), [field]: value }))
@@ -2957,7 +2868,6 @@ export default function App() {
           theme={theme}
           onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
           onOpenProfile={() => setIsProfileOpen(true)}
-          dailyContextBar={headerDailyContextBar}
         />
 
         <RecommendationLauncher
