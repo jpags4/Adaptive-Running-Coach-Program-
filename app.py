@@ -1346,6 +1346,95 @@ def calendar_days(activity_feed: list[dict], metrics: list, recommendation=None,
     return cards
 
 
+def _weekly_plan_cards_for_window(
+    week_start,
+    activity_feed: list[dict],
+    *,
+    recommendation=None,
+    weekly_plan=None,
+    highlight_today_iso: str = "",
+) -> list[dict]:
+    return calendar_days(
+        activity_feed,
+        [],
+        recommendation=recommendation,
+        today=week_start.isoformat(),
+        profile=None,
+        weekly_plan=weekly_plan,
+    ) if highlight_today_iso == week_start.isoformat() else [
+        {
+            "day": current_day.isoformat(),
+            "activities": sorted(
+                list((weekly_plan or {}).get(current_day.isoformat(), [])),
+                key=lambda item: (item.get("projected", False), item.get("duration_minutes", 0)),
+                reverse=True,
+            ),
+            "is_today": current_day.isoformat() == highlight_today_iso,
+            "is_current_month": current_day.month == week_start.month,
+            "is_projection": bool((weekly_plan or {}).get(current_day.isoformat(), [])),
+        }
+        for current_day in (week_start + timedelta(days=offset) for offset in range(7))
+    ]
+
+
+def build_weekly_plan_views(
+    anchor,
+    profile,
+    runs,
+    metrics,
+    activity_feed: list[dict],
+    current_week_plan_bundle: dict,
+    current_week_cards: list[dict],
+    roadmap: list[dict],
+    recommendation=None,
+    horizon_weeks: int = 4,
+) -> list[dict]:
+    views: list[dict] = []
+    current_week_start = sunday_week_start(anchor)
+    current_week_end = sunday_week_end(anchor)
+    current_intent = dict(current_week_plan_bundle.get("weekly_intent") or {})
+    views.append(
+        {
+            "week_key": current_week_start.isoformat(),
+            "week_start": current_week_start.isoformat(),
+            "week_end": current_week_end.isoformat(),
+            "week_label": f"Week of {current_week_start.strftime('%b')} {current_week_start.day}",
+            "is_current_week": True,
+            "focus_title": current_intent.get("phase") or "Weekly focus",
+            "focus_summary": current_intent.get("progression_note") or current_intent.get("race_connection") or "",
+            "focus_tag": current_intent.get("phase") or "Weekly focus",
+            "weekly_focus": current_intent,
+            "days": current_week_cards,
+        }
+    )
+
+    for week in (roadmap or [])[: max(0, horizon_weeks - 1)]:
+        week_start = datetime.strptime(week["week_start"], "%Y-%m-%d").date()
+        plan_bundle = _load_or_create_weekly_plan(week_start, profile, runs, metrics)
+        cards = _weekly_plan_cards_for_window(
+            week_start,
+            activity_feed,
+            weekly_plan=plan_bundle.get("activities"),
+            highlight_today_iso=anchor.isoformat() if sunday_week_start(anchor) == week_start else "",
+        )
+        views.append(
+            {
+                "week_key": week["week_start"],
+                "week_start": week["week_start"],
+                "week_end": week["week_end"],
+                "week_label": week.get("label") or f"Week of {week_start.strftime('%b')} {week_start.day}",
+                "is_current_week": False,
+                "focus_title": week.get("phase") or "Weekly focus",
+                "focus_summary": week.get("progression_note") or week.get("summary") or "",
+                "focus_tag": week.get("phase") or "Weekly focus",
+                "weekly_focus": week,
+                "days": cards,
+            }
+        )
+
+    return views
+
+
 def _current_day_status(today_iso: str, activity_feed: list[dict], recommendation) -> dict | None:
     if not today_iso:
         return None
@@ -1520,6 +1609,27 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             weekly_intent=weekly_intent,
         )
 
+    current_week_cards = calendar_days(
+        annotated_calendar_feed,
+        metrics,
+        recommendation=recommendation,
+        today=today_iso,
+        profile=profile,
+        weekly_plan=weekly_plan,
+    )
+    weekly_plan_views = build_weekly_plan_views(
+        today_date,
+        profile,
+        runs,
+        metrics,
+        annotated_calendar_feed,
+        weekly_plan_bundle,
+        current_week_cards,
+        roadmap,
+        recommendation=recommendation,
+        horizon_weeks=4,
+    )
+
     payload = {
         "profile": {
             "name": profile.name,
@@ -1555,14 +1665,8 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
         "weekly_plan_generated_from_day": weekly_plan_bundle.get("planned_from_day"),
         "activity_feed": annotated_calendar_feed,
         "activity_log": annotated_activity_log,
-        "activity_calendar": calendar_days(
-            annotated_calendar_feed,
-            metrics,
-            recommendation=recommendation,
-            today=today_iso,
-            profile=profile,
-            weekly_plan=weekly_plan,
-        ),
+        "activity_calendar": current_week_cards,
+        "weekly_plan_views": weekly_plan_views,
         "connections": {
             "status": connection_status,
             "setup_complete": {
