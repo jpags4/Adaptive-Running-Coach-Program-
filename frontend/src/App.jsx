@@ -397,6 +397,86 @@ function firstNameFromDisplayName(name) {
   return text.split(/\s+/)[0] || 'Runner'
 }
 
+function heroTodayLine() {
+  const now = new Date()
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(now)
+}
+
+function parseLocalDateOnly(dateString) {
+  if (!dateString) return null
+  const [year, month, day] = String(dateString).split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
+}
+
+function raceWeeksOutLabel(goalRaceDate) {
+  const raceDate = parseLocalDateOnly(goalRaceDate)
+  if (!raceDate) return 'GOAL TBD'
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const msPerDay = 24 * 60 * 60 * 1000
+  const daysUntilRace = Math.ceil((raceDate.getTime() - today.getTime()) / msPerDay)
+  if (daysUntilRace < 0) return 'RACE COMPLETE'
+  if (daysUntilRace <= 6) return 'RACE WEEK'
+  const weeksOut = Math.ceil(daysUntilRace / 7)
+  return `${weeksOut} ${weeksOut === 1 ? 'WEEK' : 'WEEKS'} OUT`
+}
+
+function useTypedText(text, enabled, speed = 28) {
+  const [typed, setTyped] = useState(enabled ? '' : text)
+  const [complete, setComplete] = useState(!enabled)
+
+  useEffect(() => {
+    if (!enabled) {
+      setTyped(text)
+      setComplete(true)
+      return
+    }
+
+    setTyped('')
+    setComplete(false)
+    let index = 0
+    const tick = () => {
+      index += 1
+      setTyped(text.slice(0, index))
+      if (index >= text.length) {
+        setComplete(true)
+        return
+      }
+      window.setTimeout(tick, speed)
+    }
+
+    const timeoutId = window.setTimeout(tick, speed)
+    return () => window.clearTimeout(timeoutId)
+  }, [enabled, speed, text])
+
+  return { typed, complete }
+}
+
+function TypedHeroLine({ text, enabled, accent = false, theme = 'light', className = '' }) {
+  const isDark = theme === 'dark'
+  const { typed, complete } = useTypedText(text, enabled, 26)
+
+  return (
+    <div
+      className={`${className} inline-flex max-w-full items-center gap-1 uppercase tracking-[0.04em] ${
+        accent
+          ? isDark ? 'text-teal-300' : 'text-teal-700'
+          : isDark ? 'text-neutral-100/92' : 'text-neutral-900'
+      }`}
+    >
+      <span className="min-w-0">{typed}</span>
+      {!complete ? (
+        <span className={`inline-block h-[1.05em] w-px animate-pulse ${accent ? (isDark ? 'bg-teal-300' : 'bg-teal-700') : (isDark ? 'bg-neutral-100/80' : 'bg-neutral-900')}`} />
+      ) : null}
+    </div>
+  )
+}
+
 function ErrorScreen({ message, theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
@@ -426,6 +506,22 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const isDark = theme === 'dark'
   const greeting = timeOfDayGreeting()
   const firstName = firstNameFromDisplayName(name)
+  const todayLine = `Today is ${heroTodayLine()}.`
+  const moveLine = `Let's get moving.`
+  const [lineOneEnabled, setLineOneEnabled] = useState(false)
+  const [lineTwoEnabled, setLineTwoEnabled] = useState(false)
+
+  useEffect(() => {
+    setLineOneEnabled(false)
+    setLineTwoEnabled(false)
+    const firstTimer = window.setTimeout(() => setLineOneEnabled(true), 120)
+    const secondTimer = window.setTimeout(() => setLineTwoEnabled(true), 1180)
+    return () => {
+      window.clearTimeout(firstTimer)
+      window.clearTimeout(secondTimer)
+    }
+  }, [today, goalRaceDate, name])
+
   return (
     <header className="mx-auto flex w-full max-w-[1200px] flex-col justify-between gap-6 pb-8 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 flex-1">
@@ -438,10 +534,24 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
         >
           {`${greeting}, ${firstName}`}
         </h1>
-        <p className={`mt-2 text-[13px] font-medium uppercase tracking-[0.12em] ${isDark ? 'text-neutral-400/70' : 'text-neutral-500/80'}`}>
+        <div className="mt-3 flex flex-col gap-1.5">
+          <TypedHeroLine
+            text={todayLine}
+            enabled={lineOneEnabled}
+            theme={theme}
+            className="text-[clamp(1rem,2vw,1.3rem)] font-semibold italic leading-[1.25]"
+          />
+          <TypedHeroLine
+            text={moveLine}
+            enabled={lineTwoEnabled}
+            accent
+            theme={theme}
+            className="text-[clamp(0.98rem,1.8vw,1.15rem)] font-semibold leading-[1.2]"
+          />
+        </div>
+        <p className={`mt-3 text-[12px] font-medium uppercase tracking-[0.12em] ${isDark ? 'text-neutral-500/75' : 'text-neutral-500/80'}`}>
           Adaptive Running Coach
         </p>
-        <p className={`mt-1.5 text-[14px] uppercase tracking-[0.06em] ${isDark ? 'text-neutral-400/80' : 'text-neutral-500/90'}`}>{formatDate(today)}</p>
       </div>
 
       <div className="flex shrink-0 flex-col gap-4 md:items-end">
@@ -461,11 +571,11 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
         <div className="w-full max-w-[220px] text-left md:text-right">
-          <p className={`text-[1.65rem] font-medium tracking-[-0.01em] ${isDark ? 'text-neutral-100/95' : 'text-neutral-950'}`}>
-            Half Marathon
+          <p className={`text-[1.65rem] font-medium uppercase tracking-[0.02em] ${isDark ? 'text-neutral-100/95' : 'text-neutral-950'}`}>
+            {raceWeeksOutLabel(goalRaceDate)}
           </p>
           <p className={`mt-1 text-[0.95rem] ${isDark ? 'text-neutral-300/70' : 'text-neutral-500/90'}`}>
-            {goalRaceDate ? formatDate(goalRaceDate) : 'Date TBD'}
+            {goalRaceDate ? formatRaceGoal(goalRaceDate) : 'Date TBD'}
           </p>
         </div>
       </div>
