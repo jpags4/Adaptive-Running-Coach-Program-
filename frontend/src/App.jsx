@@ -1514,7 +1514,7 @@ function TrainingRoadmap({ weeks, theme = 'light' }) {
 function MasterTrainingCalendar({ cards, weeklyFocus, weeks, theme = 'light' }) {
   if (!Array.isArray(cards) || cards.length === 0 || !weeklyFocus) return null
   const isDark = theme === 'dark'
-  const weekdayHeadings = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const weekdayHeadings = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
@@ -1638,7 +1638,7 @@ function TrainingCalendar({ cards, theme = 'light' }) {
   if (!Array.isArray(cards) || cards.length === 0) return null
   const isDark = theme === 'dark'
 
-  const weekdayHeadings = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const weekdayHeadings = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
   return (
     <section className="mt-10">
@@ -1688,18 +1688,28 @@ function LegendDot({ color, label }) {
   )
 }
 
+function localDateKey() {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function CalendarCard({ card, theme = 'light' }) {
   const isDark = theme === 'dark'
   const activities = Array.isArray(card.activities) ? card.activities : []
   const stripeClass = calendarStripeClass(activities)
   const date = new Date(`${card.day}T12:00:00`)
+  const isToday = card.day === localDateKey()
   const weekdayShort = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date).toUpperCase()
   const dayNumber = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date)
 
   return (
     <div
       className={`relative min-h-[15rem] overflow-hidden rounded-[1.3rem] border px-2.5 pb-3 pt-2.5 shadow-sm xl:min-h-[17rem] ${
-        card.is_today
+        isToday
           ? isDark
             ? `border-2 border-white bg-neutral-900 ${darkGlow(true)}`
             : 'border-2 border-neutral-950 bg-white'
@@ -1708,9 +1718,9 @@ function CalendarCard({ card, theme = 'light' }) {
             : 'border-neutral-200 bg-white'
       }`}
     >
-      {!card.is_today ? <div className={`absolute inset-y-3 left-0 w-1.5 rounded-full ${stripeClass}`} /> : null}
+      {!isToday ? <div className={`absolute inset-y-3 left-0 w-1.5 rounded-full ${stripeClass}`} /> : null}
 
-      {card.is_today ? (
+      {isToday ? (
         <div
           className={`-mx-3 -mt-2.5 mb-3 min-h-[5.1rem] px-3 pb-2.5 pt-2.5 ${
             isDark
@@ -1744,7 +1754,7 @@ function CalendarCard({ card, theme = 'light' }) {
             ))}
           </div>
         ) : (
-          card.is_today ? <div className="pt-2.5" /> : (
+          isToday ? <div className="pt-2.5" /> : (
             <div className="pt-2.5">
               <p className={`text-sm italic leading-6 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                 Rest day
@@ -1789,11 +1799,16 @@ function CalendarActivity({ activity, theme = 'light' }) {
           </p>
         </>
       ) : isStrength ? (
-        liftLabel ? (
-          <p className={`text-sm leading-6 ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`}>
-            {liftLabel}
+        <>
+          <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            Weight Training
           </p>
-        ) : null
+          {liftLabel ? (
+            <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              {liftLabel}
+            </p>
+          ) : null}
+        </>
       ) : (
         <>
           <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
