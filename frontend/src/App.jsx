@@ -586,7 +586,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
     <header className="mx-auto flex w-full max-w-[1200px] flex-col justify-between gap-6 pb-8 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 flex-1">
         <h1
-          className={`max-w-full text-[clamp(2rem,5vw,3.5rem)] font-bold uppercase italic leading-[1.05] tracking-[-0.02em] ${
+          className={`max-w-full text-[clamp(2rem,5vw,3.5rem)] font-bold italic leading-[1.05] tracking-[-0.02em] ${
             isDark
               ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
               : 'text-neutral-950'
