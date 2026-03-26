@@ -459,7 +459,7 @@ function useTypedText(text, enabled, speed = 28) {
 
 function TypedHeroLine({ text, enabled, accent = false, theme = 'light', className = '' }) {
   const isDark = theme === 'dark'
-  const { typed, complete } = useTypedText(text, enabled, 26)
+  const { typed } = useTypedText(text, enabled, 26)
 
   return (
     <div
@@ -470,9 +470,6 @@ function TypedHeroLine({ text, enabled, accent = false, theme = 'light', classNa
       }`}
     >
       <span className="min-w-0">{typed}</span>
-      {!complete ? (
-        <span className={`inline-block h-[1.05em] w-px animate-pulse ${accent ? (isDark ? 'bg-teal-300' : 'bg-teal-700') : (isDark ? 'bg-neutral-100/80' : 'bg-neutral-900')}`} />
-      ) : null}
     </div>
   )
 }
@@ -507,7 +504,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const greeting = timeOfDayGreeting()
   const firstName = firstNameFromDisplayName(name)
   const todayLine = `Today is ${heroTodayLine()}.`
-  const moveLine = `Let's get moving.`
+  const moveLine = `Let's move.`
   const [lineOneEnabled, setLineOneEnabled] = useState(false)
   const [lineTwoEnabled, setLineTwoEnabled] = useState(false)
 
@@ -544,7 +541,6 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           <TypedHeroLine
             text={moveLine}
             enabled={lineTwoEnabled}
-            accent
             theme={theme}
             className="text-[clamp(0.98rem,1.8vw,1.15rem)] font-semibold leading-[1.2]"
           />
