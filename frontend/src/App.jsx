@@ -20,6 +20,52 @@ function GlobalUiStyles() {
         }
       }
 
+      html,
+      body,
+      #root {
+        background: #090909;
+      }
+
+      html,
+      body,
+      #root {
+        scrollbar-width: thin;
+        scrollbar-color: #2f2f2f #050505;
+      }
+
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar,
+      #root::-webkit-scrollbar {
+        width: 10px;
+        background: #050505;
+      }
+
+      html::-webkit-scrollbar-track,
+      body::-webkit-scrollbar-track,
+      #root::-webkit-scrollbar-track {
+        background: #050505;
+      }
+
+      html::-webkit-scrollbar-thumb,
+      body::-webkit-scrollbar-thumb,
+      #root::-webkit-scrollbar-thumb {
+        background: #2f2f2f;
+        border-radius: 999px;
+        border: 2px solid #050505;
+      }
+
+      html::-webkit-scrollbar-thumb:hover,
+      body::-webkit-scrollbar-thumb:hover,
+      #root::-webkit-scrollbar-thumb:hover {
+        background: #444444;
+      }
+
+      html::-webkit-scrollbar-corner,
+      body::-webkit-scrollbar-corner,
+      #root::-webkit-scrollbar-corner {
+        background: #050505;
+      }
+
       .recommendation-modal-scroll {
         background: #0a0a0a;
         scrollbar-width: thin;
