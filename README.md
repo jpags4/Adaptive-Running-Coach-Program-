@@ -2,8 +2,8 @@
 
 Adaptive Running Coach is a browser-based half marathon coaching app that combines:
 
-- Strava running history
-- WHOOP biometrics and workout data
+- WHOOP biometrics and workout data as the canonical training-session source
+- Strava running history as a run-enrichment source
 - a short daily check-in
 - adaptive week-by-week planning
 - a persistent workout log with notes
@@ -17,10 +17,9 @@ The app currently supports:
 - a live dashboard powered by connected Strava and WHOOP accounts
 - sample mode when live accounts are not connected
 - a modal-based daily check-in before recommendation generation
-- adaptive run and lift recommendations for the current day
-- a current-week training focus and current-week calendar
-- a future-weeks roadmap showing what upcoming blocks are building toward
-- a full activity log split into running and weightlifting
+- adaptive run, lift, and conservative bike-substitution recommendations for the current day
+- a fixed current-week training calendar plus a compact future-planner preview
+- a full activity log covering running, weightlifting, spin, and fallback activities
 - saved workout notes that are reused in future recommendation context
 - local development and hosted deployment on Render
 
@@ -30,7 +29,7 @@ The app currently supports:
 
 When the page loads, the app shows:
 
-- greeting, date, and race goal
+- greeting, animated date/motivation lines, and race countdown
 - a `Generate Today’s Recommendation` button
 - WHOOP and running summary cards
 
@@ -66,44 +65,39 @@ The recommendation area includes:
 - today’s training recommendation
 - run guidance
 - lift guidance
-- a recommendation-path toggle for different options like conservative vs more aggressive
+- bike guidance when running is swapped out for lower-impact aerobic work
 - explanation and guardrail language
 - an `Update Check-In` flow for refreshing the recommendation
 
-### 3. Today’s Activity
-
-Below the health metrics, the app shows a smaller `Today’s Activity` button.
-
-Opening it reveals a modal that summarizes:
-
-- what has already been logged today
-- whether the athlete has already trained
-- and, when a recommendation exists, how today’s completed activity compares to the plan
-
-### 4. Weekly Planning
+### 3. Weekly Planning
 
 Below the recommendation and metrics, the app shows training planning in two layers:
 
-- current week focus and calendar
-- upcoming training blocks
+- a fixed current-week calendar
+- a compact future planner for the next several weeks
 
 The current week area includes:
 
-- the week’s primary theme, such as `Threshold build` or `Recovery / absorb`
-- the weekly mileage target for that specific week
-- long-run goal
-- key-session goal
-- strength goal
-- the current-week training calendar
+- the current Sunday-start week
+- completed and projected activity cards for the week
+- current-day highlighting
+- current-week-specific logged and planned activity
 
-The future roadmap shows the next several weeks in general coaching terms rather than as a fully detailed day-by-day plan.
+The future planner is collapsed by default. When expanded, it shows one compact future-week projection at a time, including:
 
-### 5. Full Activity Log
+- week label
+- projected focus phase
+- one short summary
+- compact metadata such as mileage target, long-run target, and key session emphasis
 
-At the bottom of the page, the app keeps a persistent workout history split into:
+### 4. Full Activity Log
+
+At the bottom of the page, the app keeps a persistent workout history with filters for:
 
 - Running
 - Weightlifting
+- Spin
+- All Workouts
 
 Each workout can be expanded to:
 
@@ -112,6 +106,12 @@ Each workout can be expanded to:
 - save notes for future coaching context
 
 Recent notes are weighted more heavily than old notes when the model builds new recommendations.
+
+Workout history is canonicalized so one real session appears once across the app:
+
+- WHOOP owns the rendered workout session identity
+- Strava enriches matched runs with run-specific detail such as distance and pace
+- Strava does not create standalone workout-log or calendar entries
 
 ## Adaptive Planning Behavior
 
@@ -128,6 +128,7 @@ That adaptive weekly target is then used by:
 
 - the weekly focus cards
 - the weekly calendar
+- the future planner projections
 - recommendation guardrails
 - weekly mileage progress
 
@@ -137,13 +138,13 @@ That adaptive weekly target is then used by:
 
 Strava is used for:
 
-- recent runs
+- run enrichment only
 - run distance
 - duration
 - pace
-- activity dates
+- activity title and supporting run metadata when a confident WHOOP match exists
 
-The app also filters out likely duplicate or misleading tiny run artifacts when appropriate.
+Strava does not create standalone calendar or workout-log entries.
 
 ### WHOOP
 
@@ -156,7 +157,13 @@ WHOOP is used for:
 - strain
 - workouts
 
-WHOOP lifting sessions are used as strength-history inputs. The app is designed to emphasize WHOOP biometrics and WHOOP strength activity while avoiding misleading WHOOP-synced run artifacts when those conflict with cleaner run data.
+WHOOP is the canonical session source for:
+
+- workout log entries
+- training calendar entries
+- completed-session history
+
+WHOOP lifting sessions are used as strength-history inputs, and WHOOP spin/cycling sessions are used as the canonical bike-history source.
 
 ## Safety And Guardrails
 
@@ -169,6 +176,7 @@ The recommendation system applies guardrails around:
 - recent strain accumulation
 - subjective signals like heavy legs, soreness, stress, illness, or injury notes
 - progression limits relative to recent long-run history
+- pain check-in rules for cautious bike substitution when running impact is the main issue
 
 These guardrails can:
 
@@ -177,6 +185,7 @@ These guardrails can:
 - cap volume
 - recommend a lifting off-day
 - turn the day into recovery or rest
+- swap a run for a conservative bike session when the pain and activity rules support it
 
 ## Recommendation Engine
 
@@ -189,6 +198,7 @@ The recommendation payload includes:
 - recent recovery metrics
 - current weekly intent
 - daily subjective check-in
+- pain check-in details
 - recent saved workout notes
 
 ## API Routes
@@ -207,10 +217,10 @@ The backend currently exposes these main routes:
 
 ## Project Structure
 
-- [app.py](/Users/paganomedia/Documents/New%20project/app.py): HTTP server, dashboard payloads, routes, roadmap generation, calendar generation
-- [coach.py](/Users/paganomedia/Documents/New%20project/coach.py): weekly intent logic, pace model, recommendation structures, progression rules
-- [llm_coach.py](/Users/paganomedia/Documents/New%20project/llm_coach.py): OpenAI recommendation flow and daily guardrail adjustments
-- [integrations.py](/Users/paganomedia/Documents/New%20project/integrations.py): Strava and WHOOP integration helpers and profile construction
+- [app.py](/Users/paganomedia/Documents/New%20project/app.py): HTTP server, dashboard payloads, canonical workout assembly, roadmap generation, calendar generation
+- [coach.py](/Users/paganomedia/Documents/New%20project/coach.py): weekly intent logic, pace model, recommendation structures, progression rules, and bike substitution rules
+- [llm_coach.py](/Users/paganomedia/Documents/New%20project/llm_coach.py): OpenAI recommendation flow and final explanation generation
+- [integrations.py](/Users/paganomedia/Documents/New%20project/integrations.py): Strava and WHOOP integration helpers, canonical source inputs, and profile construction
 - [storage.py](/Users/paganomedia/Documents/New%20project/storage.py): local/hosted settings, token persistence, and storage helpers
 - [sample_data.py](/Users/paganomedia/Documents/New%20project/sample_data.py): sample athlete data for fallback mode
 - [frontend/src/App.jsx](/Users/paganomedia/Documents/New%20project/frontend/src/App.jsx): full React dashboard UI
