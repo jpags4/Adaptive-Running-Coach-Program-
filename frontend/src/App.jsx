@@ -520,8 +520,8 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const isDark = theme === 'dark'
   const greeting = timeOfDayGreeting()
   const firstName = firstNameFromDisplayName(name)
-  const todayLine = `Today is ${heroTodayLine()}.`
-  const moveLine = `Let's move.`
+  const todayLine = `Today is ${heroTodayLine()}`
+  const moveLine = `Let's move`
   const [lineOneEnabled, setLineOneEnabled] = useState(false)
   const [lineTwoEnabled, setLineTwoEnabled] = useState(false)
 
