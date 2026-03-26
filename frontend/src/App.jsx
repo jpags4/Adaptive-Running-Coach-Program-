@@ -1516,17 +1516,22 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
   if (!Array.isArray(weeklyPlans) || weeklyPlans.length === 0) return null
   const isDark = theme === 'dark'
   const weekdayHeadings = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0)
+  const currentWeekPlan = weeklyPlans[0]
+  const futureWeekPlans = weeklyPlans.slice(1)
+  const currentWeekCards = Array.isArray(currentWeekPlan?.days) ? currentWeekPlan.days : []
+  const [isFuturePlannerExpanded, setIsFuturePlannerExpanded] = useState(false)
+  const [selectedFutureWeekIndex, setSelectedFutureWeekIndex] = useState(0)
 
   useEffect(() => {
-    setSelectedWeekIndex(0)
+    setIsFuturePlannerExpanded(false)
+    setSelectedFutureWeekIndex(0)
   }, [weeklyPlans?.[0]?.week_key])
 
-  const safeIndex = Math.min(selectedWeekIndex, Math.max(0, weeklyPlans.length - 1))
-  const selectedWeek = weeklyPlans[safeIndex]
-  const selectedCards = Array.isArray(selectedWeek?.days) ? selectedWeek.days : []
-  const selectedFocus = selectedWeek?.weekly_focus || {}
-  const upcomingWeeks = weeklyPlans.slice(safeIndex + 1)
+  const safeFutureIndex = Math.min(selectedFutureWeekIndex, Math.max(0, futureWeekPlans.length - 1))
+  const selectedFutureWeek = futureWeekPlans[safeFutureIndex] || null
+  const selectedFutureCards = Array.isArray(selectedFutureWeek?.days) ? selectedFutureWeek.days : []
+  const selectedFutureFocus = selectedFutureWeek?.weekly_focus || {}
+  const upcomingWeeks = futureWeekPlans.slice(safeFutureIndex + 1)
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
@@ -1540,9 +1545,9 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-4">
             <p className={`text-lg font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-              {formatWeekSpan(selectedCards)}
+              {formatWeekSpan(currentWeekCards)}
             </p>
-            {selectedWeek?.is_current_week ? (
+            {currentWeekPlan?.is_current_week ? (
               <div className={`inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500/85' : 'text-neutral-500/85'}`}>
                 <span className="h-2 w-2 rounded-full bg-violet-500" />
                 <span>This Week</span>
@@ -1559,106 +1564,147 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
                 {heading}
               </p>
             ))}
-            {selectedCards.map((card) => (
+            {currentWeekCards.map((card) => (
               <CalendarCard key={card.day} card={card} theme={theme} />
             ))}
         </div>
 
-        <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-4xl">
-              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Weekly Focus
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <div className={`inline-flex items-center rounded-[1rem] border px-4 py-2 ${
+        {futureWeekPlans.length > 0 ? (
+          <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            <button
+              type="button"
+              onClick={() => setIsFuturePlannerExpanded((value) => !value)}
+              aria-expanded={isFuturePlannerExpanded}
+              className={`group flex w-full items-center justify-between rounded-[1.2rem] border px-4 py-4 text-left transition ${
+                isDark
+                  ? 'border-neutral-800 bg-neutral-950/70 hover:border-violet-700/60'
+                  : 'border-neutral-200 bg-white hover:border-violet-200'
+              }`}
+            >
+              <div>
+                <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                  Future Planner
+                </p>
+                <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                  Expand to preview upcoming training weeks without changing the current week calendar above.
+                </p>
+              </div>
+              <span
+                className={`ml-6 inline-flex h-11 w-11 flex-none items-center justify-center rounded-full border text-lg transition ${
                   isDark
-                    ? 'border-violet-800/70 bg-violet-950/35 shadow-[inset_4px_0_0_0_rgba(168,85,247,0.9)]'
-                    : 'border-violet-200 bg-violet-50/85 shadow-[inset_4px_0_0_0_rgba(124,58,237,0.85)]'
-                }`}>
-                  <h3 className={`text-xl font-semibold tracking-tight ${isDark ? 'text-violet-100' : 'text-violet-900'}`}>
-                    <span className="uppercase italic tracking-[0.025em]">
-                      {selectedWeek?.focus_title || selectedFocus.phase || 'Weekly focus'}
-                    </span>
-                  </h3>
-                </div>
-                {selectedWeek?.is_current_week ? (
-                  <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                    isDark ? 'bg-violet-950/40 text-violet-200' : 'bg-violet-100 text-violet-700'
-                  }`}>
-                    <span className="h-2 w-2 rounded-full bg-violet-500" />
-                    Current Week
-                  </span>
-                ) : null}
-              </div>
-              <p className={`mt-4 max-w-4xl text-base leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                {selectedWeek?.focus_summary || selectedFocus.progression_note || selectedFocus.race_connection || 'Weekly guidance will appear here.'}
-              </p>
-            </div>
+                    ? 'border-neutral-700 bg-neutral-900 text-neutral-200 group-hover:border-violet-500 group-hover:text-white'
+                    : 'border-neutral-200 bg-stone-50 text-neutral-700 group-hover:border-violet-300 group-hover:text-neutral-950'
+                } ${isFuturePlannerExpanded ? 'rotate-180' : ''}`}
+              >
+                ˅
+              </span>
+            </button>
 
-            <div className="flex flex-col items-start gap-4 lg:items-end">
-              <div className={`text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Week {safeIndex + 1} of {weeklyPlans.length}
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedWeekIndex((value) => Math.max(0, value - 1))}
-                  disabled={safeIndex === 0}
-                  className={`inline-flex h-11 w-11 items-center justify-center rounded-full border text-lg transition ${
-                    safeIndex === 0
-                      ? isDark ? 'cursor-not-allowed border-neutral-800 bg-neutral-950 text-neutral-700' : 'cursor-not-allowed border-neutral-200 bg-white text-neutral-300'
-                      : isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
-                  }`}
-                  aria-label="Previous week"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedWeekIndex((value) => Math.min(weeklyPlans.length - 1, value + 1))}
-                  disabled={safeIndex === weeklyPlans.length - 1}
-                  className={`inline-flex h-11 w-11 items-center justify-center rounded-full border text-lg transition ${
-                    safeIndex === weeklyPlans.length - 1
-                      ? isDark ? 'cursor-not-allowed border-neutral-800 bg-neutral-950 text-neutral-700' : 'cursor-not-allowed border-neutral-200 bg-white text-neutral-300'
-                      : isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
-                  }`}
-                  aria-label="Next week"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {upcomingWeeks.length > 0 ? (
-            <div className={`mt-8 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Upcoming Training Blocks
-              </p>
-              <div className="mt-4 space-y-3">
-                {upcomingWeeks.map((week, index) => (
-                  <div
-                    key={week.week_key}
-                    className={`rounded-[1.25rem] border px-4 py-4 ${
-                      isDark ? 'border-neutral-800 bg-neutral-950/75' : 'border-neutral-200 bg-white'
-                    }`}
-                  >
-                    <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                      Week {safeIndex + index + 2} · {formatRoadmapWeekSpan(week)}
+            {isFuturePlannerExpanded && selectedFutureWeek ? (
+              <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="max-w-4xl">
+                    <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                      Weekly Focus
                     </p>
-                    <p className={`mt-2 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                      {week.focus_title}
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <div className={`inline-flex items-center rounded-[1rem] border px-4 py-2 ${
+                        isDark
+                          ? 'border-violet-800/70 bg-violet-950/35 shadow-[inset_4px_0_0_0_rgba(168,85,247,0.9)]'
+                          : 'border-violet-200 bg-violet-50/85 shadow-[inset_4px_0_0_0_rgba(124,58,237,0.85)]'
+                      }`}>
+                        <h3 className={`text-xl font-semibold tracking-tight ${isDark ? 'text-violet-100' : 'text-violet-900'}`}>
+                          <span className="uppercase italic tracking-[0.025em]">
+                            {selectedFutureWeek?.focus_title || selectedFutureFocus.phase || 'Weekly focus'}
+                          </span>
+                        </h3>
+                      </div>
+                    </div>
+                    <p className={`mt-4 text-lg font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                      {formatWeekSpan(selectedFutureCards)}
                     </p>
-                    <p className={`mt-1 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                      {week.focus_summary}
+                    <p className={`mt-4 max-w-4xl text-base leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                      {selectedFutureWeek?.focus_summary || selectedFutureFocus.progression_note || selectedFutureFocus.race_connection || 'Future guidance will appear here.'}
                     </p>
                   </div>
-                ))}
+
+                  <div className="flex flex-col items-start gap-4 lg:items-end">
+                    <div className={`text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                      Future Week {safeFutureIndex + 1} of {futureWeekPlans.length}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFutureWeekIndex((value) => Math.max(0, value - 1))}
+                        disabled={safeFutureIndex === 0}
+                        className={`inline-flex h-11 w-11 items-center justify-center rounded-full border text-lg transition ${
+                          safeFutureIndex === 0
+                            ? isDark ? 'cursor-not-allowed border-neutral-800 bg-neutral-950 text-neutral-700' : 'cursor-not-allowed border-neutral-200 bg-white text-neutral-300'
+                            : isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
+                        }`}
+                        aria-label="Previous future week"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFutureWeekIndex((value) => Math.min(futureWeekPlans.length - 1, value + 1))}
+                        disabled={safeFutureIndex === futureWeekPlans.length - 1}
+                        className={`inline-flex h-11 w-11 items-center justify-center rounded-full border text-lg transition ${
+                          safeFutureIndex === futureWeekPlans.length - 1
+                            ? isDark ? 'cursor-not-allowed border-neutral-800 bg-neutral-950 text-neutral-700' : 'cursor-not-allowed border-neutral-200 bg-white text-neutral-300'
+                            : isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
+                        }`}
+                        aria-label="Next future week"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 grid grid-cols-7 gap-2 xl:gap-3">
+                  {weekdayHeadings.map((heading) => (
+                    <p key={`future-${heading}`} className={`text-center text-sm font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                      {heading}
+                    </p>
+                  ))}
+                  {selectedFutureCards.map((card) => (
+                    <CalendarCard key={`future-${card.day}`} card={card} theme={theme} />
+                  ))}
+                </div>
+
+                {upcomingWeeks.length > 0 ? (
+                  <div className={`mt-8 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+                    <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                      Upcoming Training Blocks
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {upcomingWeeks.map((week, index) => (
+                        <div
+                          key={week.week_key}
+                          className={`rounded-[1.25rem] border px-4 py-4 ${
+                            isDark ? 'border-neutral-800 bg-neutral-950/75' : 'border-neutral-200 bg-white'
+                          }`}
+                        >
+                          <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                            Week {safeFutureIndex + index + 3} · {formatRoadmapWeekSpan(week)}
+                          </p>
+                          <p className={`mt-2 text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                            {week.focus_title}
+                          </p>
+                          <p className={`mt-1 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                            {week.focus_summary}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   )
