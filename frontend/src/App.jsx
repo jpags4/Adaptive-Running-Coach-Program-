@@ -6,6 +6,56 @@ function darkGlow(enabled) {
   return enabled ? DARK_HOVER_GLOW : ''
 }
 
+function GlobalUiStyles() {
+  return (
+    <style>{`
+      @keyframes violetCurrent {
+        0% {
+          background-position: 200% center;
+          filter: drop-shadow(0 0 0.18rem rgba(168, 85, 247, 0.08));
+        }
+        100% {
+          background-position: -200% center;
+          filter: drop-shadow(0 0 0.3rem rgba(168, 85, 247, 0.14));
+        }
+      }
+
+      .recommendation-modal-scroll {
+        background: #0a0a0a;
+        scrollbar-width: thin;
+        scrollbar-color: #2f2f2f #050505;
+      }
+
+      .recommendation-modal-scroll::-webkit-scrollbar {
+        width: 10px;
+        background: #050505;
+      }
+
+      .recommendation-modal-scroll::-webkit-scrollbar-track {
+        background: #050505;
+      }
+
+      .recommendation-modal-scroll::-webkit-scrollbar-track-piece {
+        background: #050505;
+      }
+
+      .recommendation-modal-scroll::-webkit-scrollbar-thumb {
+        background: #2f2f2f;
+        border-radius: 999px;
+        border: 2px solid #050505;
+      }
+
+      .recommendation-modal-scroll::-webkit-scrollbar-thumb:hover {
+        background: #444444;
+      }
+
+      .recommendation-modal-scroll::-webkit-scrollbar-corner {
+        background: #050505;
+      }
+    `}</style>
+  )
+}
+
 function ThemeToggle({ theme, onToggle }) {
   const isDark = theme === 'dark'
 
@@ -315,51 +365,7 @@ function DashboardLoading({ theme = 'light' }) {
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
-      <style>{`
-        @keyframes violetCurrent {
-          0% {
-            background-position: 200% center;
-            filter: drop-shadow(0 0 0.18rem rgba(168, 85, 247, 0.08));
-          }
-          100% {
-            background-position: -200% center;
-            filter: drop-shadow(0 0 0.3rem rgba(168, 85, 247, 0.14));
-          }
-        }
-
-        .arc-modal-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: #1a1a1a #141414;
-        }
-
-        .arc-modal-scroll::-webkit-scrollbar {
-          width: 10px;
-          background-color: #141414;
-        }
-
-        .arc-modal-scroll::-webkit-scrollbar-track {
-          background: #141414;
-          border-radius: 999px;
-        }
-
-        .arc-modal-scroll::-webkit-scrollbar-track-piece {
-          background: #141414;
-        }
-
-        .arc-modal-scroll::-webkit-scrollbar-thumb {
-          background: #1a1a1a;
-          border-radius: 999px;
-          border: 2px solid #141414;
-        }
-
-        .arc-modal-scroll::-webkit-scrollbar-thumb:hover {
-          background: #222222;
-        }
-
-        .arc-modal-scroll::-webkit-scrollbar-corner {
-          background: #141414;
-        }
-      `}</style>
+      <GlobalUiStyles />
       <div className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
         <div className={`h-16 w-96 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/90' : 'bg-neutral-200/70'}`} />
         <div className={`mt-4 h-8 w-56 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-200/60'}`} />
@@ -494,6 +500,7 @@ function ErrorScreen({ message, theme = 'light' }) {
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
+      <GlobalUiStyles />
       <div className="mx-auto max-w-3xl px-8 py-20">
         <div className={`rounded-[2rem] border p-8 shadow-sm ${isDark ? 'border-red-900/50 bg-neutral-900' : 'border-red-200 bg-white'}`}>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-500">
@@ -908,7 +915,7 @@ function CheckInModal({
       <section className={`relative z-10 flex max-h-[90vh] w-full max-w-[72rem] flex-col overflow-hidden rounded-[2rem] border shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
         isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
       }`}>
-        <div className="arc-modal-scroll flex-1 overflow-y-auto px-7 pb-0 pt-7 md:px-8 md:pt-8">
+        <div className="recommendation-modal-scroll flex-1 overflow-y-auto bg-[#0a0a0a] px-7 pb-0 pt-7 md:px-8 md:pt-8">
           <div className="flex items-start justify-between gap-6">
             <div className="max-w-3xl">
               <p className={`text-sm font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
@@ -2932,6 +2939,7 @@ export default function App() {
           : 'bg-[radial-gradient(circle_at_top,_#f4f0ff,_#f7f4ee_48%,_#f7f4ee)] text-neutral-950'
       }`}
     >
+      <GlobalUiStyles />
       <div className="mx-auto max-w-7xl px-8 py-10">
         <Header
           name={profile.name}
