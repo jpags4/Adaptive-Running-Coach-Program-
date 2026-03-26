@@ -1,6 +1,6 @@
 # Adaptive Running Coach
 
-Adaptive Running Coach is a browser-based half marathon coaching app that combines:
+Adaptive Running Coach is a browser-based coaching app that combines:
 
 - WHOOP biometrics and workout data as the canonical training-session source
 - Strava running history as a run-enrichment source
