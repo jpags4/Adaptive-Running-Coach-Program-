@@ -815,33 +815,25 @@ function StatCard({
   const isDark = theme === 'dark'
   const resolvedAccent =
     isDark && !/(emerald|amber|red|sky|violet|white)/.test(accent) ? 'text-white' : accent
-  const clampedProgress = progress != null ? Math.min(1, Math.max(0, progress)) : null
   return (
     <div
-      className={`relative flex flex-col rounded-2xl border px-5 py-5 shadow-sm transition duration-200 ${
+      className={`relative flex flex-col rounded-2xl border px-5 py-5 transition duration-200 ${
         isDark
-          ? 'border-neutral-800 bg-neutral-900/95 hover:border-violet-500/55 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.18),0_0_34px_rgba(168,85,247,0.18)]'
-          : 'border-neutral-200 bg-white/90 hover:border-violet-300 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.4),0_0_24px_rgba(196,181,253,0.26)]'
+          ? 'border-neutral-700/50 shadow-[0_4px_20px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.045)] hover:border-violet-500/60 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.28),0_8px_36px_rgba(168,85,247,0.22),0_4px_20px_rgba(0,0,0,0.55)]'
+          : 'border-neutral-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_3px_rgba(0,0,0,0.04)] hover:border-violet-300 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.4),0_8px_28px_rgba(192,132,252,0.2),0_2px_12px_rgba(0,0,0,0.07)]'
       }`}
+      style={isDark ? { background: 'linear-gradient(145deg, #1c1827 0%, #110f1b 100%)' } : undefined}
     >
       <div className="flex items-start justify-between gap-3">
         <p className={`text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
           {label}
         </p>
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDark ? 'bg-neutral-800' : 'bg-neutral-100'} ${iconTone}`}>
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDark ? 'bg-white/8 ring-1 ring-white/10' : 'bg-neutral-100'} ${iconTone}`}>
           {icon}
         </div>
       </div>
       <p className={`mt-4 tabular-nums text-[2.3rem] font-bold leading-none tracking-[-0.03em] sm:text-[2.6rem] ${resolvedAccent}`}>{value}</p>
       <p className={`mt-2 break-words text-xs leading-6 ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{subtext}</p>
-      {clampedProgress != null ? (
-        <div className={`mt-4 h-[3px] overflow-hidden rounded-full ${isDark ? 'bg-neutral-800' : 'bg-neutral-100'}`}>
-          <div
-            className={`h-full rounded-full transition-all duration-700 ${progressColor ?? (isDark ? 'bg-violet-500' : 'bg-violet-600')}`}
-            style={{ width: `${clampedProgress * 100}%` }}
-          />
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -878,33 +870,31 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
           type="button"
           onClick={onOpen}
           disabled={isGenerating}
-          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.8rem] border px-8 py-5 text-center text-[2rem] font-semibold tracking-[0.02em] transition duration-200 ${
+          className={`group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl border px-8 py-5 text-center text-xl font-bold tracking-wide transition duration-200 ${
             isGenerating
               ? isDark
-                ? 'cursor-not-allowed border-neutral-700 bg-neutral-900 text-neutral-400 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]'
-                : 'cursor-not-allowed border-neutral-200 bg-neutral-900 text-neutral-300 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]'
+                ? 'cursor-not-allowed border-neutral-700 bg-neutral-800 text-neutral-400'
+                : 'cursor-not-allowed border-neutral-300 bg-neutral-200 text-neutral-400'
               : isDark
-              ? 'border-[rgba(168,85,247,0.7)] bg-neutral-950 text-white/70 shadow-[0_0_0_1px_rgba(168,85,247,0.22),0_0_18px_rgba(168,85,247,0.18),0_0_36px_rgba(168,85,247,0.10)] hover:border-violet-400 hover:text-white/85 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.32),0_0_24px_rgba(168,85,247,0.22),0_0_44px_rgba(168,85,247,0.14)]'
-              : 'border-violet-300 bg-white text-neutral-950 shadow-[0_0_0_1px_rgba(216,180,254,0.8),0_0_46px_rgba(196,181,253,0.42)] hover:border-violet-400 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.9),0_0_58px_rgba(192,132,252,0.48)]'
+              ? 'border-violet-500/30 text-white shadow-[0_4px_24px_rgba(124,58,237,0.55),0_0_0_1px_rgba(167,139,250,0.2)] hover:shadow-[0_8px_40px_rgba(124,58,237,0.7),0_0_0_1px_rgba(167,139,250,0.35)] hover:scale-[1.01] active:scale-[0.99]'
+              : 'border-violet-600/20 text-white shadow-[0_4px_24px_rgba(109,40,217,0.45),0_2px_8px_rgba(0,0,0,0.12)] hover:shadow-[0_8px_40px_rgba(109,40,217,0.6)] hover:scale-[1.01] active:scale-[0.99]'
           }`}
-        >
-          <span className={`pointer-events-none absolute inset-0 opacity-80 ${
-            isDark
-              ? 'bg-[radial-gradient(circle_at_top,_rgba(192,132,252,0.16),_transparent_55%)]'
-              : 'bg-[radial-gradient(circle_at_top,_rgba(216,180,254,0.35),_transparent_60%)]'
-          }`} />
-          <span className={`relative flex h-11 w-11 items-center justify-center rounded-2xl ${
+          style={
             isGenerating
-              ? isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-neutral-800 text-neutral-300'
-              : isDark ? 'bg-violet-500/12 text-white/65' : 'bg-violet-50 text-violet-600'
+              ? undefined
+              : { background: isDark ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)' }
+          }
+        >
+          <span className={`relative flex h-10 w-10 items-center justify-center rounded-xl ${
+            isGenerating ? 'bg-white/10 text-white/50' : 'bg-white/15 text-white'
           }`}>
             {isGenerating ? (
-              <span className="h-6 w-6 animate-spin rounded-full border-2 border-current/40 border-t-current" />
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             ) : (
               <SparkleIcon />
             )}
           </span>
-          <span className="relative font-medium not-italic">{isGenerating ? 'Generating Recommendation...' : 'Generate Today’s Recommendation'}</span>
+          <span className="relative">{isGenerating ? 'Generating Recommendation...' : 'Generate Today’s Recommendation'}</span>
         </button>
       </div>
     </section>
@@ -3153,15 +3143,72 @@ export default function App() {
                     ? 'text-emerald-600'
                     : 'text-amber-500'
               }
-              progress={
-                summary.recent_mileage != null && adaptiveWeeklyTarget > 0
-                  ? Math.min(1, summary.recent_mileage / adaptiveWeeklyTarget)
-                  : null
-              }
-              progressColor={loadAccent === 'text-emerald-600' ? 'bg-emerald-500' : 'bg-amber-400'}
               theme={theme}
             />
           </div>
+
+          {/* Standalone Weekly Mileage Progress Bar */}
+          {summary.recent_mileage != null && adaptiveWeeklyTarget > 0 ? (() => {
+            const pct = Math.min(100, (summary.recent_mileage / adaptiveWeeklyTarget) * 100)
+            const isOnTrack = loadAccent === 'text-emerald-600'
+            const accentBar = isOnTrack ? 'bg-emerald-500' : 'bg-amber-400'
+            const accentText = isOnTrack
+              ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+              : isDark ? 'text-amber-400' : 'text-amber-500'
+            const iconBg = isOnTrack
+              ? isDark ? 'bg-emerald-950/60 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+              : isDark ? 'bg-amber-950/60 text-amber-400' : 'bg-amber-50 text-amber-500'
+            const remaining = Math.max(0, roundedAdaptiveWeeklyTarget - summary.recent_mileage)
+            return (
+              <div
+                className={`mt-4 rounded-2xl border px-6 py-5 transition duration-200 ${
+                  isDark
+                    ? 'border-neutral-700/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)]'
+                    : 'border-neutral-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.07)]'
+                }`}
+                style={isDark ? { background: 'linear-gradient(145deg, #1c1827 0%, #110f1b 100%)' } : undefined}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+                      <Icon path="M5 19h4V9H5zm5 0h4V5h-4zm5 0h4v-7h-4z" />
+                    </div>
+                    <p className={`text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-400'}`}>
+                      Weekly Mileage Progress
+                    </p>
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={`text-xl font-bold tabular-nums ${accentText}`}>
+                      {summary.recent_mileage.toFixed(1)}
+                    </span>
+                    <span className={`text-sm ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                      / {roundedAdaptiveWeeklyTarget} mi
+                    </span>
+                    <span className={`ml-1 rounded-md px-1.5 py-0.5 text-xs font-bold ${
+                      isOnTrack
+                        ? isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
+                        : isDark ? 'bg-amber-950/70 text-amber-400' : 'bg-amber-50 text-amber-700'
+                    }`}>
+                      {Math.round(pct)}%
+                    </span>
+                  </div>
+                </div>
+                <div className={`mt-4 h-3 overflow-hidden rounded-full ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-100'}`}>
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${accentBar}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <div className={`mt-2 flex justify-between text-xs ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                  <span>0 mi</span>
+                  <span className={isDark ? 'text-neutral-500' : 'text-neutral-500'}>
+                    {remaining.toFixed(1)} mi remaining
+                  </span>
+                  <span>{roundedAdaptiveWeeklyTarget} mi target</span>
+                </div>
+              </div>
+            )
+          })() : null}
         </section>
 
         <MasterTrainingCalendar
