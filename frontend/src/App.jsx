@@ -109,34 +109,24 @@ function ThemeToggle({ theme, onToggle }) {
     <button
       type="button"
       onClick={onToggle}
+      title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-      className={`inline-flex items-center gap-3 rounded-full border px-3 py-2 transition ${
+      className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition ${
         isDark
-          ? 'border-neutral-700 bg-neutral-900 text-neutral-100 hover:border-violet-500'
-          : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300'
+          ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white'
+          : 'border-neutral-200 bg-white text-neutral-600 hover:border-violet-300 hover:text-neutral-900'
       }`}
     >
-      <span
-        className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
-          isDark ? 'bg-neutral-800 text-neutral-100' : 'bg-neutral-100 text-neutral-700'
-        }`}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-5 w-5"
-          aria-hidden="true"
-        >
+      {isDark ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
           <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 1 0 9.8 9.8Z" />
         </svg>
-      </span>
-      <span className="pr-2 text-sm font-semibold">
-        {isDark ? 'Dark Mode' : 'Light Mode'}
-      </span>
+      )}
     </button>
   )
 }
@@ -412,7 +402,7 @@ function DashboardLoading({ theme = 'light' }) {
       }`}
     >
       <GlobalUiStyles />
-      <div className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className={`h-16 w-96 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/90' : 'bg-neutral-200/70'}`} />
         <div className={`mt-4 h-8 w-56 animate-pulse rounded-2xl ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-200/60'}`} />
         <div className={`mt-10 h-4 w-64 animate-pulse rounded-full ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-200/60'}`} />
@@ -615,14 +605,15 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           <button
             type="button"
             onClick={onOpenProfile}
-            className={`inline-flex h-14 w-14 items-center justify-center rounded-full border transition ${
+            title="Profile settings"
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition ${
               isDark
-                ? 'border-neutral-700 bg-neutral-900 text-neutral-100 hover:border-violet-500'
-                : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300'
+                ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white'
+                : 'border-neutral-200 bg-white text-neutral-600 hover:border-violet-300 hover:text-neutral-900'
             }`}
             aria-label="Open profile settings"
           >
-            <UserCircleIcon className="h-6 w-6" />
+            <UserCircleIcon className="h-5 w-5" />
           </button>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
@@ -818,28 +809,39 @@ function StatCard({
   accent = 'text-neutral-950',
   iconTone = 'text-violet-600',
   theme = 'light',
+  progress = null,
+  progressColor = null,
 }) {
   const isDark = theme === 'dark'
   const resolvedAccent =
     isDark && !/(emerald|amber|red|sky|violet|white)/.test(accent) ? 'text-white' : accent
+  const clampedProgress = progress != null ? Math.min(1, Math.max(0, progress)) : null
   return (
     <div
-      className={`min-h-[14rem] rounded-[1.9rem] border px-6 py-6 shadow-sm transition duration-200 ${
+      className={`relative flex flex-col rounded-2xl border px-5 py-5 shadow-sm transition duration-200 ${
         isDark
           ? 'border-neutral-800 bg-neutral-900/95 hover:border-violet-500/55 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.18),0_0_34px_rgba(168,85,247,0.18)]'
           : 'border-neutral-200 bg-white/90 hover:border-violet-300 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.4),0_0_24px_rgba(196,181,253,0.26)]'
       }`}
     >
-      <div className={`flex items-start gap-3 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-        <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center ${iconTone}`}>
-          {icon}
-        </div>
-        <p className={`min-w-0 break-words text-[0.78rem] font-medium uppercase leading-7 tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <p className={`text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
           {label}
         </p>
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDark ? 'bg-neutral-800' : 'bg-neutral-100'} ${iconTone}`}>
+          {icon}
+        </div>
       </div>
-      <p className={`mt-5 text-[2.7rem] font-semibold italic leading-none tracking-[-0.03em] sm:text-[3.1rem] ${resolvedAccent}`}>{value}</p>
-      <p className={`mt-3 break-words text-[1.02rem] leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{subtext}</p>
+      <p className={`mt-4 tabular-nums text-[2.3rem] font-bold leading-none tracking-[-0.03em] sm:text-[2.6rem] ${resolvedAccent}`}>{value}</p>
+      <p className={`mt-2 break-words text-xs leading-6 ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{subtext}</p>
+      {clampedProgress != null ? (
+        <div className={`mt-4 h-[3px] overflow-hidden rounded-full ${isDark ? 'bg-neutral-800' : 'bg-neutral-100'}`}>
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${progressColor ?? (isDark ? 'bg-violet-500' : 'bg-violet-600')}`}
+            style={{ width: `${clampedProgress * 100}%` }}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1231,7 +1233,7 @@ function TrainingCard({
               <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                 {isBikeDay ? 'Duration' : 'Distance'}
               </p>
-              <p className={`mt-3 text-6xl font-semibold leading-none tracking-tight xl:text-[5rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              <p className={`mt-3 tabular-nums text-6xl font-bold leading-none tracking-tight xl:text-[5rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
                 {isBikeDay ? `${recommendation.duration_minutes ?? '-'} min` : `${recommendation.run_distance_miles ?? '-'} mi`}
               </p>
             </div>
@@ -1395,10 +1397,16 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
   if (!weeklyFocus) return null
 
   const isDark = theme === 'dark'
+  const [isOpen, setIsOpen] = useState(true)
 
   return (
-    <details open className={`group mt-8 overflow-hidden rounded-[2rem] border shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
-      <summary className="list-none cursor-pointer px-6 py-5 md:px-7">
+    <div className={`mt-8 overflow-hidden rounded-[2rem] border shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        aria-expanded={isOpen}
+        className="w-full cursor-pointer px-6 py-5 text-left md:px-7"
+      >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -1410,23 +1418,25 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
               </h2>
             </div>
           </div>
-          <span className={`text-2xl transition group-open:rotate-180 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
+          <span className={`text-2xl transition duration-200 ${isOpen ? 'rotate-180' : ''} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>⌄</span>
         </div>
-      </summary>
+      </button>
 
-      <div className="px-6 pb-6 md:px-7 md:pb-7">
-        <p className={`max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-          {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
-        </p>
+      {isOpen ? (
+        <div className="px-6 pb-6 md:px-7 md:pb-7">
+          <p className={`max-w-3xl text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+            {weeklyFocus.progression_note || weeklyFocus.race_connection || 'Weekly guidance will appear here.'}
+          </p>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
-          <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
-          <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
-          <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
-          <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
+          <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-4">
+            <FocusMetric label="Mileage Target" value={weeklyFocus.mileage_range || `${weeklyFocus.mileage_target || '-'} mi`} icon={<TargetIcon />} theme={theme} />
+            <FocusMetric label="Long Run Goal" value={weeklyFocus.long_run_target || '-'} icon={<RunningShoeIcon />} theme={theme} />
+            <FocusMetric label="Key Session" value={weeklyFocus.quality_session_target || '-'} icon={<KeyIcon />} theme={theme} />
+            <FocusMetric label="Strength Goal" value={weeklyFocus.strength_target || '-'} icon={<DumbbellIcon />} theme={theme} />
+          </div>
         </div>
-      </div>
-    </details>
+      ) : null}
+    </div>
   )
 }
 
@@ -1642,8 +1652,9 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
         </div>
       </div>
 
-      <div className={`mt-8 rounded-[1.8rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
-        <div className="mt-6 grid grid-cols-7 gap-2 xl:gap-3">
+      <div className={`mt-8 overflow-hidden rounded-[1.8rem] border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+        <div className="overflow-x-auto p-5">
+        <div className="grid min-w-[46rem] grid-cols-7 gap-2 xl:gap-3">
             {weekdayHeadings.map((heading) => (
               <p key={heading} className={`text-center text-sm font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
                 {heading}
@@ -1751,6 +1762,7 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
           </div>
         ) : null}
       </div>
+      </div>
     </section>
   )
 }
@@ -1802,8 +1814,8 @@ function TrainingCalendar({ cards, theme = 'light' }) {
 
 function LegendDot({ color, label }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className={`h-4 w-4 rounded-full ${color}`} />
+    <div className="flex items-center gap-1.5">
+      <span className={`h-2 w-2 rounded-full ${color}`} />
       <span>{label}</span>
     </div>
   )
@@ -1839,7 +1851,7 @@ function CalendarCard({ card, theme = 'light' }) {
             : 'border-neutral-200 bg-white'
       }`}
     >
-      {!isToday ? <div className={`absolute inset-y-3 left-0 w-1.5 rounded-full ${stripeClass}`} /> : null}
+      {!isToday ? <div className={`absolute inset-x-0 top-0 h-[3px] ${stripeClass} opacity-90`} /> : null}
 
       {isToday ? (
         <div
@@ -1946,7 +1958,7 @@ function CalendarActivity({ activity, theme = 'light' }) {
       )}
 
       {showIntensityPill ? (
-        <span className={`mt-2 inline-flex rounded-2xl px-2.5 py-1 text-sm font-medium ${intensityPillClass(intensity)}`}>
+        <span className={`mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${intensityPillClass(intensity, theme)}`}>
           {intensity.toLowerCase()}
         </span>
       ) : null}
@@ -2106,12 +2118,13 @@ function intensityColorClass(value) {
   return 'text-neutral-400'
 }
 
-function intensityPillClass(value) {
+function intensityPillClass(value, theme = 'light') {
+  const isDark = theme === 'dark'
   const text = String(value || '').toLowerCase()
-  if (text.includes('hard')) return 'bg-red-50 text-red-600'
-  if (text.includes('moderate')) return 'bg-amber-50 text-amber-600'
-  if (text.includes('easy') || text.includes('recovery')) return 'bg-emerald-50 text-emerald-700'
-  return 'bg-neutral-100 text-neutral-600'
+  if (text.includes('hard')) return isDark ? 'bg-red-950/60 text-red-300' : 'bg-red-50 text-red-600'
+  if (text.includes('moderate')) return isDark ? 'bg-amber-950/60 text-amber-300' : 'bg-amber-50 text-amber-600'
+  if (text.includes('easy') || text.includes('recovery')) return isDark ? 'bg-emerald-950/60 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
+  return isDark ? 'bg-neutral-800/60 text-neutral-300' : 'bg-neutral-100 text-neutral-600'
 }
 
 function activityIntensityDotClass(activity) {
@@ -2986,7 +2999,7 @@ export default function App() {
       }`}
     >
       <GlobalUiStyles />
-      <div className="mx-auto max-w-7xl px-8 py-10">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Header
           name={profile.name}
           today={summaryData.today}
@@ -3050,14 +3063,16 @@ export default function App() {
           </div>
         ) : null}
 
-        <section className="py-10">
-          <div className="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <section className="py-8">
+          <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-3">
             <StatCard
               icon={<Icon path="M12 6v6l4 2M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0Z" />}
               label="Sleep"
               value={summary.latest_sleep_hours ? `${summary.latest_sleep_hours.toFixed(1)} hrs` : '-'}
               subtext="Latest WHOOP sleep duration"
-              iconTone={theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'}
+              iconTone={theme === 'dark' ? 'text-neutral-300' : 'text-neutral-600'}
+              progress={summary.latest_sleep_hours ? Math.min(1, summary.latest_sleep_hours / 9) : null}
+              progressColor={isDark ? 'bg-sky-500' : 'bg-sky-500'}
               theme={theme}
             />
             <StatCard
@@ -3075,12 +3090,20 @@ export default function App() {
                       ? 'text-amber-500'
                       : 'text-red-600'
               }
+              progress={summary.latest_recovery != null ? Math.min(1, summary.latest_recovery / 100) : null}
+              progressColor={
+                summary.latest_recovery >= 67
+                  ? 'bg-emerald-500'
+                  : summary.latest_recovery >= 34
+                    ? 'bg-amber-400'
+                    : 'bg-red-500'
+              }
               theme={theme}
             />
             <StatCard
               icon={<HeartOutlineIcon />}
               label="Resting HR"
-              value={summary.latest_resting_hr ? `${summary.latest_resting_hr}` : '-'}
+              value={summary.latest_resting_hr ? `${summary.latest_resting_hr} bpm` : '-'}
               subtext="Most recent resting heart rate"
               accent="text-violet-700"
               iconTone={theme === 'dark' ? 'text-violet-300' : 'text-violet-700'}
@@ -3088,28 +3111,30 @@ export default function App() {
             />
             <StatCard
               icon={<Icon path="M3 12h4l2-5l4 10l2-5h6" />}
-              label="Yesterday’s Strain"
+              label="Yesterday's Strain"
               value={summary.latest_strain ? `${summary.latest_strain}` : '-'}
               subtext="WHOOP strain from yesterday"
               accent="text-sky-600"
               iconTone={theme === 'dark' ? 'text-sky-300' : 'text-sky-600'}
+              progress={summary.latest_strain ? Math.min(1, summary.latest_strain / 21) : null}
+              progressColor={isDark ? 'bg-sky-500' : 'bg-sky-500'}
               theme={theme}
             />
             <StatCard
               icon={<RunningShoeIcon />}
-              label="Last Run Mileage"
+              label="Last Run"
               value={previousRun.distance_miles ? `${previousRun.distance_miles} mi` : '-'}
               subtext={
                 previousRun.day
                   ? `${formatDate(previousRun.day)} · ${previousRun.duration_minutes || 0} min`
                   : 'Most recent run'
               }
-              iconTone={theme === 'dark' ? 'text-neutral-100' : 'text-neutral-900'}
+              iconTone={theme === 'dark' ? 'text-neutral-300' : 'text-neutral-600'}
               theme={theme}
             />
             <StatCard
               icon={<Icon path="M5 19h4V9H5zm5 0h4V5h-4zm5 0h4v-7h-4z" />}
-              label="Weekly Mileage Progress"
+              label="Weekly Mileage"
               value={
                 summary.recent_mileage && adaptiveWeeklyTarget
                   ? `${summary.recent_mileage.toFixed(1)} / ${roundedAdaptiveWeeklyTarget} mi`
@@ -3117,7 +3142,7 @@ export default function App() {
                     ? `${summary.recent_mileage.toFixed(1)} mi`
                     : '-'
               }
-              subtext="Mileage completed toward this week's adaptive target"
+              subtext="Completed toward this week's target"
               accent={loadAccent}
               iconTone={
                 theme === 'dark'
@@ -3128,6 +3153,12 @@ export default function App() {
                     ? 'text-emerald-600'
                     : 'text-amber-500'
               }
+              progress={
+                summary.recent_mileage != null && adaptiveWeeklyTarget > 0
+                  ? Math.min(1, summary.recent_mileage / adaptiveWeeklyTarget)
+                  : null
+              }
+              progressColor={loadAccent === 'text-emerald-600' ? 'bg-emerald-500' : 'bg-amber-400'}
               theme={theme}
             />
           </div>
