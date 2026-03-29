@@ -808,13 +808,18 @@ function StatCard({
   subtext,
   accent = 'text-neutral-950',
   iconTone = 'text-violet-600',
+  iconBg = null,
   theme = 'light',
   progress = null,
   progressColor = null,
+  visual = null,
 }) {
   const isDark = theme === 'dark'
   const resolvedAccent =
-    isDark && !/(emerald|amber|red|sky|violet|white)/.test(accent) ? 'text-white' : accent
+    isDark && !/(emerald|amber|red|sky|violet|white|blue|cyan|orange|green|purple|teal|indigo)/.test(accent)
+      ? 'text-white'
+      : accent
+  const containerBg = iconBg ?? (isDark ? 'bg-white/8' : 'bg-neutral-100')
   return (
     <div
       className={`relative flex flex-col rounded-2xl border px-5 py-5 transition duration-200 ${
@@ -828,12 +833,61 @@ function StatCard({
         <p className={`text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
           {label}
         </p>
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDark ? 'bg-white/8 ring-1 ring-white/10' : 'bg-neutral-100'} ${iconTone}`}>
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${containerBg} ${iconTone}`}>
           {icon}
         </div>
       </div>
       <p className={`mt-4 tabular-nums text-[2.3rem] font-bold leading-none tracking-[-0.03em] sm:text-[2.6rem] ${resolvedAccent}`}>{value}</p>
       <p className={`mt-2 break-words text-xs leading-6 ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>{subtext}</p>
+      {visual != null ? visual : null}
+    </div>
+  )
+}
+
+function RadialArc({ pct = 0, color = '#a78bfa', size = 48 }) {
+  const r = 17
+  const cx = size / 2
+  const cy = size / 2
+  const circ = 2 * Math.PI * r
+  const dash = Math.min(pct / 100, 1) * circ
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="3" />
+      <circle
+        cx={cx} cy={cy} r={r} fill="none"
+        stroke={color} strokeWidth="3.5" strokeLinecap="round"
+        strokeDasharray={`${dash} ${circ}`}
+        transform={`rotate(-90 ${cx} ${cy})`}
+      />
+    </svg>
+  )
+}
+
+function HeartWave({ color = '#a78bfa' }) {
+  return (
+    <div className="mt-3 w-full overflow-hidden">
+      <svg viewBox="0 0 100 26" className="w-full h-6" preserveAspectRatio="none">
+        <polyline
+          points="0,13 10,13 16,2 22,24 28,7 33,18 39,13 50,13 56,2 62,24 68,7 73,18 79,13 100,13"
+          fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.85"
+        />
+      </svg>
+    </div>
+  )
+}
+
+function StrainSegments({ value = 0, maxValue = 21, color = '#fb923c' }) {
+  const segs = 10
+  const filled = Math.round((Math.min(value, maxValue) / maxValue) * segs)
+  return (
+    <div className="mt-3 flex gap-[3px]">
+      {Array.from({ length: segs }).map((_, i) => (
+        <div
+          key={i}
+          className="h-[5px] flex-1 rounded-full"
+          style={{ backgroundColor: i < filled ? color : 'rgba(255,255,255,0.08)' }}
+        />
+      ))}
     </div>
   )
 }
@@ -3056,59 +3110,105 @@ export default function App() {
         <section className="py-8">
           <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-3">
             <StatCard
-              icon={<Icon path="M12 6v6l4 2M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0Z" />}
+              icon={<Icon path="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />}
               label="Sleep"
               value={summary.latest_sleep_hours ? `${summary.latest_sleep_hours.toFixed(1)} hrs` : '-'}
               subtext="Latest WHOOP sleep duration"
-              iconTone={theme === 'dark' ? 'text-neutral-300' : 'text-neutral-600'}
-              progress={summary.latest_sleep_hours ? Math.min(1, summary.latest_sleep_hours / 9) : null}
-              progressColor={isDark ? 'bg-sky-500' : 'bg-sky-500'}
+              accent={isDark ? 'text-blue-300' : 'text-blue-700'}
+              iconBg={isDark ? 'bg-blue-500/15' : 'bg-blue-50'}
+              iconTone={isDark ? 'text-blue-400' : 'text-blue-600'}
               theme={theme}
+              visual={summary.latest_sleep_hours ? (
+                <div className="mt-3 flex items-center justify-between">
+                  <span className={`text-[0.6rem] font-medium uppercase tracking-wide ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>Goal: 8 hrs</span>
+                  <RadialArc pct={Math.min(100, (summary.latest_sleep_hours / 8) * 100)} color={isDark ? '#60a5fa' : '#3b82f6'} size={44} />
+                </div>
+              ) : null}
             />
             <StatCard
               icon={<BatteryIcon />}
               label="Recovery"
               value={summary.latest_recovery ? `${summary.latest_recovery}%` : '-'}
               subtext="Latest WHOOP recovery score"
-              accent={recoveryAccent}
-              iconTone={
-                theme === 'dark'
-                  ? 'text-emerald-400'
-                  : summary.latest_recovery >= 67
-                    ? 'text-emerald-600'
-                    : summary.latest_recovery >= 34
-                      ? 'text-amber-500'
-                      : 'text-red-600'
-              }
-              progress={summary.latest_recovery != null ? Math.min(1, summary.latest_recovery / 100) : null}
-              progressColor={
+              accent={
                 summary.latest_recovery >= 67
-                  ? 'bg-emerald-500'
+                  ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
                   : summary.latest_recovery >= 34
-                    ? 'bg-amber-400'
-                    : 'bg-red-500'
+                    ? (isDark ? 'text-amber-400' : 'text-amber-600')
+                    : (isDark ? 'text-red-400' : 'text-red-600')
+              }
+              iconBg={
+                summary.latest_recovery >= 67
+                  ? (isDark ? 'bg-emerald-500/15' : 'bg-emerald-50')
+                  : summary.latest_recovery >= 34
+                    ? (isDark ? 'bg-amber-500/15' : 'bg-amber-50')
+                    : (isDark ? 'bg-red-500/15' : 'bg-red-50')
+              }
+              iconTone={
+                summary.latest_recovery >= 67
+                  ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+                  : summary.latest_recovery >= 34
+                    ? (isDark ? 'text-amber-400' : 'text-amber-600')
+                    : (isDark ? 'text-red-400' : 'text-red-600')
               }
               theme={theme}
+              visual={summary.latest_recovery != null ? (
+                <div className="mt-3 flex items-center justify-between">
+                  <span className={`text-[0.6rem] font-medium uppercase tracking-wide ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                    {summary.latest_recovery >= 67 ? 'Peak' : summary.latest_recovery >= 34 ? 'Moderate' : 'Low'}
+                  </span>
+                  <RadialArc
+                    pct={summary.latest_recovery}
+                    color={
+                      summary.latest_recovery >= 67
+                        ? (isDark ? '#34d399' : '#10b981')
+                        : summary.latest_recovery >= 34
+                          ? (isDark ? '#fbbf24' : '#d97706')
+                          : (isDark ? '#f87171' : '#ef4444')
+                    }
+                    size={44}
+                  />
+                </div>
+              ) : null}
             />
             <StatCard
               icon={<HeartOutlineIcon />}
               label="Resting HR"
               value={summary.latest_resting_hr ? `${summary.latest_resting_hr} bpm` : '-'}
               subtext="Most recent resting heart rate"
-              accent="text-violet-700"
-              iconTone={theme === 'dark' ? 'text-violet-300' : 'text-violet-700'}
+              accent={isDark ? 'text-violet-300' : 'text-violet-700'}
+              iconBg={isDark ? 'bg-violet-500/15' : 'bg-violet-50'}
+              iconTone={isDark ? 'text-violet-400' : 'text-violet-700'}
               theme={theme}
+              visual={summary.latest_resting_hr ? <HeartWave color={isDark ? '#a78bfa' : '#7c3aed'} /> : null}
             />
             <StatCard
-              icon={<Icon path="M3 12h4l2-5l4 10l2-5h6" />}
+              icon={<Icon path="M13 10V3L4 14h7v7l9-11h-7z" />}
               label="Yesterday's Strain"
               value={summary.latest_strain ? `${summary.latest_strain}` : '-'}
               subtext="WHOOP strain from yesterday"
-              accent="text-sky-600"
-              iconTone={theme === 'dark' ? 'text-sky-300' : 'text-sky-600'}
-              progress={summary.latest_strain ? Math.min(1, summary.latest_strain / 21) : null}
-              progressColor={isDark ? 'bg-sky-500' : 'bg-sky-500'}
+              accent={
+                (summary.latest_strain || 0) >= 14
+                  ? (isDark ? 'text-red-400' : 'text-red-600')
+                  : (isDark ? 'text-orange-400' : 'text-orange-600')
+              }
+              iconBg={
+                (summary.latest_strain || 0) >= 14
+                  ? (isDark ? 'bg-red-500/15' : 'bg-red-50')
+                  : (isDark ? 'bg-orange-500/15' : 'bg-orange-50')
+              }
+              iconTone={
+                (summary.latest_strain || 0) >= 14
+                  ? (isDark ? 'text-red-400' : 'text-red-600')
+                  : (isDark ? 'text-orange-400' : 'text-orange-600')
+              }
               theme={theme}
+              visual={summary.latest_strain ? (
+                <StrainSegments
+                  value={summary.latest_strain}
+                  color={(summary.latest_strain || 0) >= 14 ? (isDark ? '#f87171' : '#ef4444') : (isDark ? '#fb923c' : '#ea580c')}
+                />
+              ) : null}
             />
             <StatCard
               icon={<RunningShoeIcon />}
@@ -3119,7 +3219,9 @@ export default function App() {
                   ? `${formatDate(previousRun.day)} · ${previousRun.duration_minutes || 0} min`
                   : 'Most recent run'
               }
-              iconTone={theme === 'dark' ? 'text-neutral-300' : 'text-neutral-600'}
+              accent={isDark ? 'text-cyan-300' : 'text-cyan-700'}
+              iconBg={isDark ? 'bg-cyan-500/15' : 'bg-cyan-50'}
+              iconTone={isDark ? 'text-cyan-400' : 'text-cyan-600'}
               theme={theme}
             />
             <StatCard
@@ -3133,17 +3235,36 @@ export default function App() {
                     : '-'
               }
               subtext="Completed toward this week's target"
-              accent={loadAccent}
+              accent={
+                loadAccent === 'text-emerald-600'
+                  ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+                  : (isDark ? 'text-amber-400' : 'text-amber-500')
+              }
+              iconBg={
+                loadAccent === 'text-emerald-600'
+                  ? (isDark ? 'bg-emerald-500/15' : 'bg-emerald-50')
+                  : (isDark ? 'bg-amber-500/15' : 'bg-amber-50')
+              }
               iconTone={
-                theme === 'dark'
-                  ? loadAccent === 'text-emerald-600'
-                    ? 'text-emerald-400'
-                    : 'text-amber-400'
-                  : loadAccent === 'text-emerald-600'
-                    ? 'text-emerald-600'
-                    : 'text-amber-500'
+                loadAccent === 'text-emerald-600'
+                  ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+                  : (isDark ? 'text-amber-400' : 'text-amber-500')
               }
               theme={theme}
+              visual={
+                summary.recent_mileage != null && adaptiveWeeklyTarget > 0 ? (
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className={`text-[0.6rem] font-medium uppercase tracking-wide ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                      {Math.round((summary.recent_mileage / adaptiveWeeklyTarget) * 100)}% of target
+                    </span>
+                    <RadialArc
+                      pct={Math.min(100, (summary.recent_mileage / adaptiveWeeklyTarget) * 100)}
+                      color={loadAccent === 'text-emerald-600' ? (isDark ? '#34d399' : '#10b981') : (isDark ? '#fbbf24' : '#d97706')}
+                      size={44}
+                    />
+                  </div>
+                ) : null
+              }
             />
           </div>
 
