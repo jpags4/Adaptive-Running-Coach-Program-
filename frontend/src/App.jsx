@@ -66,37 +66,31 @@ function GlobalUiStyles() {
         background: #050505;
       }
 
+      /* Scrollbar styling only — background is controlled by React theme */
       .recommendation-modal-scroll {
-        background: #0a0a0a;
         scrollbar-width: thin;
-        scrollbar-color: #2f2f2f #050505;
+        scrollbar-color: #3f3f3f transparent;
       }
 
       .recommendation-modal-scroll::-webkit-scrollbar {
-        width: 10px;
-        background: #050505;
+        width: 8px;
       }
 
       .recommendation-modal-scroll::-webkit-scrollbar-track {
-        background: #050505;
-      }
-
-      .recommendation-modal-scroll::-webkit-scrollbar-track-piece {
-        background: #050505;
+        background: transparent;
       }
 
       .recommendation-modal-scroll::-webkit-scrollbar-thumb {
-        background: #2f2f2f;
+        background: #3f3f3f;
         border-radius: 999px;
-        border: 2px solid #050505;
+        border: 2px solid transparent;
+        background-clip: padding-box;
       }
 
       .recommendation-modal-scroll::-webkit-scrollbar-thumb:hover {
-        background: #444444;
-      }
-
-      .recommendation-modal-scroll::-webkit-scrollbar-corner {
-        background: #050505;
+        background: #6d28d9;
+        border: 2px solid transparent;
+        background-clip: padding-box;
       }
     `}</style>
   )
@@ -653,7 +647,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
       <div className="min-w-0 flex-1">
         {/* Greeting — types in, gradient stays */}
         <h1
-          className={`max-w-full text-[clamp(2.8rem,6vw,5rem)] font-bold italic leading-[1.12] tracking-[-0.02em] pb-2 ${
+          className={`max-w-full text-[clamp(2rem,3.8vw,3.4rem)] font-bold italic leading-[1.12] tracking-[-0.02em] pb-2 ${
             isDark
               ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
               : 'text-neutral-950'
@@ -1107,7 +1101,7 @@ function CheckInModal({
       }`}>
         <div
           className="recommendation-modal-scroll flex-1 overflow-y-auto px-7 pb-0 pt-7 md:px-8 md:pt-8"
-          style={isDark ? { background: 'linear-gradient(180deg, #110f1b 0%, #0d0b14 100%)' } : undefined}
+          style={{ background: isDark ? 'linear-gradient(180deg, #110f1b 0%, #0d0b14 100%)' : '#ffffff' }}
         >
           <div className="flex items-start justify-between gap-6">
             <div className="max-w-3xl">
@@ -2057,14 +2051,29 @@ function CalendarCard({ card, theme = 'light' }) {
           </div>
         ) : (
           isToday ? <div className="pt-2.5" /> : (
-            <div className="pt-2.5 flex flex-col items-start gap-1">
-              {/* Battery / recharge icon — symbolises a rest day */}
-              <svg viewBox="0 0 24 24" className={`h-7 w-7 ${isDark ? 'text-neutral-600' : 'text-neutral-300'}`} fill="currentColor" aria-label="Rest day">
-                <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4zm-1.97 11.48-1.7 3.02V16h-2v-3.5h2V11l1.7 3.02V13H14v1.5h-1.3v.98z"/>
+            {/* Rest day — centered battery-charging icon, no label */}
+            <div className="flex h-full min-h-[6rem] items-center justify-center">
+              <svg
+                viewBox="0 0 28 16"
+                className={`w-14 ${isDark ? 'text-neutral-500' : 'text-neutral-300'}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-label="Rest day"
+              >
+                {/* Battery body */}
+                <rect x="0.7" y="0.7" width="23" height="14.6" rx="2.2" />
+                {/* Battery terminal */}
+                <path d="M23.7 5.5 L27.3 5.5 L27.3 10.5 L23.7 10.5" />
+                {/* Lightning bolt — solid fill, centered */}
+                <path
+                  d="M14.5 2.5 L10 8.5 H13.5 L11.5 13.5 L17 7.5 H13.5 Z"
+                  fill="currentColor"
+                  stroke="none"
+                />
               </svg>
-              <p className={`text-[0.65rem] font-medium uppercase tracking-[0.14em] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
-                Rest
-              </p>
             </div>
           )
         )}
