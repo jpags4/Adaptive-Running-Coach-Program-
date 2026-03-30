@@ -161,6 +161,16 @@ function Icon({ path, className = 'h-5 w-5' }) {
   )
 }
 
+function BarChartIcon({ className = 'h-5 w-5' }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <rect x="3" y="12" width="4" height="9" rx="1" />
+      <rect x="10" y="7" width="4" height="14" rx="1" />
+      <rect x="17" y="3" width="4" height="18" rx="1" />
+    </svg>
+  )
+}
+
 function RunningShoeIcon({ className = 'h-5 w-5' }) {
   return (
     <svg
@@ -1364,26 +1374,13 @@ function TrainingCard({
         </button>
       </div>
 
-      {isMakeupDay && (
-        <div className={`mt-5 flex items-center gap-3 rounded-2xl border px-5 py-3.5 text-sm font-medium ${
-          isDark
-            ? 'border-amber-800/50 bg-amber-950/30 text-amber-300'
-            : 'border-amber-200 bg-amber-50 text-amber-700'
-        }`}>
-          <svg className="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="8" cy="8" r="6.5" />
-            <path d="M8 5v3.5l2 2" />
-          </svg>
-          <span>
-            Makeup day — yesterday&apos;s {missedWorkout ? <strong>{missedWorkout.toLowerCase()}</strong> : 'planned session'} was missed. Volume is slightly reduced to avoid stacking load.
-          </span>
-        </div>
-      )}
+      {/* Run + Lift — equal-width balanced panels */}
+      <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
 
-      <div className="mt-6 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(23rem,0.95fr)]">
-        <div className={`self-start rounded-[1.9rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
-          <div className={`flex items-center gap-2.5 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+        {/* Run / Bike panel */}
+        <div className={`rounded-[1.9rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+          <div className="flex items-center gap-2.5">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
               {isBikeDay ? <BikeIcon /> : <RunningShoeIcon />}
             </div>
             <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -1391,164 +1388,187 @@ function TrainingCard({
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-            <div className="min-w-0">
-              <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                {isBikeDay ? 'Duration' : 'Distance'}
-              </p>
-              <p className={`mt-3 tabular-nums text-6xl font-bold leading-none tracking-tight xl:text-[5rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                {isBikeDay ? `${recommendation.duration_minutes ?? '-'} min` : `${recommendation.run_distance_miles ?? '-'} mi`}
-              </p>
-            </div>
-
-            <div className="min-w-0">
-              <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                {isBikeDay ? 'Zone' : 'Pace'}
-              </p>
-              <p className={`mt-3 text-[2.45rem] font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                {isBikeDay ? (bikeZone || 'By feel') : paceHeadline(recommendation.run_pace_guidance)}
-              </p>
-              <p className={`mt-3 text-base ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                {isBikeDay ? (bikeCadence ? `Cadence ${bikeCadence}` : 'Keep the effort smooth and aerobic.') : paceSupportText(recommendation.run_pace_guidance)}
-              </p>
-            </div>
+          <div className="mt-5">
+            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              {isBikeDay ? 'Duration' : 'Distance'}
+            </p>
+            <p className={`mt-2 tabular-nums text-[3.4rem] font-bold leading-none tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              {isBikeDay ? `${recommendation.duration_minutes ?? '-'} min` : `${recommendation.run_distance_miles ?? '-'} mi`}
+            </p>
           </div>
 
-          <div className={`mt-6 border-t pt-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-            <div className="min-w-0">
-              <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                Intensity
-              </p>
-              <p className={`mt-3 break-words text-4xl font-semibold leading-tight tracking-tight ${intensityClass}`}>
-                {intensityLabel}
-              </p>
-              <p className={`mt-3 text-base ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                {isBikeDay
-                  ? (enduranceNotes[0] || '')
-                  : (recommendation.duration_minutes ? `${recommendation.duration_minutes} min total` : '')}
-              </p>
-            </div>
+          <div className="mt-4">
+            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              {isBikeDay ? 'Zone' : 'Pace'}
+            </p>
+            <p className={`mt-2 text-2xl font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              {isBikeDay ? (bikeZone || 'By feel') : paceHeadline(recommendation.run_pace_guidance)}
+            </p>
+            <p className={`mt-1 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              {isBikeDay ? (bikeCadence ? `Cadence ${bikeCadence}` : 'Keep the effort smooth and aerobic.') : paceSupportText(recommendation.run_pace_guidance)}
+            </p>
+          </div>
+
+          <div className={`mt-5 border-t pt-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              Intensity
+            </p>
+            <p className={`mt-2 text-2xl font-semibold leading-tight tracking-tight ${intensityClass}`}>
+              {intensityLabel}
+            </p>
+            <p className={`mt-1 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              {isBikeDay
+                ? (enduranceNotes[0] || '')
+                : (recommendation.duration_minutes ? `${recommendation.duration_minutes} min total` : '')}
+            </p>
           </div>
         </div>
 
+        {/* Lift panel */}
         <div className={`rounded-[1.9rem] border p-6 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
-          <div className="flex items-center gap-3">
-            <div className={`flex h-11 w-11 items-center justify-center rounded-full ${isDark ? 'bg-violet-950/70 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
+          <div className="flex items-center gap-2.5">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-violet-950/70 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
               <DumbbellIcon />
             </div>
-            <div>
-              <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Lift
-              </p>
-              <h3 className={`mt-2 text-4xl font-semibold leading-[1.02] tracking-tight xl:text-[3.4rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                {shortLiftTitle(recommendation.lift_focus)}
-              </h3>
-            </div>
+            <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              Lift
+            </p>
           </div>
 
-          {isLiftOffDay ? (
-            <p className={`mt-6 text-lg leading-8 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-              {isBikeDay
-                ? 'No lift today. Let the bike session be the only training load while the painful area settles down.'
-                : 'No lift today. Keep all training stress in the run so recovery stays on track.'}
+          <div className="mt-5">
+            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              Focus
             </p>
-          ) : (
-            <div className="mt-6 space-y-3">
-              {liftBlocks.map((block, index) => (
-                <div
-                  key={`${block.name}-${index}`}
-                  className={`rounded-2xl border px-5 py-4 text-base leading-7 ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-300' : 'border-neutral-200 bg-white text-neutral-700'}`}
-                >
-                  <span className={`mr-3 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${isDark ? 'bg-violet-950/80 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
-                    {index + 1}
-                  </span>
-                  <span className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-950'}`}>{block.name}</span>
-                  {block.detail ? <span className={`${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}> {block.detail}</span> : null}
-                </div>
-              ))}
-            </div>
-          )}
+            <p className={`mt-2 text-[3.4rem] font-bold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              {shortLiftTitle(recommendation.lift_focus)}
+            </p>
+          </div>
+
+          <div className={`mt-5 border-t pt-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            {isLiftOffDay ? (
+              <p className={`text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                {isBikeDay
+                  ? 'No lift today. Let the bike session carry the load.'
+                  : 'No lift today. Keep all training stress in the run.'}
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {liftBlocks.map((block, index) => (
+                  <div
+                    key={`${block.name}-${index}`}
+                    className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-300' : 'border-neutral-200 bg-white text-neutral-700'}`}
+                  >
+                    <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${isDark ? 'bg-violet-950/80 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
+                      {index + 1}
+                    </span>
+                    <span>
+                      <span className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-950'}`}>{block.name}</span>
+                      {block.detail ? <span className={isDark ? ' text-neutral-400' : ' text-neutral-600'}> {block.detail}</span> : null}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {recommendationExplanation?.summary ? (
+      {/* Coach Summary — includes makeup day callout when relevant */}
+      {(recommendationExplanation?.summary || isMakeupDay) ? (
         <section className={`mt-6 overflow-hidden rounded-[1.9rem] border ${
           isDark ? `border-sky-900/40 bg-sky-950/30 ${darkGlow(true)}` : 'border-sky-200 bg-sky-50/80'
         }`}>
-          <button
-            type="button"
-            aria-expanded={isCoachSummaryExpanded}
-            onClick={() => setIsCoachSummaryExpanded((current) => !current)}
-            className="w-full cursor-pointer px-6 py-6 text-left"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 items-start gap-3">
-                <div className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
-                  isDark ? 'bg-sky-950/70 text-sky-300' : 'bg-white text-sky-700'
-                }`}>
-                  <TargetIcon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
-                    Coach Summary
-                  </p>
-                  <p className={`mt-1 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                    Athlete-facing guidance built from the final recommendation
-                  </p>
-                  <p className={`mt-5 max-w-4xl text-xl leading-9 ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                    {recommendationExplanation.summary}
-                  </p>
-                </div>
-              </div>
-              <span
-                aria-hidden="true"
-                className={`mt-1 shrink-0 text-2xl transition duration-200 ${isCoachSummaryExpanded ? 'rotate-180' : ''} ${isDark ? 'text-sky-200/70' : 'text-sky-700'}`}
-              >
-                ⌄
+          {isMakeupDay && (
+            <div className={`flex items-start gap-3 border-b px-6 py-4 text-sm ${
+              isDark
+                ? 'border-amber-900/40 bg-amber-950/25 text-amber-300'
+                : 'border-amber-200/60 bg-amber-50/80 text-amber-700'
+            }`}>
+              <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.5" />
+                <path d="M8 5v3l1.5 1.5" />
+              </svg>
+              <span>
+                <strong>Makeup day</strong> — yesterday&apos;s {missedWorkout ? <span className="font-semibold">{missedWorkout.toLowerCase()}</span> : 'planned session'} was missed. Volume is slightly reduced to avoid stacking load.
               </span>
             </div>
-          </button>
+          )}
 
-          {isCoachSummaryExpanded ? (
-            <div className="px-6 pb-6">
-            {Array.isArray(recommendationExplanation.whyBullets) && recommendationExplanation.whyBullets.length > 0 ? (
-              <ul className={`space-y-2 text-base leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                {recommendationExplanation.whyBullets.slice(0, 2).map((bullet, index) => (
-                  <li key={`${bullet}-${index}`} className="flex gap-3">
-                    <span className={`mt-3 inline-block h-1.5 w-1.5 rounded-full ${isDark ? 'bg-sky-300' : 'bg-sky-700'}`} />
-                    <span>{bullet}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+          {recommendationExplanation?.summary ? (
+            <>
+              <button
+                type="button"
+                aria-expanded={isCoachSummaryExpanded}
+                onClick={() => setIsCoachSummaryExpanded((current) => !current)}
+                className="w-full cursor-pointer px-6 py-6 text-left"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+                      isDark ? 'bg-sky-950/70 text-sky-300' : 'bg-white text-sky-700'
+                    }`}>
+                      <TargetIcon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
+                        Coach Summary
+                      </p>
+                      <p className={`mt-5 max-w-4xl text-xl leading-9 ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                        {recommendationExplanation.summary}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className={`mt-1 shrink-0 text-2xl transition duration-200 ${isCoachSummaryExpanded ? 'rotate-180' : ''} ${isDark ? 'text-sky-200/70' : 'text-sky-700'}`}
+                  >
+                    ⌄
+                  </span>
+                </div>
+              </button>
 
-            {recommendationExplanation.decisionDrivers ? (
-              <div className={`mt-5 rounded-[1.25rem] border px-4 py-4 ${
-                isDark ? 'border-neutral-800 bg-neutral-950/70' : 'border-white/80 bg-white/90'
-              }`}>
-                <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
-                  What Drove This Decision
-                </p>
-                <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
-                  {recommendationExplanation.decisionDrivers}
-                </p>
-              </div>
-            ) : null}
+              {isCoachSummaryExpanded ? (
+                <div className="px-6 pb-6">
+                  {Array.isArray(recommendationExplanation.whyBullets) && recommendationExplanation.whyBullets.length > 0 ? (
+                    <ul className={`space-y-2 text-base leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                      {recommendationExplanation.whyBullets.slice(0, 2).map((bullet, index) => (
+                        <li key={`${bullet}-${index}`} className="flex gap-3">
+                          <span className={`mt-3 inline-block h-1.5 w-1.5 rounded-full ${isDark ? 'bg-sky-300' : 'bg-sky-700'}`} />
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
 
-            {recommendationExplanation.cautionNote ? (
-              <p className={`mt-5 rounded-[1.25rem] border px-4 py-3 text-sm leading-7 ${
-                isDark ? 'border-amber-900/50 bg-amber-950/35 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'
-              }`}>
-                {recommendationExplanation.cautionNote}
-              </p>
-            ) : null}
+                  {recommendationExplanation.decisionDrivers ? (
+                    <div className={`mt-5 rounded-[1.25rem] border px-4 py-4 ${
+                      isDark ? 'border-neutral-800 bg-neutral-950/70' : 'border-white/80 bg-white/90'
+                    }`}>
+                      <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-sky-200/80' : 'text-sky-700'}`}>
+                        What Drove This Decision
+                      </p>
+                      <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                        {recommendationExplanation.decisionDrivers}
+                      </p>
+                    </div>
+                  ) : null}
 
-            {recommendationExplanation.encouragement ? (
-              <p className={`mt-5 text-sm italic ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                {recommendationExplanation.encouragement}
-              </p>
-            ) : null}
-            </div>
+                  {recommendationExplanation.cautionNote ? (
+                    <p className={`mt-5 rounded-[1.25rem] border px-4 py-3 text-sm leading-7 ${
+                      isDark ? 'border-amber-900/50 bg-amber-950/35 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'
+                    }`}>
+                      {recommendationExplanation.cautionNote}
+                    </p>
+                  ) : null}
+
+                  {recommendationExplanation.encouragement ? (
+                    <p className={`mt-5 text-sm italic ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                      {recommendationExplanation.encouragement}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
           ) : null}
         </section>
       ) : null}
@@ -3521,7 +3541,7 @@ export default function App() {
                       </p>
                     </div>
                     <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${mileIconBg}`}>
-                      <Icon path="M13 5.5C13 6.88 12.1 8.06 10.86 8.57L12 20H11L9.5 14H8.5L7 20H6L7.14 8.57C5.9 8.06 5 6.88 5 5.5C5 3.57 6.57 2 8.5 2S12 3.57 12 5.5M16 2H19V9H17L16.5 11H14.5L14 9H12V2H15V8H16V2Z" />
+                      <BarChartIcon className="h-5 w-5" />
                     </div>
                   </div>
                   <div className="mt-5">
