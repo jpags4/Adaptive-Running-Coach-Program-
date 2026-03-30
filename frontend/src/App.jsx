@@ -596,20 +596,19 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
       <div className="min-w-0 flex-1">
         {/* Greeting — types in, gradient stays */}
         <h1
-          className={`max-w-full text-[clamp(2rem,5vw,3.5rem)] font-bold italic leading-[1.05] tracking-[-0.02em] ${
+          className={`max-w-full text-[clamp(2.8rem,6vw,5rem)] font-bold italic leading-[1.12] tracking-[-0.02em] pb-2 ${
             isDark
               ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
               : 'text-neutral-950'
           }`}
-          style={{ minHeight: 'clamp(2rem, 5vw, 3.5rem)' }}
         >
           {greetingTyped || '\u00A0'}
         </h1>
 
-        <div className="mt-3 flex flex-col gap-1">
+        <div className="mt-2 flex flex-col gap-1">
           {/* Date line: prefix collapses + fades, suffix slides left and stays */}
           <div
-            className={`flex items-baseline overflow-hidden text-[clamp(1rem,2vw,1.3rem)] font-semibold italic uppercase tracking-[0.04em] leading-[1.25] ${
+            className={`flex items-baseline overflow-hidden text-[clamp(1.2rem,2.5vw,1.8rem)] font-semibold italic uppercase tracking-[0.04em] leading-[1.25] ${
               isDark ? 'text-neutral-100/92' : 'text-neutral-900'
             }`}
           >
@@ -628,7 +627,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
 
           {/* LET'S MOVE — fades out to the right after transition */}
           <div
-            className={`text-[clamp(0.98rem,1.8vw,1.15rem)] font-semibold uppercase tracking-[0.04em] leading-[1.2] ${
+            className={`text-[clamp(1.1rem,2vw,1.4rem)] font-semibold uppercase tracking-[0.04em] leading-[1.2] ${
               isDark ? 'text-neutral-100/92' : 'text-neutral-900'
             }`}
             style={{
@@ -1728,10 +1727,28 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
-          <div className={`mt-4 flex items-center gap-5 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+          <div className={`mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+            {/* Intensity stripe legend */}
             <LegendDot color="bg-emerald-500" label="Easy" />
             <LegendDot color="bg-amber-400" label="Moderate" />
             <LegendDot color="bg-rose-500" label="Hard" />
+            {/* Activity type icon legend */}
+            <span className={`h-4 w-px ${isDark ? 'bg-neutral-700' : 'bg-neutral-300'}`} aria-hidden="true" />
+            <LegendIcon
+              icon={<svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>}
+              label="Run"
+              color={isDark ? 'text-cyan-400' : 'text-cyan-600'}
+            />
+            <LegendIcon
+              icon={<svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29l-1.43-1.43z"/></svg>}
+              label="Weights"
+              color={isDark ? 'text-orange-400' : 'text-orange-600'}
+            />
+            <LegendIcon
+              icon={<svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4zm-1.97 11.48-1.7 3.02V16h-2v-3.5h2V11l1.7 3.02V13H14v1.5h-1.3v.98z"/></svg>}
+              label="Rest"
+              color={isDark ? 'text-neutral-500' : 'text-neutral-400'}
+            />
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-4">
             <p className={`text-lg font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
@@ -1761,99 +1778,90 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
         </div>
 
         {futureWeekPlans.length > 0 ? (
-          <div className={`mt-6 border-t pt-6 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-            <div className={`rounded-[1.35rem] border ${isDark ? 'border-neutral-800 bg-neutral-950/78' : 'border-neutral-200 bg-white'}`}>
-              <button
-                type="button"
-                onClick={() => setIsFuturePlannerExpanded((value) => !value)}
-                aria-expanded={isFuturePlannerExpanded}
-                className="group flex w-full items-center justify-between px-4 py-3.5 text-left transition"
-              >
-                <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                  Future Planner
+          <div className={`mt-6 border-t pt-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            {/* Future Planner header row */}
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <svg viewBox="0 0 24 24" className={`h-4 w-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} fill="currentColor" aria-hidden="true">
+                  <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>
+                </svg>
+                <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                  Upcoming Weeks
                 </p>
-                <span
-                  className={`ml-6 inline-flex h-10 w-10 flex-none items-center justify-center rounded-full border transition ${
-                    isDark
-                      ? 'border-neutral-700 bg-neutral-900 text-neutral-200 group-hover:border-violet-500 group-hover:text-white'
-                      : 'border-neutral-200 bg-stone-50 text-neutral-700 group-hover:border-violet-300 group-hover:text-neutral-950'
-                  } ${isFuturePlannerExpanded ? 'rotate-180' : ''}`}
+              </div>
+              {/* Week selector pills */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedFutureWeekIndex((v) => Math.max(0, v - 1))}
+                  disabled={safeFutureIndex === 0}
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${
+                    safeFutureIndex === 0
+                      ? isDark ? 'cursor-not-allowed border-neutral-800 text-neutral-700' : 'cursor-not-allowed border-neutral-200 text-neutral-300'
+                      : isDark ? 'border-neutral-700 text-neutral-300 hover:border-violet-500 hover:text-violet-300' : 'border-neutral-300 text-neutral-600 hover:border-violet-400 hover:text-violet-700'
+                  }`}
+                  aria-label="Previous future week"
                 >
-                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M5 8l5 5 5-5" />
-                  </svg>
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.5 5l-5 5 5 5" /></svg>
+                </button>
+                <span className={`min-w-[5.5rem] text-center text-xs font-semibold ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                  Week {safeFutureIndex + 2} <span className={`font-normal ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>/ {weeklyPlans.length}</span>
                 </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFutureWeekIndex((v) => Math.min(futureWeekPlans.length - 1, v + 1))}
+                  disabled={safeFutureIndex === futureWeekPlans.length - 1}
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${
+                    safeFutureIndex === futureWeekPlans.length - 1
+                      ? isDark ? 'cursor-not-allowed border-neutral-800 text-neutral-700' : 'cursor-not-allowed border-neutral-200 text-neutral-300'
+                      : isDark ? 'border-neutral-700 text-neutral-300 hover:border-violet-500 hover:text-violet-300' : 'border-neutral-300 text-neutral-600 hover:border-violet-400 hover:text-violet-700'
+                  }`}
+                  aria-label="Next future week"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 5l5 5-5 5" /></svg>
+                </button>
+              </div>
+            </div>
 
-              {isFuturePlannerExpanded && selectedFutureWeek ? (
-                <div className={`border-t px-4 py-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                        Week {safeFutureIndex + 2} · {formatRoadmapWeekSpan(selectedFutureWeek)}
-                      </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-3">
-                        <span className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-semibold uppercase tracking-[0.12em] ${
-                          isDark
-                            ? 'border-violet-800/70 bg-violet-950/35 text-violet-100'
-                            : 'border-violet-200 bg-violet-50/85 text-violet-900'
+            {/* Future week content — always visible, no expand/collapse */}
+            {selectedFutureWeek ? (
+              <div className={`rounded-[1.2rem] border px-5 py-4 ${isDark ? 'border-neutral-800 bg-neutral-950/60' : 'border-neutral-200 bg-white'}`}>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[0.65rem] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                      {formatRoadmapWeekSpan(selectedFutureWeek)}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${
+                        isDark
+                          ? 'border-violet-800/70 bg-violet-950/40 text-violet-300'
+                          : 'border-violet-200 bg-violet-50 text-violet-800'
+                      }`}>
+                        {selectedFutureProjection.phaseTitle || selectedFutureWeek?.focus_title || selectedFutureFocus.phase || 'Weekly focus'}
+                      </span>
+                      {(selectedFutureProjection.targetMileage || selectedFutureProjection.longRunTarget) ? (
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
+                          isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-300' : 'border-neutral-200 bg-neutral-50 text-neutral-600'
                         }`}>
-                          {selectedFutureProjection.phaseTitle || selectedFutureWeek?.focus_title || selectedFutureFocus.phase || 'Weekly focus'}
-                        </span>
-                      </div>
-                      <p className={`mt-3 text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-                        {selectedFutureWeek?.focus_summary || selectedFutureProjection.summary || selectedFutureFocus.progression_note || selectedFutureFocus.race_connection || 'Future guidance will appear here.'}
-                      </p>
-                      {(selectedFutureProjection.targetMileage || selectedFutureProjection.longRunTarget || selectedFutureProjection.keySessionSummary) ? (
-                        <p className={`mt-3 text-xs font-medium uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
                           {[
-                            selectedFutureProjection.targetMileage ? `${trimNumber(selectedFutureProjection.targetMileage)} mi target` : '',
-                            selectedFutureProjection.longRunTarget ? `${trimNumber(selectedFutureProjection.longRunTarget)} mi long run` : '',
-                            selectedFutureProjection.keySessionSummary || '',
+                            selectedFutureProjection.targetMileage ? `${trimNumber(selectedFutureProjection.targetMileage)} mi` : '',
+                            selectedFutureProjection.longRunTarget ? `${trimNumber(selectedFutureProjection.longRunTarget)} mi long` : '',
                           ].filter(Boolean).join(' · ')}
-                        </p>
+                        </span>
                       ) : null}
                     </div>
-
-                    <div className="flex items-center gap-3 md:pl-4">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFutureWeekIndex((value) => Math.max(0, value - 1))}
-                        disabled={safeFutureIndex === 0}
-                        className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
-                          safeFutureIndex === 0
-                            ? isDark ? 'cursor-not-allowed border-neutral-800 bg-neutral-950 text-neutral-700' : 'cursor-not-allowed border-neutral-200 bg-white text-neutral-300'
-                            : isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
-                        }`}
-                        aria-label="Previous future week"
-                      >
-                        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M12.5 5l-5 5 5 5" />
-                        </svg>
-                      </button>
-                      <span className={`min-w-[7.5rem] text-center text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                        Week {safeFutureIndex + 2} of {weeklyPlans.length}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFutureWeekIndex((value) => Math.min(futureWeekPlans.length - 1, value + 1))}
-                        disabled={safeFutureIndex === futureWeekPlans.length - 1}
-                        className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
-                          safeFutureIndex === futureWeekPlans.length - 1
-                            ? isDark ? 'cursor-not-allowed border-neutral-800 bg-neutral-950 text-neutral-700' : 'cursor-not-allowed border-neutral-200 bg-white text-neutral-300'
-                            : isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-violet-500 hover:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
-                        }`}
-                        aria-label="Next future week"
-                      >
-                        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M7.5 5l5 5-5 5" />
-                        </svg>
-                      </button>
-                    </div>
+                    <p className={`mt-3 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                      {selectedFutureWeek?.focus_summary || selectedFutureProjection.summary || selectedFutureFocus.progression_note || selectedFutureFocus.race_connection || 'Future guidance will appear here.'}
+                    </p>
+                    {selectedFutureProjection.keySessionSummary ? (
+                      <p className={`mt-2 text-[0.68rem] font-medium uppercase tracking-[0.14em] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                        {selectedFutureProjection.keySessionSummary}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -1911,6 +1919,15 @@ function LegendDot({ color, label }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className={`h-2 w-2 rounded-full ${color}`} />
+      <span>{label}</span>
+    </div>
+  )
+}
+
+function LegendIcon({ icon, label, color = 'text-neutral-500' }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={color}>{icon}</span>
       <span>{label}</span>
     </div>
   )
@@ -1983,9 +2000,13 @@ function CalendarCard({ card, theme = 'light' }) {
           </div>
         ) : (
           isToday ? <div className="pt-2.5" /> : (
-            <div className="pt-2.5">
-              <p className={`text-sm italic leading-6 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Rest day
+            <div className="pt-2.5 flex flex-col items-start gap-1">
+              {/* Battery / recharge icon — symbolises a rest day */}
+              <svg viewBox="0 0 24 24" className={`h-7 w-7 ${isDark ? 'text-neutral-600' : 'text-neutral-300'}`} fill="currentColor" aria-label="Rest day">
+                <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4zm-1.97 11.48-1.7 3.02V16h-2v-3.5h2V11l1.7 3.02V13H14v1.5h-1.3v.98z"/>
+              </svg>
+              <p className={`text-[0.65rem] font-medium uppercase tracking-[0.14em] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                Rest
               </p>
             </div>
           )
@@ -2004,21 +2025,45 @@ function CalendarActivity({ activity, theme = 'light' }) {
   const intensity = activityIntensityLabel(activity)
   const showIntensityPill = intensity !== '-'
 
+  // Activity type icon
+  const ActivityTypeIcon = isRun ? (
+    // Running shoe (person running)
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="currentColor" aria-hidden="true">
+      <path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
+    </svg>
+  ) : isStrength ? (
+    // Dumbbell
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="currentColor" aria-hidden="true">
+      <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29l-1.43-1.43z"/>
+    </svg>
+  ) : isSpin ? (
+    // Bike
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="currentColor" aria-hidden="true">
+      <path d="M15.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm5.8-10l2.4-2.4.8.8c1.3 1.3 3 2.1 5.1 2.1V9c-1.5 0-2.7-.6-3.6-1.5l-1.9-1.9c-.5-.4-1-.6-1.6-.6s-1.1.2-1.4.6L7.8 8.4c-.4.4-.6.9-.6 1.4 0 .6.2 1.1.6 1.4L11 14v5h2v-6l-2.2-2.5zM19 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z"/>
+    </svg>
+  ) : null
+
   return (
     <div className="pb-2.5 last:pb-0">
       {isRun ? (
         <>
-          <p className={`text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-            {activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-'}
-          </p>
-          <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{calendarPace(activity)}</p>
+          <div className="flex items-center gap-1.5">
+            <span className={`${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>{ActivityTypeIcon}</span>
+            <p className={`text-lg font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              {activity.distance_miles ? `${trimNumber(activity.distance_miles)} mi` : '-'}
+            </p>
+          </div>
+          <p className={`mt-0.5 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{calendarPace(activity)}</p>
         </>
       ) : isSpin ? (
         <>
-          <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-            Spin
-          </p>
-          <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          <div className="flex items-center gap-1.5">
+            <span className={`${isDark ? 'text-violet-400' : 'text-violet-600'}`}>{ActivityTypeIcon}</span>
+            <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              Spin
+            </p>
+          </div>
+          <p className={`mt-0.5 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
             {[
               activity.duration_minutes ? `${activity.duration_minutes} min` : '',
               activity.strain ? `Strain ${trimNumber(activity.strain)}` : '',
@@ -2027,11 +2072,14 @@ function CalendarActivity({ activity, theme = 'light' }) {
         </>
       ) : isStrength ? (
         <>
-          <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-            Weight Training
-          </p>
+          <div className="flex items-center gap-1.5">
+            <span className={`${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{ActivityTypeIcon}</span>
+            <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+              Weights
+            </p>
+          </div>
           {(activity.duration_minutes || activity.strain) ? (
-            <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            <p className={`mt-0.5 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
               {[
                 activity.duration_minutes ? `${activity.duration_minutes} min` : '',
                 activity.strain ? `Strain ${trimNumber(activity.strain)}` : '',
@@ -2045,7 +2093,7 @@ function CalendarActivity({ activity, theme = 'light' }) {
             {activity.title || activitySourceLabel(activity) || 'Activity'}
           </p>
           {(activity.duration_minutes || activity.strain) ? (
-            <p className={`mt-1 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            <p className={`mt-0.5 text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
               {[activity.duration_minutes ? `${activity.duration_minutes} min` : '', activity.strain ? `Strain ${trimNumber(activity.strain)}` : ''].filter(Boolean).join(' • ')}
             </p>
           ) : null}
@@ -2717,32 +2765,78 @@ function workoutIntensityIndicator(activity) {
 
 function WorkoutCatalogListItem({ activity, isSelected, onSelect, theme = 'light' }) {
   const isDark = theme === 'dark'
+  const category = activityCategory(activity)
+  const isRun = category === 'running'
+  const isStrength = category === 'weightlifting'
+  const isSpin = category === 'spin'
+
+  // Pick icon + color per activity type
+  const iconColor = isRun
+    ? isDark ? 'text-cyan-400' : 'text-cyan-600'
+    : isStrength
+      ? isDark ? 'text-orange-400' : 'text-orange-600'
+      : isSpin
+        ? isDark ? 'text-violet-400' : 'text-violet-600'
+        : isDark ? 'text-neutral-400' : 'text-neutral-500'
+  const iconBgColor = isRun
+    ? isDark ? 'bg-cyan-500/12' : 'bg-cyan-50'
+    : isStrength
+      ? isDark ? 'bg-orange-500/12' : 'bg-orange-50'
+      : isSpin
+        ? isDark ? 'bg-violet-500/12' : 'bg-violet-50'
+        : isDark ? 'bg-neutral-800' : 'bg-neutral-100'
+
+  const ActivityIcon = isRun ? (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>
+  ) : isStrength ? (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29l-1.43-1.43z"/></svg>
+  ) : isSpin ? (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M15.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm5.8-10l2.4-2.4.8.8c1.3 1.3 3 2.1 5.1 2.1V9c-1.5 0-2.7-.6-3.6-1.5l-1.9-1.9c-.5-.4-1-.6-1.6-.6s-1.1.2-1.4.6L7.8 8.4c-.4.4-.6.9-.6 1.4 0 .6.2 1.1.6 1.4L11 14v5h2v-6l-2.2-2.5zM19 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z"/></svg>
+  ) : (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+  )
+
   const selectedClasses = isSelected
     ? isDark
-      ? 'border-violet-500/70 bg-violet-950/25 shadow-[inset_4px_0_0_0_rgba(168,85,247,0.95)]'
-      : 'border-violet-300 bg-violet-50 shadow-[inset_4px_0_0_0_rgba(139,92,246,0.95)]'
+      ? 'bg-violet-950/20 shadow-[inset_3px_0_0_0_rgba(168,85,247,0.9)]'
+      : 'bg-violet-50 shadow-[inset_3px_0_0_0_rgba(139,92,246,0.9)]'
     : isDark
-      ? 'border-transparent hover:bg-neutral-900/90'
-      : 'border-transparent hover:bg-stone-50'
+      ? 'hover:bg-neutral-900/60'
+      : 'hover:bg-stone-50/80'
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`flex w-full items-start gap-4 border-b px-6 py-6 text-left transition ${selectedClasses} ${isDark ? 'border-neutral-800 text-white' : 'border-neutral-200 text-neutral-950'}`}
+      className={`flex w-full items-center gap-3.5 border-b px-5 py-4 text-left transition ${selectedClasses} ${isDark ? 'border-neutral-800/70' : 'border-neutral-100'}`}
     >
-      <div className={`mt-1 h-3.5 w-3.5 shrink-0 rounded-full ${workoutIntensityIndicator(activity)}`} />
-      <div className="min-w-0">
-        <p className={`text-sm font-semibold ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          {formatDate(activity.day)}
-        </p>
-        <p className={`mt-2 text-[1.55rem] font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+      {/* Activity type icon */}
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBgColor} ${iconColor}`}>
+        {ActivityIcon}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className={`text-[0.7rem] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+            {formatDate(activity.day)}
+          </p>
+          {/* Intensity dot */}
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${workoutIntensityIndicator(activity)}`} />
+        </div>
+        <p className={`mt-0.5 text-base font-semibold leading-snug tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
           {workoutCatalogTitle(activity)}
         </p>
-        <p className={`mt-2 text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+        <p className={`mt-0.5 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
           {workoutCatalogSummary(activity)}
         </p>
       </div>
+
+      {/* Selection chevron */}
+      {isSelected ? (
+        <svg viewBox="0 0 20 20" className={`h-4 w-4 shrink-0 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7.5 5l5 5-5 5" />
+        </svg>
+      ) : null}
     </button>
   )
 }
@@ -2805,62 +2899,95 @@ function WorkoutCatalogDetail({
           ? `WHOOP strain ${activity.strain}`
           : 'Logged activity'
 
+  const detailCategory = activityCategory(activity)
+  const detailIsRun = detailCategory === 'running'
+  const detailIsStrength = detailCategory === 'weightlifting'
+  const detailIsSpin = detailCategory === 'spin'
+  const detailIconColor = detailIsRun
+    ? isDark ? 'text-cyan-400' : 'text-cyan-600'
+    : detailIsStrength
+      ? isDark ? 'text-orange-400' : 'text-orange-600'
+      : detailIsSpin
+        ? isDark ? 'text-violet-400' : 'text-violet-600'
+        : isDark ? 'text-neutral-400' : 'text-neutral-500'
+  const detailIconBg = detailIsRun
+    ? isDark ? 'bg-cyan-500/12' : 'bg-cyan-50'
+    : detailIsStrength
+      ? isDark ? 'bg-orange-500/12' : 'bg-orange-50'
+      : detailIsSpin
+        ? isDark ? 'bg-violet-500/12' : 'bg-violet-50'
+        : isDark ? 'bg-neutral-800' : 'bg-neutral-100'
+  const DetailIcon = detailIsRun ? (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>
+  ) : detailIsStrength ? (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29l-1.43-1.43z"/></svg>
+  ) : (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M15.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm5.8-10l2.4-2.4.8.8c1.3 1.3 3 2.1 5.1 2.1V9c-1.5 0-2.7-.6-3.6-1.5l-1.9-1.9c-.5-.4-1-.6-1.6-.6s-1.1.2-1.4.6L7.8 8.4c-.4.4-.6.9-.6 1.4 0 .6.2 1.1.6 1.4L11 14v5h2v-6l-2.2-2.5zM19 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z"/></svg>
+  )
+
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <div className={`h-3.5 w-3.5 rounded-full ${workoutIntensityIndicator(activity)}`} />
-        <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          {activityCategoryLabel(activity)}
-        </p>
+      {/* Header */}
+      <div className="flex items-start gap-4">
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${detailIconBg} ${detailIconColor}`}>
+          {DetailIcon}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 shrink-0 rounded-full ${workoutIntensityIndicator(activity)}`} />
+            <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              {activityCategoryLabel(activity)} · {formatDate(activity.day)}
+            </p>
+          </div>
+          <h3 className={`mt-1 text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            {title}
+          </h3>
+        </div>
       </div>
 
-      <h3 className={`mt-4 text-4xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-        {title}
-      </h3>
-      <p className={`mt-2 text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{formatDate(activity.day)}</p>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-2">
         {metrics.map((item) => (
           <div
             key={`${activity.activity_key}-${item.label}`}
-            className={`rounded-[1.35rem] border px-5 py-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}
+            className={`rounded-[1.1rem] border px-4 py-4 ${isDark ? `border-neutral-800 bg-neutral-900/80` : 'border-neutral-100 bg-stone-50'}`}
           >
-            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+            <p className={`text-[0.65rem] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
               {item.label}
             </p>
-            <p className={`mt-3 text-2xl font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+            <p className={`mt-2 text-xl font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
               {item.value}
             </p>
           </div>
         ))}
       </div>
 
-      <div className={`mt-6 rounded-[1.5rem] border px-5 py-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
-        <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-          Notes & Reflection
-        </p>
-        <p className={`mt-3 text-sm leading-7 ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-          Capture how it felt, what went well, anything to adjust next time, and any signals the coach should remember.
-        </p>
-        <textarea
-          value={noteValue}
-          onChange={(event) => onNoteChange(activity.activity_key, event.target.value)}
-          placeholder="How did this workout feel? Any observations, adjustments, soreness, or wins the coach should remember?"
-          className={`mt-5 min-h-[16rem] w-full rounded-[1.2rem] border px-4 py-4 text-base leading-7 outline-none transition ${isDark ? 'border-neutral-700 bg-neutral-950 text-white placeholder:text-neutral-500' : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'}`}
-        />
-        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <p className={`text-sm ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-            Saved notes are reused the next time the model evaluates your training. {supportingText}
+      <div className={`mt-5 rounded-[1.2rem] border px-5 py-5 ${isDark ? `border-neutral-800 bg-neutral-900/80` : 'border-neutral-100 bg-stone-50'}`}>
+        <div className="flex items-center justify-between gap-3">
+          <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            Notes & Reflection
           </p>
           <button
             type="button"
             onClick={() => onSaveNote(activity.activity_key)}
             disabled={saveState === 'saving'}
-            className={`rounded-full px-5 py-3 text-sm font-semibold ${isDark ? 'bg-white text-neutral-950 disabled:bg-neutral-700 disabled:text-neutral-400' : 'bg-neutral-950 text-white disabled:bg-neutral-200 disabled:text-neutral-500'}`}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+              saveState === 'saved'
+                ? isDark ? 'bg-emerald-950/60 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
+                : isDark ? 'bg-white text-neutral-950 hover:bg-neutral-100 disabled:bg-neutral-700 disabled:text-neutral-400' : 'bg-neutral-950 text-white hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-500'
+            }`}
           >
             {buttonLabel}
           </button>
         </div>
+        <textarea
+          value={noteValue}
+          onChange={(event) => onNoteChange(activity.activity_key, event.target.value)}
+          placeholder="How did it feel? Any soreness, wins, or notes for next time?"
+          className={`mt-4 min-h-[13rem] w-full rounded-[0.9rem] border px-4 py-3.5 text-sm leading-7 outline-none transition resize-none ${isDark ? 'border-neutral-700/80 bg-neutral-950 text-white placeholder:text-neutral-600' : 'border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400'}`}
+        />
+        <p className={`mt-2.5 text-xs ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+          Notes are shared with the coach when generating your next recommendation.
+        </p>
       </div>
     </div>
   )
@@ -3159,7 +3286,9 @@ export default function App() {
         ) : null}
 
         <section className="py-8">
-          <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-3">
+          {/* Row 1: Sleep | Recovery | Resting HR — Row 2: Strain | Weekly Mileage (2-col wide) */}
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+            {/* --- Row 1 --- */}
             <StatCard
               icon={<Icon path="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />}
               label="Sleep"
@@ -3232,6 +3361,8 @@ export default function App() {
               iconTone={isDark ? 'text-violet-400' : 'text-violet-700'}
               theme={theme}
             />
+
+            {/* --- Row 2: Strain (1 col) + Mileage bar (2 cols) --- */}
             <StatCard
               icon={<Icon path="M13 10V3L4 14h7v7l9-11h-7z" />}
               label="Yesterday's Strain"
@@ -3260,126 +3391,80 @@ export default function App() {
                 />
               ) : null}
             />
-            <StatCard
-              icon={<RunningShoeIcon />}
-              label="Last Run"
-              value={previousRun.distance_miles ? `${previousRun.distance_miles} mi` : '-'}
-              subtext={
-                previousRun.day
-                  ? `${formatDate(previousRun.day)} · ${previousRun.duration_minutes || 0} min`
-                  : 'Most recent run'
-              }
-              accent={isDark ? 'text-cyan-300' : 'text-cyan-700'}
-              iconBg={isDark ? 'bg-cyan-500/15' : 'bg-cyan-50'}
-              iconTone={isDark ? 'text-cyan-400' : 'text-cyan-600'}
-              theme={theme}
-            />
-            <StatCard
-              icon={<Icon path="M5 19h4V9H5zm5 0h4V5h-4zm5 0h4v-7h-4z" />}
-              label="Weekly Mileage"
-              value={
-                summary.recent_mileage && adaptiveWeeklyTarget
-                  ? `${summary.recent_mileage.toFixed(1)} / ${roundedAdaptiveWeeklyTarget} mi`
-                  : summary.recent_mileage
-                    ? `${summary.recent_mileage.toFixed(1)} mi`
-                    : '-'
-              }
-              subtext="Completed toward this week's target"
-              accent={
-                loadAccent === 'text-emerald-600'
-                  ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
-                  : (isDark ? 'text-amber-400' : 'text-amber-500')
-              }
-              iconBg={
-                loadAccent === 'text-emerald-600'
-                  ? (isDark ? 'bg-emerald-500/15' : 'bg-emerald-50')
-                  : (isDark ? 'bg-amber-500/15' : 'bg-amber-50')
-              }
-              iconTone={
-                loadAccent === 'text-emerald-600'
-                  ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
-                  : (isDark ? 'text-amber-400' : 'text-amber-500')
-              }
-              theme={theme}
-              visual={
-                summary.recent_mileage != null && adaptiveWeeklyTarget > 0 ? (
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className={`text-[0.6rem] font-medium uppercase tracking-wide ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
-                      {Math.round((summary.recent_mileage / adaptiveWeeklyTarget) * 100)}% of target
-                    </span>
-                    <RadialArc
-                      pct={Math.min(100, (summary.recent_mileage / adaptiveWeeklyTarget) * 100)}
-                      color={loadAccent === 'text-emerald-600' ? (isDark ? '#34d399' : '#10b981') : (isDark ? '#fbbf24' : '#d97706')}
-                      size={44}
-                    />
-                  </div>
-                ) : null
-              }
-            />
-          </div>
 
-          {/* Standalone Weekly Mileage Progress Bar */}
-          {summary.recent_mileage != null && adaptiveWeeklyTarget > 0 ? (() => {
-            const pct = Math.min(100, (summary.recent_mileage / adaptiveWeeklyTarget) * 100)
-            const isOnTrack = loadAccent === 'text-emerald-600'
-            const accentBar = isOnTrack ? 'bg-emerald-500' : 'bg-amber-400'
-            const accentText = isOnTrack
-              ? isDark ? 'text-emerald-400' : 'text-emerald-600'
-              : isDark ? 'text-amber-400' : 'text-amber-500'
-            const iconBg = isOnTrack
-              ? isDark ? 'bg-emerald-950/60 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
-              : isDark ? 'bg-amber-950/60 text-amber-400' : 'bg-amber-50 text-amber-500'
-            const remaining = Math.max(0, roundedAdaptiveWeeklyTarget - summary.recent_mileage)
-            return (
-              <div
-                className={`mt-4 rounded-2xl border px-6 py-5 transition duration-200 ${
-                  isDark
-                    ? 'border-neutral-700/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)]'
-                    : 'border-neutral-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.07)]'
-                }`}
+            {/* Weekly Mileage Progress — spans 2 columns in the 3-col grid */}
+            {summary.recent_mileage != null && adaptiveWeeklyTarget > 0 ? (() => {
+              const pct = Math.min(100, (summary.recent_mileage / adaptiveWeeklyTarget) * 100)
+              const isOnTrack = loadAccent === 'text-emerald-600'
+              const accentBar = isOnTrack ? 'bg-emerald-500' : 'bg-amber-400'
+              const accentText = isOnTrack
+                ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+                : isDark ? 'text-amber-400' : 'text-amber-500'
+              const mileBadgeBg = isOnTrack
+                ? isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
+                : isDark ? 'bg-amber-950/70 text-amber-400' : 'bg-amber-50 text-amber-700'
+              const mileIconBg = isOnTrack
+                ? isDark ? 'bg-emerald-950/60 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                : isDark ? 'bg-amber-950/60 text-amber-400' : 'bg-amber-50 text-amber-500'
+              const remaining = Math.max(0, roundedAdaptiveWeeklyTarget - summary.recent_mileage)
+              return (
+                <div
+                  className={`col-span-2 flex flex-col justify-between rounded-2xl border px-6 py-5 transition duration-200 ${
+                    isDark
+                      ? 'border-neutral-700/50 shadow-[0_4px_20px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.045)] hover:border-violet-500/60'
+                      : 'border-neutral-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.07)]'
+                  }`}
+                  style={isDark ? { background: 'linear-gradient(145deg, #1c1827 0%, #110f1b 100%)' } : undefined}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className={`text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                        Weekly Mileage
+                      </p>
+                      <div className="mt-3 flex items-baseline gap-2">
+                        <span className={`text-[2.3rem] font-bold tabular-nums leading-none tracking-[-0.03em] sm:text-[2.6rem] ${accentText}`}>
+                          {summary.recent_mileage.toFixed(1)}
+                        </span>
+                        <span className={`text-base ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                          / {roundedAdaptiveWeeklyTarget} mi
+                        </span>
+                        <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${mileBadgeBg}`}>
+                          {Math.round(pct)}%
+                        </span>
+                      </div>
+                      <p className={`mt-1.5 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                        {remaining > 0 ? `${remaining.toFixed(1)} mi to hit your ${roundedAdaptiveWeeklyTarget} mi target` : 'Weekly target reached!'}
+                      </p>
+                    </div>
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${mileIconBg}`}>
+                      <Icon path="M13 5.5C13 6.88 12.1 8.06 10.86 8.57L12 20H11L9.5 14H8.5L7 20H6L7.14 8.57C5.9 8.06 5 6.88 5 5.5C5 3.57 6.57 2 8.5 2S12 3.57 12 5.5M16 2H19V9H17L16.5 11H14.5L14 9H12V2H15V8H16V2Z" />
+                    </div>
+                  </div>
+                  <div className="mt-5">
+                    <div className={`h-3 overflow-hidden rounded-full ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-100'}`}>
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${accentBar}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className={`mt-2 flex justify-between text-[0.7rem] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                      <span>0 mi</span>
+                      <span>{roundedAdaptiveWeeklyTarget} mi</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })() : (
+              /* Fallback if no mileage data — still occupies the 2-col slot */
+              <div className={`col-span-2 flex items-center justify-center rounded-2xl border px-6 py-5 ${
+                isDark ? 'border-neutral-700/50' : 'border-neutral-200 bg-white'
+              }`}
                 style={isDark ? { background: 'linear-gradient(145deg, #1c1827 0%, #110f1b 100%)' } : undefined}
               >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
-                      <Icon path="M5 19h4V9H5zm5 0h4V5h-4zm5 0h4v-7h-4z" />
-                    </div>
-                    <p className={`text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-400'}`}>
-                      Weekly Mileage Progress
-                    </p>
-                  </div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className={`text-xl font-bold tabular-nums ${accentText}`}>
-                      {summary.recent_mileage.toFixed(1)}
-                    </span>
-                    <span className={`text-sm ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                      / {roundedAdaptiveWeeklyTarget} mi
-                    </span>
-                    <span className={`ml-1 rounded-md px-1.5 py-0.5 text-xs font-bold ${
-                      isOnTrack
-                        ? isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
-                        : isDark ? 'bg-amber-950/70 text-amber-400' : 'bg-amber-50 text-amber-700'
-                    }`}>
-                      {Math.round(pct)}%
-                    </span>
-                  </div>
-                </div>
-                <div className={`mt-4 h-3 overflow-hidden rounded-full ${isDark ? 'bg-neutral-800/80' : 'bg-neutral-100'}`}>
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${accentBar}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <div className={`mt-2 flex justify-between text-xs ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
-                  <span>0 mi</span>
-                  <span className={isDark ? 'text-neutral-500' : 'text-neutral-500'}>
-                    {remaining.toFixed(1)} mi remaining
-                  </span>
-                  <span>{roundedAdaptiveWeeklyTarget} mi target</span>
-                </div>
+                <p className={`text-sm ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>No mileage data</p>
               </div>
-            )
-          })() : null}
+            )}
+          </div>
         </section>
 
         <MasterTrainingCalendar
