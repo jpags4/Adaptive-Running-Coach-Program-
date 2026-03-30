@@ -2051,7 +2051,6 @@ function CalendarCard({ card, theme = 'light' }) {
           </div>
         ) : (
           isToday ? <div className="pt-2.5" /> : (
-            {/* Rest day — centered battery-charging icon, no label */}
             <div className="flex h-full min-h-[6rem] items-center justify-center">
               <svg
                 viewBox="0 0 28 16"
