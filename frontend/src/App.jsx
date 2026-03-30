@@ -554,49 +554,91 @@ function ErrorScreen({ message, theme = 'light' }) {
 
 function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile }) {
   const isDark = theme === 'dark'
-  const greeting = timeOfDayGreeting()
-  const firstName = firstNameFromDisplayName(name)
-  const todayLine = `Today is ${heroTodayLine()}`
-  const moveLine = `Let's move`
-  const [lineOneEnabled, setLineOneEnabled] = useState(false)
-  const [lineTwoEnabled, setLineTwoEnabled] = useState(false)
+
+  // Build typed strings
+  const fullGreeting = `${timeOfDayGreeting()}, ${name || 'Runner'}`
+  const now = new Date()
+  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now).toUpperCase()
+  const monthDay = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(now).toUpperCase()
+  const datePrefixStr = `TODAY IS ${weekday}, `
+  const dateSuffixStr = monthDay
+  const dateFullStr = `${datePrefixStr}${dateSuffixStr}`
+  const moveStr = "LET'S MOVE"
+
+  // Chained typewriter: greeting → date → move
+  const [started, setStarted] = useState(false)
+  const { typed: greetingTyped, complete: greetingDone } = useTypedText(fullGreeting, started, 28)
+  const { typed: dateTyped, complete: dateDone } = useTypedText(dateFullStr, greetingDone, 32)
+  const { typed: moveTyped, complete: moveDone } = useTypedText(moveStr, dateDone, 36)
+
+  // After move finishes typing, trigger the exit transition
+  const [transitioning, setTransitioning] = useState(false)
 
   useEffect(() => {
-    setLineOneEnabled(false)
-    setLineTwoEnabled(false)
-    const firstTimer = window.setTimeout(() => setLineOneEnabled(true), 120)
-    const secondTimer = window.setTimeout(() => setLineTwoEnabled(true), 1180)
-    return () => {
-      window.clearTimeout(firstTimer)
-      window.clearTimeout(secondTimer)
-    }
-  }, [today, goalRaceDate, name])
+    setStarted(false)
+    setTransitioning(false)
+    const t = window.setTimeout(() => setStarted(true), 200)
+    return () => window.clearTimeout(t)
+  }, [name, today, goalRaceDate])
+
+  useEffect(() => {
+    if (!moveDone) return
+    const t = window.setTimeout(() => setTransitioning(true), 500)
+    return () => window.clearTimeout(t)
+  }, [moveDone])
+
+  // Split the date into prefix ("TODAY IS SUNDAY, ") and suffix ("MARCH 29")
+  const dateTypedPrefix = dateTyped.slice(0, datePrefixStr.length)
+  const dateTypedSuffix = dateTyped.slice(datePrefixStr.length)
 
   return (
     <header className="mx-auto flex w-full max-w-[1200px] flex-col justify-between gap-6 pb-8 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 flex-1">
+        {/* Greeting — types in, gradient stays */}
         <h1
           className={`max-w-full text-[clamp(2rem,5vw,3.5rem)] font-bold italic leading-[1.05] tracking-[-0.02em] ${
             isDark
               ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
               : 'text-neutral-950'
           }`}
+          style={{ minHeight: 'clamp(2rem, 5vw, 3.5rem)' }}
         >
-          {`${greeting}, ${firstName}`}
+          {greetingTyped || '\u00A0'}
         </h1>
-        <div className="mt-3 flex flex-col gap-1.5">
-          <TypedHeroLine
-            text={todayLine}
-            enabled={lineOneEnabled}
-            theme={theme}
-            className="text-[clamp(1rem,2vw,1.3rem)] font-semibold italic leading-[1.25]"
-          />
-          <TypedHeroLine
-            text={moveLine}
-            enabled={lineTwoEnabled}
-            theme={theme}
-            className="text-[clamp(0.98rem,1.8vw,1.15rem)] font-semibold leading-[1.2]"
-          />
+
+        <div className="mt-3 flex flex-col gap-1">
+          {/* Date line: prefix collapses + fades, suffix slides left and stays */}
+          <div
+            className={`flex items-baseline overflow-hidden text-[clamp(1rem,2vw,1.3rem)] font-semibold italic uppercase tracking-[0.04em] leading-[1.25] ${
+              isDark ? 'text-neutral-100/92' : 'text-neutral-900'
+            }`}
+          >
+            <span
+              className="overflow-hidden whitespace-nowrap"
+              style={{
+                maxWidth: transitioning ? '0px' : '600px',
+                opacity: transitioning ? 0 : 1,
+                transition: 'max-width 700ms ease-in-out, opacity 550ms ease-in-out',
+              }}
+            >
+              {dateTypedPrefix}
+            </span>
+            <span>{dateTypedSuffix}</span>
+          </div>
+
+          {/* LET'S MOVE — fades out to the right after transition */}
+          <div
+            className={`text-[clamp(0.98rem,1.8vw,1.15rem)] font-semibold uppercase tracking-[0.04em] leading-[1.2] ${
+              isDark ? 'text-neutral-100/92' : 'text-neutral-900'
+            }`}
+            style={{
+              opacity: transitioning ? 0 : moveTyped.length > 0 ? 1 : 0,
+              transform: transitioning ? 'translateX(24px)' : 'translateX(0px)',
+              transition: 'opacity 550ms ease-in-out, transform 550ms ease-in-out',
+            }}
+          >
+            {moveTyped || '\u00A0'}
+          </div>
         </div>
       </div>
 
@@ -986,13 +1028,13 @@ function CheckInModal({
   const mentalOptions = ['sharp', 'steady', 'stressed', 'drained']
 
   const choiceButtonClasses = (active) =>
-    `min-h-[4.1rem] w-full rounded-[1.35rem] border px-4 py-4 text-left text-base font-medium transition ${
+    `min-h-[4.1rem] w-full rounded-[1.35rem] border px-4 py-4 text-left text-base font-medium transition duration-150 ${
       active
         ? isDark
-          ? 'border-violet-500/80 bg-violet-600 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.32),0_12px_28px_rgba(109,40,217,0.22)]'
-          : 'border-violet-300 bg-violet-600 text-white shadow-[0_10px_28px_rgba(109,40,217,0.18)]'
+          ? 'border-violet-500/70 bg-violet-600/90 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.3),0_8px_28px_rgba(109,40,217,0.4)]'
+          : 'border-violet-300 bg-violet-600 text-white shadow-[0_10px_28px_rgba(109,40,217,0.22)]'
         : isDark
-          ? 'border-neutral-800 bg-neutral-950 text-neutral-300 hover:border-violet-500/50 hover:text-white'
+          ? 'border-neutral-700/60 bg-neutral-900/70 text-neutral-300 hover:border-violet-500/50 hover:bg-neutral-800/80 hover:text-white hover:shadow-[0_0_0_1px_rgba(168,85,247,0.15)]'
           : 'border-neutral-200 bg-stone-50 text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
     }`
 
@@ -1007,7 +1049,10 @@ function CheckInModal({
       <section className={`relative z-10 flex max-h-[90vh] w-full max-w-[72rem] flex-col overflow-hidden rounded-[2rem] border shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
         isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
       }`}>
-        <div className="recommendation-modal-scroll flex-1 overflow-y-auto bg-[#0a0a0a] px-7 pb-0 pt-7 md:px-8 md:pt-8">
+        <div
+          className="recommendation-modal-scroll flex-1 overflow-y-auto px-7 pb-0 pt-7 md:px-8 md:pt-8"
+          style={isDark ? { background: 'linear-gradient(180deg, #110f1b 0%, #0d0b14 100%)' } : undefined}
+        >
           <div className="flex items-start justify-between gap-6">
             <div className="max-w-3xl">
               <p className={`text-sm font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
@@ -1064,7 +1109,10 @@ function CheckInModal({
           </div>
 
           <div className="mt-9">
-            <div className={`rounded-[1.75rem] border p-6 ${isDark ? 'border-neutral-800 bg-neutral-950/90' : 'border-neutral-200 bg-stone-50/95'}`}>
+            <div
+              className={`rounded-[1.75rem] border p-6 ${isDark ? 'border-neutral-700/50' : 'border-neutral-200 bg-stone-50/95'}`}
+              style={isDark ? { background: 'linear-gradient(145deg, #1c1827 0%, #110f1b 100%)' } : undefined}
+            >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="max-w-2xl">
                   <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -1153,18 +1201,21 @@ function CheckInModal({
               value={notes}
               onChange={(event) => onNotesChange(event.target.value)}
               placeholder="Examples: poor sleep, lingering calf tightness, emotionally drained, limited time, want to lift arms only."
-              className={`mt-4 min-h-[8.5rem] w-full rounded-[1.5rem] border px-5 py-4 text-base leading-7 outline-none transition placeholder:text-neutral-500 focus:border-violet-400 ${
+              className={`mt-4 min-h-[8.5rem] w-full rounded-[1.5rem] border px-5 py-4 text-base leading-7 outline-none transition placeholder:text-neutral-600 focus:border-violet-500/60 focus:shadow-[0_0_0_1px_rgba(168,85,247,0.2)] ${
                 isDark
-                  ? 'border-neutral-800 bg-neutral-950 text-neutral-100'
+                  ? 'border-neutral-700/60 bg-neutral-900/60 text-neutral-100'
                   : 'border-neutral-200 bg-stone-50 text-neutral-800'
               }`}
             />
           </div>
         </div>
 
-        <div className={`sticky bottom-0 border-t px-7 py-5 md:px-8 ${
-          isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
-        }`}>
+        <div
+          className={`sticky bottom-0 border-t px-7 py-5 md:px-8 ${
+            isDark ? 'border-neutral-700/50' : 'border-neutral-200 bg-white/98'
+          }`}
+          style={isDark ? { background: 'rgba(13, 11, 20, 0.98)' } : undefined}
+        >
           <div className="flex flex-wrap items-center justify-between gap-4">
             <button
               type="button"
@@ -3180,7 +3231,6 @@ export default function App() {
               iconBg={isDark ? 'bg-violet-500/15' : 'bg-violet-50'}
               iconTone={isDark ? 'text-violet-400' : 'text-violet-700'}
               theme={theme}
-              visual={summary.latest_resting_hr ? <HeartWave color={isDark ? '#a78bfa' : '#7c3aed'} /> : null}
             />
             <StatCard
               icon={<Icon path="M13 10V3L4 14h7v7l9-11h-7z" />}
