@@ -952,13 +952,23 @@ def _lift_focus_for_day(weekday: int, long_run_day: int) -> str:
     quality_day = (long_run_day - 5) % 7
     steady_day = (long_run_day - 3) % 7
     easy_day = (quality_day - 1) % 7
+    aerobic_day = (steady_day + 1) % 7
 
+    run_days = {easy_day, quality_day, steady_day, aerobic_day, long_run_day}
+    rest_days = sorted(d for d in range(7) if d not in run_days)
+
+    # Primary strength sessions go on non-run days (user preference)
+    if len(rest_days) >= 1 and weekday == rest_days[0]:
+        return "Lower Body + Glutes"
+    if len(rest_days) >= 2 and weekday == rest_days[1]:
+        return "Upper Body + Core"
+
+    # Supplemental strength on lighter run days
     if weekday == easy_day:
         return "Single-Leg Strength + Glutes"
     if weekday == steady_day:
         return "Upper Body + Core"
-    if weekday == long_run_day:
-        return "Posterior Chain + Core"
+
     return ""
 
 
@@ -1011,6 +1021,23 @@ def _run_blueprints(long_run_day: int, recommendation, weekly_intent: dict | Non
 def _projected_day_template(projection_date, long_run_day: int, blueprint: dict | None, distance_miles: float) -> list[dict]:
     weekday = projection_date.weekday()
     if not blueprint:
+        # Non-run day: schedule a standalone strength session if this weekday has a lift focus
+        lift_focus = _lift_focus_for_day(weekday, long_run_day)
+        if lift_focus:
+            return [
+                {
+                    "source": "Projection",
+                    "name": "Lift",
+                    "day": projection_date.isoformat(),
+                    "sport": "Projected Strength",
+                    "distance_miles": 0,
+                    "duration_minutes": 45,
+                    "average_pace_min_per_mile": 0,
+                    "lift_focus": lift_focus,
+                    "intensity": "moderate",
+                    "projected": True,
+                }
+            ]
         return []
 
     activities = [

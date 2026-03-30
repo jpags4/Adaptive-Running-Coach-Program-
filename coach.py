@@ -693,7 +693,7 @@ def build_weekly_intent(
         long_run_target=f"{long_run_target_miles:.0f} miles around {pace_model.long_run.pace_range}",
         quality_session_target=quality_session_target,
         key_session=key_session,
-        strength_target=f"{max(1, profile.desired_strength_frequency)} sessions, keep lower-body work secondary to key run days",
+        strength_target=f"{max(1, profile.desired_strength_frequency)} sessions, prioritize standalone strength on non-run days; supplement lightly on easy run days only",
         strain_constraints=strain_constraints,
         non_negotiables=non_negotiables,
         flex_points=flex_points,
@@ -732,7 +732,17 @@ def planned_session_for_day(weekly_intent: WeeklyIntent, profile: AthleteProfile
     base_steady_miles = round(max(4.0, weekly_intent.mileage_target * 0.19), 1)
     quality_miles = round(max(4.5, weekly_intent.mileage_target * 0.2), 1)
 
-    plan_map = {
+    run_days = {easy_day, quality_day, steady_day, aerobic_day, long_run_index}
+    rest_days = sorted(d for d in range(7) if d not in run_days)
+
+    # Assign lift focuses to non-run days (user prefers standalone strength on off days)
+    strength_map: dict[int, str] = {}
+    if len(rest_days) >= 1:
+        strength_map[rest_days[0]] = "Lower Body + Glutes"
+    if len(rest_days) >= 2:
+        strength_map[rest_days[1]] = "Upper Body + Core"
+
+    plan_map: dict[int, dict] = {
         easy_day: {
             "workout": "Easy run + strides",
             "intensity": "easy",
@@ -764,6 +774,16 @@ def planned_session_for_day(weekly_intent: WeeklyIntent, profile: AthleteProfile
             "pace_guidance": long_pace,
         },
     }
+
+    # Add standalone strength sessions for non-run days
+    for rest_day, lift_focus in strength_map.items():
+        plan_map[rest_day] = {
+            "workout": f"Strength: {lift_focus}",
+            "intensity": "moderate",
+            "distance_miles": 0.0,
+            "pace_guidance": "Strength day",
+            "lift_focus": lift_focus,
+        }
 
     if weekly_intent.primary_adaptation == "recovery / absorb":
         quality_plan = plan_map[quality_day]
@@ -1857,8 +1877,74 @@ def _recommendation_from_daily_map(
             "run": dict(mapped["run"]),
             "lift": dict(mapped["lift"]),
             "rationale_tags": list(mapped["reasoning"]["rationaleTags"]),
+            "is_makeup_day": bool(planned_workout.get("isMakeupDay")),
+            "missed_workout": str(planned_workout.get("missedWorkout") or ""),
         },
     )
+
+
+def _apply_makeup_day_override(
+    planned_workout: dict,
+    weekly_intent: WeeklyIntent,
+    profile: AthleteProfile,
+    runs: list[Run],
+    today: date,
+) -> dict:
+    """
+    If today is a scheduled rest or strength-only day and yesterday was a planned run day
+    with no recorded activity, convert today into a makeup run session. The makeup workout
+    mirrors yesterday's planned session at slightly reduced volume so the athlete can absorb
+    the missed training stimulus without stacking full back-to-back load.
+    """
+    if planned_workout["type"] not in {"rest", "strength_only"}:
+        return planned_workout
+
+    yesterday = today - timedelta(days=1)
+    yesterday_plan = planned_session_for_day(weekly_intent, profile, yesterday)
+    yesterday_type = _planned_workout_type(yesterday_plan)
+
+    # Only apply if yesterday was a scheduled run day
+    if yesterday_type in {"rest", "strength_only"}:
+        return planned_workout
+
+    # Check whether any run was recorded yesterday
+    yesterday_ran = any(parse_date(r.day) == yesterday for r in runs)
+    if yesterday_ran:
+        return planned_workout
+
+    # Build a makeup plan based on yesterday's missed session
+    missed_workout = str(yesterday_plan.get("workout") or "Easy run")
+    missed_miles = float(yesterday_plan.get("distance_miles") or 0.0)
+    missed_pace = str(yesterday_plan.get("pace_guidance") or "")
+
+    # Downshift quality sessions to easy effort for makeup days
+    if yesterday_type in {"tempo", "intervals", "race_pace"}:
+        makeup_type = "easy_run"
+        makeup_label = f"Makeup Easy Run (missed {missed_workout})"
+        makeup_intensity = "easy"
+    else:
+        makeup_type = yesterday_type
+        makeup_label = f"Makeup: {missed_workout}"
+        makeup_intensity = str(yesterday_plan.get("intensity") or "easy")
+
+    # Reduce volume slightly — 85% of yesterday's planned distance
+    makeup_miles = round(max(2.5, missed_miles * 0.85), 1) if missed_miles > 0 else None
+    makeup_duration = int(round(makeup_miles * 10.5)) if makeup_miles else None
+    pace_range = _parse_pace_text_range(missed_pace)
+
+    return {
+        **planned_workout,
+        "type": makeup_type,
+        "plannedMiles": makeup_miles,
+        "plannedDurationMin": makeup_duration,
+        "paceRange": pace_range,
+        "easyPaceRange": planned_workout.get("easyPaceRange"),
+        "label": makeup_label,
+        "isKeySession": False,
+        "plannedTextPace": missed_pace,
+        "isMakeupDay": True,
+        "missedWorkout": missed_workout,
+    }
 
 
 #
@@ -1882,6 +1968,7 @@ def deterministic_recommendation(
     weekly_intent = weekly_intent or build_weekly_intent(profile, runs, metrics, today=today)
     pace_model = build_pace_model(profile, runs)
     planned_workout = _build_planned_workout_payload(weekly_intent, profile, today)
+    planned_workout = _apply_makeup_day_override(planned_workout, weekly_intent, profile, runs, today)
     readiness = calculate_readiness_result(latest_metrics, average_resting_hr(metrics, days=7) or None, subjective_feedback)
     context = _build_deterministic_context(profile, runs, metrics, today, subjective_feedback, weekly_intent)
     mapped = _deterministic_daily_map(readiness, planned_workout, context, mode)

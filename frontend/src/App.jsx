@@ -647,7 +647,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
       <div className="min-w-0 flex-1">
         {/* Greeting — types in, gradient stays */}
         <h1
-          className={`max-w-full text-[clamp(2rem,3.8vw,3.4rem)] font-bold italic leading-[1.12] tracking-[-0.02em] pb-2 ${
+          className={`max-w-full text-[clamp(2rem,3.8vw,3.4rem)] font-bold leading-[1.12] tracking-[-0.02em] pb-2 ${
             isDark
               ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
               : 'text-neutral-950'
@@ -1322,6 +1322,8 @@ function TrainingCard({
   const intensityClass = intensityColorClass(intensityLabel)
   const primaryModality = String(recommendation.primary_modality || recommendation.daily_adaptation?.primary_modality || 'run').toLowerCase()
   const isBikeDay = primaryModality === 'bike'
+  const isMakeupDay = Boolean(recommendation.daily_adaptation?.is_makeup_day)
+  const missedWorkout = String(recommendation.daily_adaptation?.missed_workout || '')
   const bikeZone = String(recommendation.bike_zone || recommendation.run_pace_guidance || '').trim()
   const bikeCadence = String(recommendation.bike_cadence || '').trim()
   const enduranceNotes = Array.isArray(recommendation.endurance_notes) ? recommendation.endurance_notes.filter(Boolean) : []
@@ -1361,6 +1363,22 @@ function TrainingCard({
           Update Check-In
         </button>
       </div>
+
+      {isMakeupDay && (
+        <div className={`mt-5 flex items-center gap-3 rounded-2xl border px-5 py-3.5 text-sm font-medium ${
+          isDark
+            ? 'border-amber-800/50 bg-amber-950/30 text-amber-300'
+            : 'border-amber-200 bg-amber-50 text-amber-700'
+        }`}>
+          <svg className="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="8" cy="8" r="6.5" />
+            <path d="M8 5v3.5l2 2" />
+          </svg>
+          <span>
+            Makeup day — yesterday&apos;s {missedWorkout ? <strong>{missedWorkout.toLowerCase()}</strong> : 'planned session'} was missed. Volume is slightly reduced to avoid stacking load.
+          </span>
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(23rem,0.95fr)]">
         <div className={`self-start rounded-[1.9rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
