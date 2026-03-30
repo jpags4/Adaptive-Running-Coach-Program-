@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const DARK_HOVER_GLOW = 'transition duration-200 hover:border-violet-500/55 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.18),0_0_34px_rgba(168,85,247,0.18)]'
 
