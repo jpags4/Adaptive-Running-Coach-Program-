@@ -202,11 +202,22 @@ function BatteryIcon({ className = 'h-5 w-5' }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      fill="currentColor"
       className={className}
       aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <path d="M20 10V8.33A1.34 1.34 0 0 0 18.67 7H3.34A1.34 1.34 0 0 0 2 8.33v7.33A1.34 1.34 0 0 0 3.33 17H18.67A1.34 1.34 0 0 0 20 15.67V14h2v-4Zm-8.5 3v2L4 11H9.5V9L17 13Z" />
+      {/* Battery body outline */}
+      <rect x="1" y="7" width="18" height="10" rx="1.5" ry="1.5" />
+      {/* Battery terminal */}
+      <line x1="19" y1="10" x2="23" y2="10" />
+      <line x1="19" y1="14" x2="23" y2="14" />
+      <line x1="23" y1="10" x2="23" y2="14" />
+      {/* Lightning bolt — centered in body */}
+      <polyline points="12,9.5 9.5,12.5 12,12.5 9.5,14.5" fill="currentColor" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   )
 }
@@ -478,6 +489,51 @@ function raceWeeksOutLabel(goalRaceDate) {
   return `${weeksOut} ${weeksOut === 1 ? 'WEEK' : 'WEEKS'} OUT`
 }
 
+// ─── Scroll-reveal hook ────────────────────────────────────────────────────
+// Uses IntersectionObserver (no external dep). Fires synchronously on first
+// render so elements already in view don't flash invisible on load.
+function useFadeInView({ threshold = 0.08, rootMargin = '0px 0px -5% 0px' } = {}) {
+  const ref = useRef(null)
+  // Start visible — IO will correct immediately if element is out of view.
+  // This prevents a one-frame invisible flash on initial load for the first section.
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold, rootMargin }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [threshold, rootMargin])
+
+  return { ref, isVisible }
+}
+
+function FadeSection({ children, className = '', delay = 0 }) {
+  const { ref, isVisible } = useFadeInView()
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0px)' : 'translateY(22px)',
+        transition: `opacity 550ms cubic-bezier(0.4,0,0.2,1) ${delay}ms, transform 550ms cubic-bezier(0.4,0,0.2,1) ${delay}ms`,
+        willChange: 'opacity, transform',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 function useTypedText(text, enabled, speed = 28) {
   const [typed, setTyped] = useState('')
   const [complete, setComplete] = useState(false)
@@ -560,8 +616,9 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const now = new Date()
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now).toUpperCase()
   const monthDay = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(now).toUpperCase()
+  const year = now.getFullYear()
   const datePrefixStr = `TODAY IS ${weekday}, `
-  const dateSuffixStr = monthDay
+  const dateSuffixStr = `${monthDay}, ${year}`
   const dateFullStr = `${datePrefixStr}${dateSuffixStr}`
   const moveStr = "LET'S MOVE"
 
@@ -1023,7 +1080,7 @@ function CheckInModal({
 }) {
   const isDark = theme === 'dark'
   if (!isOpen) return null
-  const legsOptions = ['fresh', 'normal', 'heavy', 'sore', 'injured']
+  const legsOptions = ['fresh', 'normal', 'heavy', 'sore']
   const mentalOptions = ['sharp', 'steady', 'stressed', 'drained']
 
   const choiceButtonClasses = (active) =>
@@ -3285,6 +3342,7 @@ export default function App() {
           </div>
         ) : null}
 
+        <FadeSection>
         <section className="py-8">
           {/* Row 1: Sleep | Recovery | Resting HR — Row 2: Strain | Weekly Mileage (2-col wide) */}
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
@@ -3466,12 +3524,16 @@ export default function App() {
             )}
           </div>
         </section>
+        </FadeSection>
 
+        <FadeSection delay={60}>
         <MasterTrainingCalendar
           weeklyPlans={summaryData.weekly_plan_views}
           theme={theme}
         />
+        </FadeSection>
 
+        <FadeSection delay={120}>
         <ActivityLogSection
           activityLog={summaryData.activity_log}
           noteDrafts={activityNoteDrafts}
@@ -3483,6 +3545,7 @@ export default function App() {
           onSaveNote={handleSaveActivityNote}
           theme={theme}
         />
+        </FadeSection>
       </div>
 
       <ProfileSettingsPanel
