@@ -665,7 +665,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           className={`max-w-full text-[clamp(2rem,3.8vw,3.4rem)] font-bold leading-[1.12] tracking-[-0.02em] pb-2 ${
             isDark
               ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
-              : 'text-neutral-950'
+              : 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#171717_0%,#7c3aed_28%,#4f46e5_50%,#7c3aed_72%,#171717_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
           }`}
         >
           {greetingTyped || '\u00A0'}
@@ -1037,13 +1037,13 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
                 ? 'cursor-not-allowed border-neutral-700 bg-neutral-800 text-neutral-400'
                 : 'cursor-not-allowed border-neutral-300 bg-neutral-200 text-neutral-400'
               : isDark
-              ? 'border-violet-500/30 text-white shadow-[0_4px_24px_rgba(124,58,237,0.55),0_0_0_1px_rgba(167,139,250,0.2)] hover:shadow-[0_8px_40px_rgba(124,58,237,0.7),0_0_0_1px_rgba(167,139,250,0.35)] hover:scale-[1.01] active:scale-[0.99]'
-              : 'border-violet-600/20 text-white shadow-[0_4px_24px_rgba(109,40,217,0.45),0_2px_8px_rgba(0,0,0,0.12)] hover:shadow-[0_8px_40px_rgba(109,40,217,0.6)] hover:scale-[1.01] active:scale-[0.99]'
+              ? 'border-violet-600/30 text-white shadow-[0_4px_28px_rgba(91,33,182,0.65),0_0_0_1px_rgba(139,92,246,0.18)] hover:shadow-[0_8px_44px_rgba(76,29,149,0.8),0_0_0_1px_rgba(139,92,246,0.32)] hover:scale-[1.01] active:scale-[0.99]'
+              : 'border-violet-900/40 text-white shadow-[0_4px_28px_rgba(59,7,100,0.55),0_2px_8px_rgba(0,0,0,0.18)] hover:shadow-[0_8px_44px_rgba(59,7,100,0.7)] hover:scale-[1.01] active:scale-[0.99]'
           }`}
           style={
             isGenerating
               ? undefined
-              : { background: isDark ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)' }
+              : { background: isDark ? 'linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%)' : 'linear-gradient(135deg, #5b21b6 0%, #3b0764 100%)' }
           }
         >
           <span className={`relative flex h-10 w-10 items-center justify-center rounded-xl ${
@@ -2131,7 +2131,7 @@ function CalendarActivity({ activity, theme = 'light' }) {
           <div className="flex items-center gap-1.5">
             <span className={`${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{ActivityTypeIcon}</span>
             <p className={`text-base font-semibold tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-              Weights
+              Strength
             </p>
           </div>
           {(activity.duration_minutes || activity.strain) ? (
