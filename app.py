@@ -23,6 +23,7 @@ from coach import (
     days_until_race,
     pace_window,
     recent_mileage,
+    recommendation_from_dict,
     sunday_week_end,
     sunday_week_key,
     sunday_week_start,
@@ -52,7 +53,9 @@ from integrations import (
 from sample_data import SAMPLE_METRICS, SAMPLE_PROFILE, SAMPLE_RUNS
 from llm_coach import llm_recommendation
 from storage import (
+    clear_daily_recommendation,
     load_daily_checkins,
+    load_daily_recommendation,
     init_storage,
     load_activity_notes,
     load_settings,
@@ -61,6 +64,7 @@ from storage import (
     load_weekly_plans,
     save_activity_note,
     save_daily_checkin,
+    save_daily_recommendation,
     save_settings,
     save_states,
     save_tokens,
@@ -1736,6 +1740,15 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
     if recent_checkin_context:
         recommendation_feedback["recent_checkin_context"] = recent_checkin_context
 
+    # Load cached recommendation for today (set on any page load)
+    cached_rec = load_daily_recommendation(today_iso)
+    if cached_rec and not include_recommendation:
+        try:
+            recommendation = recommendation_from_dict(cached_rec["recommendation"])
+            recommendation_meta = cached_rec.get("meta", {"source": "cached", "model": None, "reason": None})
+        except Exception:
+            pass
+
     if include_recommendation:
         recommendation, recommendation_meta = llm_recommendation(
             profile,
@@ -1745,6 +1758,10 @@ def build_dashboard_payload(settings, tokens, subjective_feedback: dict | None =
             subjective_feedback=recommendation_feedback,
             weekly_intent=weekly_intent,
         )
+        save_daily_recommendation(today_iso, {
+            "recommendation": recommendation.to_dict(),
+            "meta": recommendation_meta,
+        })
 
     current_week_cards = calendar_days(
         annotated_calendar_feed,
@@ -2108,6 +2125,7 @@ class CoachHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": "Invalid JSON body."}, status=400)
                 return
 
+            clear_daily_recommendation(safe_iso_today())
             payload = build_dashboard_payload(
                 settings,
                 tokens,

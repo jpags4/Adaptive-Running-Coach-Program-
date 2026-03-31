@@ -314,6 +314,29 @@ def save_daily_checkin(day: str, payload: dict[str, Any]) -> dict[str, Any]:
     return checkins
 
 
+def load_daily_recommendation(day: str) -> dict[str, Any] | None:
+    return _get_namespace_values("daily_recommendations").get(str(day or "").strip())
+
+
+def save_daily_recommendation(day: str, data: dict[str, Any]) -> None:
+    key = str(day or "").strip()
+    if not key:
+        return
+    recs = _get_namespace_values("daily_recommendations")
+    recs[key] = data
+    _set_namespace_values("daily_recommendations", recs)
+
+
+def clear_daily_recommendation(day: str) -> None:
+    key = str(day or "").strip()
+    if not key:
+        return
+    recs = _get_namespace_values("daily_recommendations")
+    if key in recs:
+        recs.pop(key)
+        _set_namespace_values("daily_recommendations", recs)
+
+
 def load_activity_notes() -> dict[str, Any]:
     return _get_namespace_values("activity_notes")
 

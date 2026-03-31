@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from coach import (
     AthleteProfile,
@@ -966,6 +966,299 @@ def _model_unavailable_recommendation(
     return recommendation, {"source": "unavailable", "model": None, "reason": reason}
 
 
+def _format_recent_metrics_text(metrics: list[RecoveryMetrics], limit: int = 7) -> str:
+    if not metrics:
+        return "  No WHOOP data available."
+    recent = sorted(metrics, key=lambda m: m.day, reverse=True)[:limit]
+    lines = []
+    for m in recent:
+        tier = "GREEN (proceed as planned)" if m.recovery_score >= 67 else "YELLOW (reduce intensity)" if m.recovery_score >= 34 else "RED (rest or very easy only)"
+        lines.append(
+            f"  {m.day}: recovery={m.recovery_score}% [{tier}], sleep={m.sleep_hours:.1f}h, "
+            f"HRV={m.hrv_ms}ms, resting_hr={m.resting_hr}bpm, strain={m.strain:.1f}"
+        )
+    return "\n".join(lines)
+
+
+def _format_recent_runs_text(runs: list[Run], today: date, days: int = 14) -> str:
+    if not runs:
+        return "  No recent runs."
+    cutoff = (today - timedelta(days=days)).isoformat()
+    recent = [r for r in sorted(runs, key=lambda r: r.day, reverse=True) if r.day >= cutoff]
+    if not recent:
+        return "  No runs in the past 14 days."
+    lines = []
+    for r in recent[:10]:
+        lines.append(
+            f"  {r.day}: {r.distance_miles:.1f} mi, {r.duration_minutes} min, "
+            f"{r.effort} effort, {r.average_pace_min_per_mile:.2f} min/mi"
+        )
+    return "\n".join(lines)
+
+
+def _format_checkin_text(feedback: dict | None) -> str:
+    if not feedback:
+        return "  No check-in submitted. Treat physical and mental as 'normal'."
+
+    physical = str(feedback.get("physical_feeling") or "").strip().lower()
+    mental = str(feedback.get("mental_feeling") or "").strip().lower()
+    notes = str(feedback.get("notes") or "").strip()
+    has_pain = bool(feedback.get("has_pain"))
+    pain_severity = str(feedback.get("pain_severity") or "").strip().lower()
+    pain_location = str(feedback.get("pain_location") or "").strip()
+    pain_with_running = bool(feedback.get("pain_with_running"))
+    pain_with_walking = bool(feedback.get("pain_with_walking"))
+
+    physical_meanings = {
+        "fresh": "legs feel great, no fatigue — run the full planned session",
+        "normal": "baseline, no issues — run the full planned session",
+        "tired": "noticeable fatigue — reduce planned distance 15-20%, keep same workout type",
+        "heavy": "legs feel dead/flat — reduce distance 20%, drop intensity one level",
+        "sore": "muscle soreness limiting form — easy/recovery intensity only, reduce distance 25-30%, no lower body strength",
+        "very_sore": "significant soreness — rest day or 20-30 min very easy jog maximum, no strength work",
+    }
+    mental_meanings = {
+        "sharp": "mentally ready — no change to plan",
+        "steady": "neutral — no change to plan",
+        "low": "mentally fatigued — shorten session by up to 20%, reduce pressure",
+    }
+
+    lines = ["  PHYSICAL FEELING:"]
+    if physical:
+        meaning = physical_meanings.get(physical, physical)
+        lines.append(f"    Value: '{physical}' → {meaning}")
+    else:
+        lines.append("    Not provided — treat as 'normal'")
+
+    lines.append("  MENTAL FEELING:")
+    if mental:
+        meaning = mental_meanings.get(mental, mental)
+        lines.append(f"    Value: '{mental}' → {meaning}")
+    else:
+        lines.append("    Not provided — treat as 'steady'")
+
+    lines.append("  PAIN:")
+    if has_pain:
+        if pain_with_walking:
+            lines.append("    pain_with_walking=YES → REST ONLY. Do not run or cross-train.")
+        elif pain_with_running and pain_severity == "severe":
+            lines.append("    pain_with_running=YES, severity=severe → REST ONLY. Add warning to see a professional.")
+        elif pain_with_running and pain_severity == "moderate":
+            lines.append("    pain_with_running=YES, severity=moderate → NO RUNNING. Substitute zone 2 cross-training (bike).")
+        elif pain_with_running and pain_severity == "mild":
+            lines.append("    pain_with_running=YES, severity=mild → EASY RUN ONLY. No quality work. Flag in warnings.")
+        else:
+            lines.append(f"    Pain reported ({pain_severity or 'unspecified'} at {pain_location or 'unspecified location'}). Does not restrict running.")
+    else:
+        lines.append("    No pain reported — no restrictions.")
+
+    if notes:
+        lines.append(f"  ATHLETE NOTES: {notes}")
+
+    return "\n".join(lines)
+
+
+def _format_planned_session_text(weekly_intent, profile: AthleteProfile, today: date) -> str:
+    session = planned_session_for_day(weekly_intent, profile, today)
+    workout = session.get("workout", "Unknown")
+    intensity = session.get("intensity", "")
+    miles = session.get("distance_miles", 0.0)
+    pace = session.get("pace_guidance", "")
+    lift = session.get("lift_focus", "")
+    if lift and not miles:
+        return f"{workout} (standalone strength: {lift})"
+    if miles:
+        return f"{workout} — {miles} miles at {pace} ({intensity} intensity)"
+    return f"{workout} ({intensity})"
+
+
+def _format_pace_model_text(weekly_intent) -> str:
+    pm = weekly_intent.pace_model
+    if not pm:
+        return "  Pace model not available."
+    lines = []
+    for zone, data in pm.items():
+        if isinstance(data, dict):
+            lines.append(f"  {zone}: {data.get('pace_range', '')} — {data.get('label', '')}")
+    return "\n".join(lines) if lines else "  Pace model not available."
+
+
+def _build_gpt_recommendation_prompt(
+    profile: AthleteProfile,
+    runs: list[Run],
+    metrics: list[RecoveryMetrics],
+    today: date,
+    subjective_feedback: dict | None,
+    weekly_intent,
+) -> dict[str, str]:
+    system = """\
+You are a precise running coach AI. Your sole task is to produce a single, consistent training recommendation as a JSON object.
+
+CONSISTENCY RULE: Given identical inputs you must always produce identical outputs. Make one clear decision — do not hedge or vary.
+
+DECISION FRAMEWORK — apply each step in order, each step overrides or adjusts the previous:
+
+STEP 1 — Start with today's planned session from the weekly training plan.
+
+STEP 2 — Apply WHOOP recovery adjustment to today's planned session:
+  GREEN (recovery >= 67%): proceed with planned session exactly as written
+  YELLOW (recovery 34-66%): drop intensity one level, keep distance or cut 10%
+  RED (recovery < 34%): replace with rest or 20-30 min very easy jog only
+
+STEP 3 — Apply physical feeling adjustment on top of STEP 2 result using exact rules:
+  "fresh" or "normal": no change to distance or intensity
+  "tired": multiply planned distance by 0.82 (round to nearest 0.5), same intensity
+  "heavy": multiply planned distance by 0.80 (round to nearest 0.5), drop intensity exactly one level
+  "sore": set intensity to "easy", multiply planned distance by 0.72 (round to nearest 0.5), remove lower body strength
+  "very_sore": set intensity to "very easy", cap distance at 3.0 miles maximum (or 0 for rest), no strength work
+
+STEP 4 — Apply pain rules (these OVERRIDE everything above):
+  pain_with_walking=YES → rest only, no exceptions
+  pain_with_running=YES AND severity=severe → rest only, warn to see a professional
+  pain_with_running=YES AND severity=moderate → no running, zone 2 bike cross-training only
+  pain_with_running=YES AND severity=mild → easy run only, remove all quality work
+
+STEP 5 — Apply mental feeling:
+  "sharp" or "steady": no change
+  "low": shorten duration/distance by up to 20%
+
+STEP 6 — Incorporate athlete's free-text notes if they mention specific issues.
+
+INTENSITY LEVELS in ascending order: rest < very easy < easy < moderate < hard < threshold < interval
+"Drop one level" means: threshold→moderate, moderate→easy, easy→very easy, etc.
+
+OUTPUT FIELDS:
+  workout: short label e.g. "Easy run", "Threshold intervals", "Rest day", "Zone 2 bike", "Strength: Lower Body"
+  intensity: exactly one of: rest, very easy, easy, moderate, hard, threshold, interval
+  duration_minutes: total duration in minutes (0 for rest)
+  run_distance_miles: miles to run (0.0 for non-run days)
+  run_pace_guidance: pace range string like "9:30-10:00/mi", or "" if no run
+  lift_focus: strength session label or "No lifting today"
+  lift_guidance: one sentence of specific strength guidance, or "" if no lifting
+  recap: list of exactly 2 short strings — first summarizes key WHOOP metrics, second summarizes today's adjusted plan
+  explanation: list of 3-4 strings explaining the reasoning step by step
+  explanation_sections: object with keys "overall", "run", "pace", "lift", "recovery" — each a 1-2 sentence string
+  warnings: list of warning strings (empty list if none)
+  confidence: "high" if inputs are clear and consistent, "medium" if any uncertainty, "low" if significant conflicts
+
+Output only a valid JSON object. No markdown, no preamble, no extra keys."""
+
+    user = f"""\
+Generate today's training recommendation.
+
+TODAY: {today.isoformat()} ({today.strftime('%A')})
+
+ATHLETE PROFILE:
+  Name: {profile.name}
+  Goal race: Half marathon on {profile.goal_race_date}
+  Goal finish time: {profile.goal_half_marathon_time or 'not set'}
+  Weekly mileage target: {profile.weekly_mileage_target} miles
+  Preferred long run day: {profile.preferred_long_run_day}
+  Max comfortable long run: {profile.max_comfortable_long_run_miles} miles
+  Runs per week: {profile.desired_runs_per_week}
+  Strength sessions per week: {profile.desired_strength_frequency}
+{('  Injury history: ' + profile.injury_flags) if profile.injury_flags else ''}
+
+WEEKLY TRAINING PLAN:
+  Phase: {weekly_intent.phase}
+  Week type: {weekly_intent.week_type}
+  Primary adaptation: {weekly_intent.primary_adaptation}
+  Weekly mileage range: {weekly_intent.mileage_range}
+  Today's planned session: {_format_planned_session_text(weekly_intent, profile, today)}
+  Long run target: {weekly_intent.long_run_target}
+  Quality session target: {weekly_intent.quality_session_target}
+  Strength target: {weekly_intent.strength_target}
+
+PACE REFERENCE:
+{_format_pace_model_text(weekly_intent)}
+
+RECENT WHOOP DATA (last 7 days, most recent first):
+{_format_recent_metrics_text(metrics)}
+
+RECENT RUNS (last 14 days, most recent first):
+{_format_recent_runs_text(runs, today)}
+
+TODAY'S CHECK-IN:
+{_format_checkin_text(subjective_feedback)}
+
+Apply the decision framework step by step and return the JSON recommendation."""
+
+    return {"system": system, "user": user}
+
+
+def _call_gpt_recommendation(
+    profile: AthleteProfile,
+    runs: list[Run],
+    metrics: list[RecoveryMetrics],
+    today: date,
+    subjective_feedback: dict | None,
+    weekly_intent,
+) -> dict:
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        raise RuntimeError("OpenAI SDK is not installed.") from exc
+
+    prompt = _build_gpt_recommendation_prompt(profile, runs, metrics, today, subjective_feedback, weekly_intent)
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "").strip())
+    response = client.responses.create(
+        model=os.environ.get("OPENAI_MODEL", "gpt-5-mini"),
+        input=[
+            {"role": "system", "content": prompt["system"]},
+            {"role": "user", "content": prompt["user"]},
+        ],
+    )
+    raw = _parse_response_json(response)
+    if not isinstance(raw, dict):
+        raise ValueError("GPT recommendation response was not a JSON object.")
+    required = ["workout", "intensity", "duration_minutes", "run_distance_miles", "run_pace_guidance",
+                "lift_focus", "lift_guidance", "recap", "explanation", "explanation_sections",
+                "warnings", "confidence"]
+    missing = [k for k in required if k not in raw]
+    if missing:
+        raise ValueError(f"GPT recommendation missing required fields: {missing}")
+    return raw
+
+
+def _build_recommendation_from_gpt(
+    raw: dict,
+    profile: AthleteProfile,
+    runs: list[Run],
+    metrics: list[RecoveryMetrics],
+    today: date,
+    weekly_intent,
+) -> Recommendation:
+    planned = planned_session_for_day(weekly_intent, profile, today)
+    pace_model = build_pace_model(profile, runs)
+
+    return Recommendation(
+        date=today.isoformat(),
+        workout=str(raw["workout"]),
+        intensity=str(raw["intensity"]),
+        duration_minutes=int(raw["duration_minutes"]),
+        run_distance_miles=float(raw["run_distance_miles"]),
+        run_pace_guidance=str(raw["run_pace_guidance"]),
+        lift_focus=str(raw["lift_focus"]),
+        lift_guidance=str(raw["lift_guidance"]),
+        recap=list(raw.get("recap") or []),
+        explanation=list(raw.get("explanation") or []),
+        explanation_sections=dict(raw.get("explanation_sections") or {}),
+        warnings=list(raw.get("warnings") or []),
+        confidence=str(raw.get("confidence") or "medium"),
+        planned_workout=str(planned.get("workout") or ""),
+        planned_run_distance_miles=float(planned.get("distance_miles") or 0.0),
+        planned_pace_guidance=str(planned.get("pace_guidance") or ""),
+        pace_model=pace_model.to_dict(),
+        weekly_intent=weekly_intent.to_dict(),
+        daily_adaptation={
+            "plan_status": "modified" if raw["workout"] != planned.get("workout") else "on_plan",
+            "weekly_goal_remains": _weekly_goal_phrase(weekly_intent),
+            "reschedule_suggestion": _reschedule_guidance(weekly_intent, "supported"),
+        },
+        primary_modality="run" if float(raw["run_distance_miles"]) > 0 else ("bike" if "bike" in str(raw["workout"]).lower() else "strength" if float(raw["run_distance_miles"]) == 0 else "run"),
+    )
+
+
 def llm_recommendation(
     profile: AthleteProfile,
     runs: list[Run],
@@ -974,30 +1267,32 @@ def llm_recommendation(
     subjective_feedback: dict | None = None,
     weekly_intent=None,
 ) -> tuple[Recommendation, dict]:
-    # Compatibility wrapper: the active daily recommendation path is now deterministic.
-    # Keep this function so the existing app/API call sites do not need to change all at once.
-    target_day = today or (parse_date(max(metrics, key=lambda item: item.day).day) if metrics else date.today())
+    target_day = today or (parse_date(max(metrics, key=lambda m: m.day).day) if metrics else date.today())
     weekly_intent = weekly_intent or build_weekly_intent(profile, runs, metrics, today=target_day)
-    recommendation = deterministic_recommendation(
-        profile,
-        runs,
-        metrics,
-        today=target_day,
-        subjective_feedback=subjective_feedback,
-        weekly_intent=weekly_intent,
-        mode="conservative",
-    )
+
+    if not openai_enabled():
+        return _model_unavailable_recommendation(
+            profile, runs, metrics, "OPENAI_API_KEY is not set.", today=target_day, weekly_intent=weekly_intent
+        )
+
+    try:
+        raw = _call_gpt_recommendation(profile, runs, metrics, target_day, subjective_feedback, weekly_intent)
+        recommendation = _build_recommendation_from_gpt(raw, profile, runs, metrics, target_day, weekly_intent)
+    except Exception as exc:
+        return _model_unavailable_recommendation(
+            profile, runs, metrics, str(exc), today=target_day, weekly_intent=weekly_intent
+        )
+
     planned_workout = _build_planned_workout_payload(weekly_intent, profile, target_day)
-    explanation = generate_recommendation_explanation(
-        {
-            "recommendation": recommendation,
-            "plannedWorkout": planned_workout,
-            "athleteName": profile.name,
-        }
-    )
+    explanation = generate_recommendation_explanation({
+        "recommendation": recommendation,
+        "plannedWorkout": planned_workout,
+        "athleteName": profile.name,
+    })
+
     return recommendation, {
-        "source": "deterministic",
-        "model": None,
+        "source": "gpt",
+        "model": os.environ.get("OPENAI_MODEL", "gpt-5-mini"),
         "reason": None,
         "recommendation_explanation": explanation,
         "explanation_source": explanation["source"],
