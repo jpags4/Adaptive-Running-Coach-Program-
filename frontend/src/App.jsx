@@ -685,7 +685,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const isDark = theme === 'dark'
 
   // Build typed strings
-  const fullGreeting = `${timeOfDayGreeting()}, ${name || 'Runner'}`
+  const fullGreeting = `${timeOfDayGreeting()}, ${firstNameFromDisplayName(name)}`
   const now = new Date()
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now).toUpperCase()
   const monthDay = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(now).toUpperCase()
@@ -734,7 +734,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           <span className={`absolute inset-0 ${
             isDark
               ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
-              : 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#171717_0%,#7c3aed_28%,#4f46e5_50%,#7c3aed_72%,#171717_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
+              : 'text-neutral-950'
           }`}>{greetingTyped || '\u00A0'}</span>
         </h1>
 
