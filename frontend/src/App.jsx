@@ -658,7 +658,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const dateTypedSuffix = dateTyped.slice(datePrefixStr.length)
 
   return (
-    <header className="mx-auto flex w-full max-w-[1200px] flex-col justify-between gap-6 pb-8 md:flex-row md:items-start md:gap-8">
+    <header className="mx-auto flex w-full max-w-[1200px] flex-col justify-between gap-6 pb-3 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 flex-1">
         {/* Greeting — types in, gradient stays */}
         <h1
@@ -1025,7 +1025,7 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
   if (hasRecommendation) return null
 
   return (
-    <section className="py-5">
+    <section className="pt-2 pb-3">
       <div className="mx-auto flex max-w-5xl justify-center">
         <button
           type="button"
@@ -3342,7 +3342,7 @@ export default function App() {
         ) : null}
 
         <FadeSection>
-        <section className="py-8">
+        <section className="pt-4 pb-8">
           {/* Row 1: Sleep | Recovery | Resting HR — Row 2: Strain | Weekly Mileage (2-col wide) */}
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
             {/* --- Row 1 --- */}
