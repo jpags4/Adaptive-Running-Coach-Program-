@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 
 const DARK_HOVER_GLOW = 'transition duration-200 hover:border-violet-500/55 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.18),0_0_34px_rgba(168,85,247,0.18)]'
+const LIGHT_HOVER_GLOW = 'transition duration-200 hover:border-violet-300/60 hover:shadow-[0_0_0_1px_rgba(192,132,252,0.2),0_0_28px_rgba(192,132,252,0.14)]'
 
 function darkGlow(enabled) {
   return enabled ? DARK_HOVER_GLOW : ''
+}
+
+function lightGlow(enabled) {
+  return enabled ? LIGHT_HOVER_GLOW : ''
 }
 
 function GlobalUiStyles() {
@@ -767,7 +772,7 @@ function ProfileSettingsPanel({
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/45" onClick={onClose} />
-      <aside className={`absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l px-6 py-6 shadow-2xl ${isDark ? `border-neutral-800 bg-neutral-950 text-white ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50 text-neutral-950'}`}>
+      <aside className={`absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l px-6 py-6 shadow-2xl ${isDark ? `border-neutral-800 bg-neutral-950 text-white ${darkGlow(true)}` : `border-neutral-200 bg-stone-50 text-neutral-950 ${lightGlow(true)}`}`}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>Profile</p>
@@ -794,7 +799,7 @@ function ProfileSettingsPanel({
         ) : null}
 
         <div className="mt-8 space-y-8">
-          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : `border-neutral-200 bg-white ${lightGlow(true)}`}`}>
             <h3 className="text-2xl font-semibold tracking-tight">Athlete</h3>
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               {renderInput('Name', 'athlete_name')}
@@ -804,7 +809,7 @@ function ProfileSettingsPanel({
             </div>
           </section>
 
-          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : `border-neutral-200 bg-white ${lightGlow(true)}`}`}>
             <h3 className="text-2xl font-semibold tracking-tight">Training Preferences</h3>
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               {renderInput('Preferred Long Run Day', 'preferred_long_run_day')}
@@ -831,14 +836,14 @@ function ProfileSettingsPanel({
             </label>
           </section>
 
-          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+          <section className={`rounded-[1.75rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : `border-neutral-200 bg-white ${lightGlow(true)}`}`}>
             <h3 className="text-2xl font-semibold tracking-tight">Integrations</h3>
             <div className="mt-5 grid grid-cols-1 gap-5">
               {[
                 ['Strava', profileSettings.strava],
                 ['WHOOP', profileSettings.whoop],
               ].map(([label, provider]) => (
-                <div key={label} className={`rounded-[1.4rem] border p-4 ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+                <div key={label} className={`rounded-[1.4rem] border p-4 ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : `border-neutral-200 bg-stone-50 ${lightGlow(true)}`}`}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-lg font-semibold tracking-tight">{label}</p>
@@ -868,7 +873,7 @@ function ProfileSettingsPanel({
 
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               {renderInput('Public Base URL', 'public_base_url', 'text', 'https://your-app.onrender.com')}
-              <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+              <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : `border-neutral-200 bg-white ${lightGlow(true)}`}`}>
                 <input
                   type="checkbox"
                   checked={Boolean(profileSettings.allow_insecure_ssl)}
@@ -1183,34 +1188,28 @@ function CheckInModal({
           </div>
 
           <div className="mt-9 pb-6">
-            <div
-              className={`rounded-[1.75rem] border p-6 ${isDark ? 'border-neutral-700/50' : 'border-neutral-200 bg-stone-50/95'}`}
-              style={isDark ? { background: 'linear-gradient(145deg, #1c1827 0%, #110f1b 100%)' } : undefined}
-            >
-              <div className="flex items-center justify-between gap-4">
-                <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                  Experiencing pain?
-                </p>
-                <button
-                  type="button"
-                  onClick={() => onHasPainChange(!hasPain)}
-                  className={`inline-flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium transition ${
-                    hasPain
-                      ? isDark
-                        ? 'border-violet-500/80 bg-violet-600/20 text-white'
-                        : 'border-violet-300 bg-violet-50 text-violet-700'
-                      : isDark
-                        ? 'border-neutral-800 bg-neutral-950 text-neutral-300'
-                        : 'border-neutral-200 bg-white text-neutral-700'
-                  }`}
-                  aria-pressed={hasPain}
-                >
-                  <span>{hasPain ? 'Yes' : 'No'}</span>
-                  <span className={`relative inline-flex h-6 w-11 rounded-full transition ${hasPain ? (isDark ? 'bg-violet-500/90' : 'bg-violet-500') : (isDark ? 'bg-neutral-800' : 'bg-neutral-300')}`}>
-                    <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all duration-200 ${hasPain ? 'left-[1.35rem]' : 'left-0.5'}`} />
-                  </span>
-                </button>
-              </div>
+              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Experiencing pain?
+              </p>
+              <button
+                type="button"
+                onClick={() => onHasPainChange(!hasPain)}
+                className={`mt-3 inline-flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium transition ${
+                  hasPain
+                    ? isDark
+                      ? 'border-violet-500/80 bg-violet-600/20 text-white'
+                      : 'border-violet-300 bg-violet-50 text-violet-700'
+                    : isDark
+                      ? 'border-neutral-800 bg-neutral-950 text-neutral-300'
+                      : 'border-neutral-200 bg-white text-neutral-700'
+                }`}
+                aria-pressed={hasPain}
+              >
+                <span>{hasPain ? 'Yes' : 'No'}</span>
+                <span className={`relative inline-flex h-6 w-11 rounded-full transition ${hasPain ? (isDark ? 'bg-violet-500/90' : 'bg-violet-500') : (isDark ? 'bg-neutral-800' : 'bg-neutral-300')}`}>
+                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all duration-200 ${hasPain ? 'left-[1.35rem]' : 'left-0.5'}`} />
+                </span>
+              </button>
 
               <div className={`overflow-hidden transition-all duration-300 ${hasPain ? 'mt-6 max-h-[30rem] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -1258,7 +1257,6 @@ function CheckInModal({
                   </label>
                 </div>
               </div>
-            </div>
           </div>
         </div>
 
@@ -1328,7 +1326,7 @@ function TrainingCard({
   }, [recommendationExplanation?.summary, recommendation?.date, recommendation?.workout])
 
   return (
-    <section className={`mx-auto max-w-[90rem] rounded-[2rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`mx-auto max-w-[90rem] rounded-[2rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : `border-neutral-200 bg-white/95 ${lightGlow(true)}`}`}>
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-4">
@@ -1362,7 +1360,7 @@ function TrainingCard({
       <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
 
         {/* Run / Bike panel */}
-        <div className={`rounded-[1.9rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+        <div className={`rounded-[1.9rem] border p-6 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : `border-neutral-200 bg-white ${lightGlow(true)}`}`}>
           <div className="flex items-center gap-2.5">
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-emerald-950/70 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
               {isBikeDay ? <BikeIcon /> : <RunningShoeIcon />}
@@ -1409,7 +1407,7 @@ function TrainingCard({
         </div>
 
         {/* Lift panel */}
-        <div className={`rounded-[1.9rem] border p-6 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+        <div className={`rounded-[1.9rem] border p-6 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : `border-neutral-200 bg-stone-50 ${lightGlow(true)}`}`}>
           <div className="flex items-center gap-2.5">
             <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-violet-950/70 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
               <DumbbellIcon />
@@ -1460,7 +1458,7 @@ function TrainingCard({
       {/* Coach Summary — includes makeup day callout when relevant */}
       {(recommendationExplanation?.summary || isMakeupDay) ? (
         <section className={`mt-6 overflow-hidden rounded-[1.9rem] border ${
-          isDark ? `border-sky-900/40 bg-sky-950/30 ${darkGlow(true)}` : 'border-sky-200 bg-sky-50/80'
+          isDark ? `border-sky-900/40 bg-sky-950/30 ${darkGlow(true)}` : `border-sky-200 bg-sky-50/80 ${lightGlow(true)}`
         }`}>
           {isMakeupDay && (
             <div className={`flex items-start gap-3 border-b px-6 py-4 text-sm ${
@@ -1567,7 +1565,7 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
   const [isOpen, setIsOpen] = useState(true)
 
   return (
-    <div className={`mt-8 overflow-hidden rounded-[2rem] border shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
+    <div className={`mt-8 overflow-hidden rounded-[2rem] border shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : `border-neutral-200 bg-white/95 ${lightGlow(true)}`}`}>
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
@@ -1610,7 +1608,7 @@ function WeeklyFocusCard({ weeklyFocus, theme = 'light' }) {
 function FocusMetric({ label, value, icon = null, theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
-    <div className={`rounded-[1.5rem] border px-5 py-4 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+    <div className={`rounded-[1.5rem] border px-5 py-4 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : `border-neutral-200 bg-stone-50 ${lightGlow(true)}`}`}>
       {icon ? (
         <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'}`}>
           {icon}
@@ -1625,7 +1623,7 @@ function FocusMetric({ label, value, icon = null, theme = 'light' }) {
 function FocusList({ title, items = [], theme = 'light' }) {
   const isDark = theme === 'dark'
   return (
-    <div className={`rounded-[1.5rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+    <div className={`rounded-[1.5rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950/80 ${darkGlow(true)}` : `border-neutral-200 bg-stone-50 ${lightGlow(true)}`}`}>
       <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{title}</p>
       <ul className={`mt-3 space-y-3 text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
         {(items || []).filter(Boolean).map((item, index) => (
@@ -1715,7 +1713,7 @@ function TrainingRoadmap({ weeks, theme = 'light' }) {
   const isDark = theme === 'dark'
 
   return (
-    <section className={`mt-8 rounded-[2rem] border p-8 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`mt-8 rounded-[2rem] border p-8 shadow-sm ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : `border-neutral-200 bg-white/95 ${lightGlow(true)}`}`}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -1732,7 +1730,7 @@ function TrainingRoadmap({ weeks, theme = 'light' }) {
 
       <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-2">
         {weeks.map((week) => (
-          <div key={week.week_start} className={`rounded-[1.6rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950/85 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+          <div key={week.week_start} className={`rounded-[1.6rem] border p-5 ${isDark ? `border-neutral-800 bg-neutral-950/85 ${darkGlow(true)}` : `border-neutral-200 bg-stone-50 ${lightGlow(true)}`}`}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
@@ -1760,7 +1758,7 @@ function TrainingRoadmap({ weeks, theme = 'light' }) {
               <FocusMetric label="Key Session Shape" value={week.quality_session_target} theme={theme} />
             </div>
 
-            <div className={`mt-4 rounded-[1.35rem] border px-4 py-4 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+            <div className={`mt-4 rounded-[1.35rem] border px-4 py-4 ${isDark ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}` : `border-neutral-200 bg-white ${lightGlow(true)}`}`}>
               <p className={`text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
                 {week.progression_note}
               </p>
@@ -1796,7 +1794,7 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
   const selectedFutureProjection = selectedFutureWeek?.future_projection || {}
 
   return (
-    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : `border-neutral-200 bg-white/95 ${lightGlow(true)}`}`}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
@@ -1814,7 +1812,7 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
         </div>
       </div>
 
-      <div className={`mt-8 overflow-hidden rounded-[1.8rem] border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : 'border-neutral-200 bg-stone-50'}`}>
+      <div className={`mt-8 overflow-hidden rounded-[1.8rem] border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : `border-neutral-200 bg-stone-50 ${lightGlow(true)}`}`}>
         <div className="overflow-x-auto p-5">
         <div className="grid min-w-[46rem] grid-cols-7 gap-2 xl:gap-3">
             {weekdayHeadings.map((heading) => (
@@ -2015,13 +2013,12 @@ function CalendarCard({ card, theme = 'light' }) {
               : 'border-2 border-emerald-400 bg-white shadow-[0_0_14px_rgba(52,211,153,0.20)]'
             : isDark
               ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}`
-              : 'border-neutral-200 bg-white'
+              : `border-neutral-200 bg-white ${lightGlow(true)}`
       }`}
     >
       {isRest && (
         <div className={`absolute -top-[10px] left-1/2 h-[10px] w-7 -translate-x-1/2 rounded-t-sm ${isDark ? 'bg-emerald-500' : 'bg-emerald-400'}`} />
       )}
-      {!isToday ? <div className={`absolute inset-x-0 top-0 h-[3px] ${stripeClass} opacity-90`} /> : null}
 
       {isToday ? (
         <div
@@ -2059,12 +2056,14 @@ function CalendarCard({ card, theme = 'light' }) {
         ) : (
           isToday ? <div className="pt-2.5" /> : (
             <div className="flex h-full min-h-[6rem] items-center justify-center">
-              <span
-                className={`text-4xl leading-none ${isDark ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.75)]' : 'text-emerald-500 drop-shadow-[0_0_8px_rgba(52,211,153,0.60)]'}`}
+              <svg
+                viewBox="0 0 24 24"
+                className={`h-10 w-10 ${isDark ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.75)]' : 'text-emerald-500 drop-shadow-[0_0_8px_rgba(52,211,153,0.60)]'}`}
+                fill="currentColor"
                 aria-label="Rest day"
               >
-                ⚡
-              </span>
+                <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
             </div>
           )
         )}
@@ -2205,7 +2204,7 @@ function ReasonCard({ title, text, tone = 'neutral', icon = null, fullWidth = fa
   }
 
   return (
-    <div className={`rounded-[1.75rem] border p-5 ${toneMap[tone]} ${fullWidth ? 'w-full' : ''} ${isDark ? darkGlow(true) : ''}`}>
+    <div className={`rounded-[1.75rem] border p-5 ${toneMap[tone]} ${fullWidth ? 'w-full' : ''} ${isDark ? darkGlow(true) : lightGlow(true)}`}>
       <div className="flex items-center gap-2.5">
         {icon ? (
           <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isDark ? 'bg-black/20 text-current' : 'bg-white/90 text-current'}`}>
@@ -2647,7 +2646,7 @@ function ActivityLogSection({
   }
 
   return (
-    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : 'border-neutral-200 bg-white/95'}`}>
+    <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : `border-neutral-200 bg-white/95 ${lightGlow(true)}`}`}>
       <style>{`
         .workout-catalog-scroll {
           scrollbar-width: thin;
@@ -2707,7 +2706,7 @@ function ActivityLogSection({
         })}
       </div>
 
-      <div className={`mt-6 overflow-hidden rounded-[2rem] border ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : 'border-neutral-200 bg-white'}`}>
+      <div className={`mt-6 overflow-hidden rounded-[2rem] border ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : `border-neutral-200 bg-white ${lightGlow(true)}`}`}>
         <div className="grid h-[min(38rem,72vh)] grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className={`min-h-0 border-b xl:border-b-0 xl:border-r ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
             <div className={`sticky top-0 z-10 border-b px-6 py-5 backdrop-blur ${isDark ? 'border-neutral-800 bg-neutral-950/95' : 'border-neutral-200 bg-white/95'}`}>
