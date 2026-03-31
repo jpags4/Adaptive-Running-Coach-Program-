@@ -27,13 +27,27 @@ function GlobalUiStyles() {
 
       @keyframes footGlow {
         0%, 100% {
-          filter: drop-shadow(0 0 3px rgba(139, 92, 246, 0.55));
+          filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.7));
           color: #8b5cf6;
         }
         50% {
-          filter: drop-shadow(0 0 10px rgba(192, 132, 252, 0.92));
+          filter: drop-shadow(0 0 16px rgba(192, 132, 252, 1.0)) drop-shadow(0 0 30px rgba(139, 92, 246, 0.5));
           color: #c084fc;
         }
+      }
+
+      @keyframes footShake {
+        0%, 70%, 100% { transform: rotate(-14deg) translateX(0); }
+        72% { transform: rotate(-22deg) translateX(-4px); }
+        74% { transform: rotate(-6deg) translateX(4px); }
+        76% { transform: rotate(-20deg) translateX(-3px); }
+        78% { transform: rotate(-8deg) translateX(3px); }
+        80% { transform: rotate(-14deg) translateX(0); }
+      }
+
+      @keyframes snakeRotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
 
       html,
@@ -686,22 +700,22 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
       <div className="min-w-0 flex-1">
         {/* Greeting — types in, gradient stays */}
         <h1
-          className={`relative max-w-full text-[clamp(2rem,3.8vw,3.4rem)] font-bold leading-[1.12] tracking-[-0.02em] pb-2 ${
+          className="relative max-w-full text-[clamp(2rem,3.8vw,3.4rem)] font-bold leading-[1.12] tracking-[-0.02em] pb-2"
+        >
+          {/* Invisible block placeholder — pre-sizes h1 for full greeting */}
+          <span aria-hidden="true" className="block select-none opacity-0">{fullGreeting}</span>
+          {/* Typed text with shimmer applied directly to this span */}
+          <span className={`absolute inset-0 ${
             isDark
               ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
               : 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#171717_0%,#7c3aed_28%,#4f46e5_50%,#7c3aed_72%,#171717_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
-          }`}
-        >
-          {/* Invisible full-text placeholder — pre-sizes the h1 so layout never shifts */}
-          <span aria-hidden="true" className="invisible select-none">{fullGreeting}</span>
-          {/* Typed text overlaid in the same space */}
-          <span className="absolute inset-0">{greetingTyped || '\u00A0'}</span>
+          }`}>{greetingTyped || '\u00A0'}</span>
         </h1>
 
-        <div className="mt-2 flex flex-col gap-1">
+        <div className="mt-0 flex flex-col gap-1">
           {/* Date line: prefix collapses + fades, suffix slides left and stays */}
           <div
-            className={`flex items-baseline overflow-hidden min-h-[1.5rem] text-[clamp(1.2rem,2.5vw,1.8rem)] font-semibold italic uppercase tracking-[0.04em] leading-[1.25] ${
+            className={`flex items-baseline overflow-hidden min-h-[1.5rem] text-[clamp(1.2rem,2.5vw,1.8rem)] font-semibold uppercase tracking-[0.04em] leading-[1.25] ${
               isDark ? 'text-neutral-100/92' : 'text-neutral-900'
             }`}
           >
@@ -1054,47 +1068,65 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
   return (
     <section className="pt-2 pb-3">
       <div className="flex justify-center">
-        <button
-          type="button"
-          onClick={onOpen}
-          disabled={isGenerating}
-          className={`group inline-flex items-center rounded-full border-2 transition-all duration-500 ease-out ${
-            isGenerating
-              ? isDark
-                ? 'cursor-not-allowed border-violet-500/55 px-5 py-3 shadow-[0_0_18px_rgba(139,92,246,0.45),0_0_0_1px_rgba(139,92,246,0.2)]'
-                : 'cursor-not-allowed border-violet-500/50 px-5 py-3 shadow-[0_0_16px_rgba(139,92,246,0.35),0_0_0_1px_rgba(139,92,246,0.18)]'
-              : isDark
-                ? 'border-transparent px-4 py-3 hover:border-violet-500/65 hover:px-7 hover:shadow-[0_0_22px_rgba(139,92,246,0.5),0_0_0_1px_rgba(139,92,246,0.22)]'
-                : 'border-transparent px-4 py-3 hover:border-violet-500/55 hover:px-7 hover:shadow-[0_0_20px_rgba(139,92,246,0.38),0_0_0_1px_rgba(139,92,246,0.18)]'
-          }`}
+        {/* Outer container — not a button, so the icon is unconstrained */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={isGenerating ? undefined : onOpen}
+          onKeyDown={isGenerating ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') onOpen() }}
+          className={`group inline-flex items-center select-none ${isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          {/* Winged foot — glimmers when idle, spins slowly when generating */}
+          {/* Winged foot — standalone, glimmers+rattles when idle, spins when generating */}
           <span
             style={{
               animation: isGenerating
                 ? 'spin 3s linear infinite'
-                : 'footGlow 3s ease-in-out infinite',
+                : 'footGlow 3s ease-in-out infinite, footShake 4s ease-in-out infinite',
               display: 'block',
+              transformOrigin: 'center',
             }}
           >
-            <WingedFootIcon className="h-10 w-auto" />
+            <WingedFootIcon className="h-20 w-auto" />
           </span>
 
-          {/* Text — slides in on hover / always visible when generating */}
-          <span
-            className={`whitespace-nowrap font-bold text-lg tracking-wide transition-all duration-500 ${
+          {/* Text with snake border — slides in on hover / always visible when generating */}
+          <div
+            className={`overflow-hidden transition-all duration-500 ease-out ${
               isGenerating
-                ? isDark
-                  ? 'ml-4 max-w-[20rem] opacity-100 text-violet-300'
-                  : 'ml-4 max-w-[20rem] opacity-100 text-violet-600'
-                : isDark
-                  ? 'ml-0 max-w-0 overflow-hidden opacity-0 text-violet-300 group-hover:ml-4 group-hover:max-w-[20rem] group-hover:opacity-100'
-                  : 'ml-0 max-w-0 overflow-hidden opacity-0 text-violet-700 group-hover:ml-4 group-hover:max-w-[20rem] group-hover:opacity-100'
+                ? 'ml-5 max-w-[22rem] opacity-100'
+                : 'ml-0 max-w-0 opacity-0 group-hover:ml-5 group-hover:max-w-[22rem] group-hover:opacity-100'
             }`}
           >
-            {isGenerating ? 'Generating…' : 'I want to move it, move it'}
-          </span>
-        </button>
+            {/* Snake border wrapper: rotating conic gradient clipped to rounded rect */}
+            <div className="relative overflow-hidden rounded-2xl p-[2px]">
+              {/* Rotating gradient — only the "snake" arc is colored, rest is transparent */}
+              <div
+                className="pointer-events-none absolute"
+                style={{
+                  width: '400%',
+                  height: '400%',
+                  top: '-150%',
+                  left: '-150%',
+                  background: isDark
+                    ? 'conic-gradient(transparent 0deg, transparent 205deg, #7c3aed 242deg, #c084fc 268deg, #e879f9 278deg, #c084fc 292deg, #7c3aed 318deg, transparent 355deg)'
+                    : 'conic-gradient(transparent 0deg, transparent 205deg, #5b21b6 242deg, #7c3aed 268deg, #8b5cf6 278deg, #7c3aed 292deg, #5b21b6 318deg, transparent 355deg)',
+                  animation: 'snakeRotate 2.2s linear infinite',
+                  transformOrigin: 'center',
+                }}
+              />
+              {/* Inner fill masks the center — color must match page background */}
+              <div className={`relative rounded-[14px] px-5 py-2.5 ${isDark ? 'bg-[#1c1628]' : 'bg-[#f4f0ff]'}`}>
+                <span
+                  className={`whitespace-nowrap font-bold text-lg tracking-wide ${
+                    isDark ? 'text-violet-300' : 'text-violet-700'
+                  }`}
+                >
+                  {isGenerating ? 'Generating…' : 'I want to move it, move it'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )
@@ -1815,21 +1847,19 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
   if (!Array.isArray(weeklyPlans) || weeklyPlans.length === 0) return null
   const isDark = theme === 'dark'
   const weekdayHeadings = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const currentWeekPlan = weeklyPlans[0]
-  const futureWeekPlans = weeklyPlans.slice(1)
-  const currentWeekCards = Array.isArray(currentWeekPlan?.days) ? currentWeekPlan.days : []
-  const [isFuturePlannerExpanded, setIsFuturePlannerExpanded] = useState(false)
-  const [selectedFutureWeekIndex, setSelectedFutureWeekIndex] = useState(0)
+
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0)
 
   useEffect(() => {
-    setIsFuturePlannerExpanded(false)
-    setSelectedFutureWeekIndex(0)
+    setSelectedWeekIndex(0)
   }, [weeklyPlans?.[0]?.week_key])
 
-  const safeFutureIndex = Math.min(selectedFutureWeekIndex, Math.max(0, futureWeekPlans.length - 1))
-  const selectedFutureWeek = futureWeekPlans[safeFutureIndex] || null
-  const selectedFutureFocus = selectedFutureWeek?.weekly_focus || {}
-  const selectedFutureProjection = selectedFutureWeek?.future_projection || {}
+  const safeIndex = Math.min(selectedWeekIndex, weeklyPlans.length - 1)
+  const selectedWeek = weeklyPlans[safeIndex]
+  const isCurrentWeek = safeIndex === 0
+  const weekCards = Array.isArray(selectedWeek?.days) ? selectedWeek.days : []
+  const futureFocus = selectedWeek?.weekly_focus || {}
+  const futureProjection = selectedWeek?.future_projection || {}
 
   return (
     <section className={`mt-10 rounded-[2.3rem] border px-6 py-7 shadow-sm md:px-8 ${isDark ? `border-neutral-800 bg-neutral-900/95 ${darkGlow(true)}` : `border-neutral-200 bg-white/95 ${lightGlow(true)}`}`}>
@@ -1838,119 +1868,97 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
           <div className="mt-5 flex flex-wrap items-center gap-4">
             <p className={`text-lg font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-              {formatWeekSpan(currentWeekCards)}
+              {isCurrentWeek ? formatWeekSpan(weekCards) : formatRoadmapWeekSpan(selectedWeek)}
             </p>
-            {currentWeekPlan?.is_current_week ? (
+            {isCurrentWeek ? (
               <div className={`inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500/85' : 'text-neutral-500/85'}`}>
                 <span className="h-2 w-2 rounded-full bg-violet-500" />
                 <span>This Week</span>
               </div>
-            ) : null}
+            ) : (
+              <span className={`text-xs font-semibold ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                Week {safeIndex + 1} <span className="font-normal">/ {weeklyPlans.length}</span>
+              </span>
+            )}
           </div>
         </div>
+
+        {weeklyPlans.length > 1 ? (
+          <div className="flex items-center gap-2 self-start mt-1">
+            <button
+              type="button"
+              onClick={() => setSelectedWeekIndex((v) => Math.max(0, v - 1))}
+              disabled={safeIndex === 0}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                safeIndex === 0
+                  ? isDark ? 'cursor-not-allowed border-neutral-800 text-neutral-700' : 'cursor-not-allowed border-neutral-200 text-neutral-300'
+                  : isDark ? 'border-neutral-700 text-neutral-300 hover:border-violet-500 hover:text-violet-300' : 'border-neutral-300 text-neutral-600 hover:border-violet-400 hover:text-violet-700'
+              }`}
+              aria-label="Previous week"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.5 5l-5 5 5 5" /></svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedWeekIndex((v) => Math.min(weeklyPlans.length - 1, v + 1))}
+              disabled={safeIndex === weeklyPlans.length - 1}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                safeIndex === weeklyPlans.length - 1
+                  ? isDark ? 'cursor-not-allowed border-neutral-800 text-neutral-700' : 'cursor-not-allowed border-neutral-200 text-neutral-300'
+                  : isDark ? 'border-neutral-700 text-neutral-300 hover:border-violet-500 hover:text-violet-300' : 'border-neutral-300 text-neutral-600 hover:border-violet-400 hover:text-violet-700'
+              }`}
+              aria-label="Next week"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 5l5 5-5 5" /></svg>
+            </button>
+          </div>
+        ) : null}
       </div>
 
-      <div className={`mt-8 overflow-hidden rounded-[1.8rem] border ${isDark ? `border-neutral-800 bg-neutral-950 ${darkGlow(true)}` : `border-neutral-200 bg-stone-50 ${lightGlow(true)}`}`}>
-        <div className="overflow-x-auto p-5">
-        <div className="grid min-w-[46rem] grid-cols-7 gap-2 xl:gap-3">
+      <div className="mt-8 overflow-x-auto">
+        {isCurrentWeek ? (
+          <div className="grid min-w-[46rem] grid-cols-7 gap-2 xl:gap-3">
             {weekdayHeadings.map((heading) => (
               <p key={heading} className={`text-center text-sm font-semibold uppercase tracking-[0.14em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
                 {heading}
               </p>
             ))}
-            {currentWeekCards.map((card) => (
+            {weekCards.map((card) => (
               <CalendarCard key={card.day} card={card} theme={theme} />
             ))}
-        </div>
-
-        {futureWeekPlans.length > 0 ? (
-          <div className={`mt-6 border-t pt-5 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-            {/* Future Planner header row */}
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                <svg viewBox="0 0 24 24" className={`h-4 w-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} fill="currentColor" aria-hidden="true">
-                  <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>
-                </svg>
-                <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                  Upcoming Weeks
-                </p>
-              </div>
-              {/* Week selector pills */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedFutureWeekIndex((v) => Math.max(0, v - 1))}
-                  disabled={safeFutureIndex === 0}
-                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${
-                    safeFutureIndex === 0
-                      ? isDark ? 'cursor-not-allowed border-neutral-800 text-neutral-700' : 'cursor-not-allowed border-neutral-200 text-neutral-300'
-                      : isDark ? 'border-neutral-700 text-neutral-300 hover:border-violet-500 hover:text-violet-300' : 'border-neutral-300 text-neutral-600 hover:border-violet-400 hover:text-violet-700'
-                  }`}
-                  aria-label="Previous future week"
-                >
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.5 5l-5 5 5 5" /></svg>
-                </button>
-                <span className={`min-w-[5.5rem] text-center text-xs font-semibold ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-                  Week {safeFutureIndex + 2} <span className={`font-normal ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>/ {weeklyPlans.length}</span>
+          </div>
+        ) : (
+          <div className={`rounded-[1.4rem] border px-6 py-6 ${isDark ? 'border-neutral-800 bg-neutral-950/60' : 'border-neutral-200 bg-white'}`}>
+            <p className={`text-[0.65rem] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+              {formatRoadmapWeekSpan(selectedWeek)}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${
+                isDark ? 'border-violet-800/70 bg-violet-950/40 text-violet-300' : 'border-violet-200 bg-violet-50 text-violet-800'
+              }`}>
+                {futureProjection.phaseTitle || selectedWeek?.focus_title || futureFocus.phase || 'Weekly Focus'}
+              </span>
+              {(futureProjection.targetMileage || futureProjection.longRunTarget) ? (
+                <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
+                  isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-300' : 'border-neutral-200 bg-neutral-50 text-neutral-600'
+                }`}>
+                  {[
+                    futureProjection.targetMileage ? `${trimNumber(futureProjection.targetMileage)} mi` : '',
+                    futureProjection.longRunTarget ? `${trimNumber(futureProjection.longRunTarget)} mi long` : '',
+                  ].filter(Boolean).join(' · ')}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedFutureWeekIndex((v) => Math.min(futureWeekPlans.length - 1, v + 1))}
-                  disabled={safeFutureIndex === futureWeekPlans.length - 1}
-                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${
-                    safeFutureIndex === futureWeekPlans.length - 1
-                      ? isDark ? 'cursor-not-allowed border-neutral-800 text-neutral-700' : 'cursor-not-allowed border-neutral-200 text-neutral-300'
-                      : isDark ? 'border-neutral-700 text-neutral-300 hover:border-violet-500 hover:text-violet-300' : 'border-neutral-300 text-neutral-600 hover:border-violet-400 hover:text-violet-700'
-                  }`}
-                  aria-label="Next future week"
-                >
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 5l5 5-5 5" /></svg>
-                </button>
-              </div>
+              ) : null}
             </div>
-
-            {/* Future week content — always visible, no expand/collapse */}
-            {selectedFutureWeek ? (
-              <div className={`rounded-[1.2rem] border px-5 py-4 ${isDark ? 'border-neutral-800 bg-neutral-950/60' : 'border-neutral-200 bg-white'}`}>
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-[0.65rem] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
-                      {formatRoadmapWeekSpan(selectedFutureWeek)}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${
-                        isDark
-                          ? 'border-violet-800/70 bg-violet-950/40 text-violet-300'
-                          : 'border-violet-200 bg-violet-50 text-violet-800'
-                      }`}>
-                        {selectedFutureProjection.phaseTitle || selectedFutureWeek?.focus_title || selectedFutureFocus.phase || 'Weekly focus'}
-                      </span>
-                      {(selectedFutureProjection.targetMileage || selectedFutureProjection.longRunTarget) ? (
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
-                          isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-300' : 'border-neutral-200 bg-neutral-50 text-neutral-600'
-                        }`}>
-                          {[
-                            selectedFutureProjection.targetMileage ? `${trimNumber(selectedFutureProjection.targetMileage)} mi` : '',
-                            selectedFutureProjection.longRunTarget ? `${trimNumber(selectedFutureProjection.longRunTarget)} mi long` : '',
-                          ].filter(Boolean).join(' · ')}
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className={`mt-3 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                      {selectedFutureWeek?.focus_summary || selectedFutureProjection.summary || selectedFutureFocus.progression_note || selectedFutureFocus.race_connection || 'Future guidance will appear here.'}
-                    </p>
-                    {selectedFutureProjection.keySessionSummary ? (
-                      <p className={`mt-2 text-[0.68rem] font-medium uppercase tracking-[0.14em] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
-                        {selectedFutureProjection.keySessionSummary}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
+            <p className={`mt-4 text-sm leading-7 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+              {selectedWeek?.focus_summary || futureProjection.summary || futureFocus.progression_note || futureFocus.race_connection || 'Future guidance will appear here.'}
+            </p>
+            {futureProjection.keySessionSummary ? (
+              <p className={`mt-2 text-[0.68rem] font-medium uppercase tracking-[0.14em] ${isDark ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                {futureProjection.keySessionSummary}
+              </p>
             ) : null}
           </div>
-        ) : null}
-      </div>
+        )}
       </div>
     </section>
   )
