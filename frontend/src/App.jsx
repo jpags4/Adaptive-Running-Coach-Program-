@@ -25,24 +25,16 @@ function GlobalUiStyles() {
         }
       }
 
-      @keyframes footGlow {
-        0%, 100% {
-          filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.7));
-          color: #8b5cf6;
-        }
-        50% {
-          filter: drop-shadow(0 0 16px rgba(192, 132, 252, 1.0)) drop-shadow(0 0 30px rgba(139, 92, 246, 0.5));
-          color: #c084fc;
-        }
+      @keyframes iconVioletSweepDark {
+        0%, 100% { color: #8b5cf6; }
+        33% { color: #c084fc; }
+        66% { color: #7c3aed; }
       }
 
-      @keyframes footShake {
-        0%, 70%, 100% { transform: rotate(-14deg) translateX(0); }
-        72% { transform: rotate(-22deg) translateX(-4px); }
-        74% { transform: rotate(-6deg) translateX(4px); }
-        76% { transform: rotate(-20deg) translateX(-3px); }
-        78% { transform: rotate(-8deg) translateX(3px); }
-        80% { transform: rotate(-14deg) translateX(0); }
+      @keyframes iconVioletSweepLight {
+        0%, 100% { color: #6d28d9; }
+        33% { color: #7c3aed; }
+        66% { color: #4f46e5; }
       }
 
       @keyframes snakeRotate {
@@ -1061,70 +1053,91 @@ function PromptButton({ active, onClick, children, theme = 'light' }) {
   )
 }
 
+function SnakeBorderButton({ isDark, label }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl p-[2px]">
+      {/* Rotating conic-gradient snake */}
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          width: '400%',
+          height: '400%',
+          top: '-150%',
+          left: '-150%',
+          background: isDark
+            ? 'conic-gradient(transparent 0deg, transparent 205deg, #7c3aed 242deg, #c084fc 268deg, #e879f9 278deg, #c084fc 292deg, #7c3aed 318deg, transparent 355deg)'
+            : 'conic-gradient(transparent 0deg, transparent 205deg, #5b21b6 242deg, #7c3aed 268deg, #8b5cf6 278deg, #7c3aed 292deg, #5b21b6 318deg, transparent 355deg)',
+          animation: 'snakeRotate 2.2s linear infinite',
+          transformOrigin: 'center',
+        }}
+      />
+      <div className={`relative rounded-[14px] px-6 py-3 ${isDark ? 'bg-[#1c1628]' : 'bg-[#f4f0ff]'}`}>
+        <span className={`whitespace-nowrap font-bold text-xl tracking-wide ${isDark ? 'text-violet-300' : 'text-violet-700'}`}>
+          {label}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = false, isGenerating = false }) {
   const isDark = theme === 'dark'
   if (hasRecommendation) return null
 
+  const shimmer = isDark
+    ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
+    : 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#171717_0%,#7c3aed_28%,#4f46e5_50%,#7c3aed_72%,#171717_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
+
   return (
     <section className="pt-2 pb-3">
       <div className="flex justify-center">
-        {/* Outer container — not a button, so the icon is unconstrained */}
         <div
           role="button"
           tabIndex={0}
           onClick={isGenerating ? undefined : onOpen}
           onKeyDown={isGenerating ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') onOpen() }}
-          className={`group inline-flex items-center select-none ${isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`group relative inline-block overflow-hidden select-none ${isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          {/* Winged foot — standalone, glimmers+rattles when idle, spins when generating */}
-          <span
-            style={{
-              animation: isGenerating
-                ? 'spin 3s linear infinite'
-                : 'footGlow 3s ease-in-out infinite, footShake 4s ease-in-out infinite',
-              display: 'block',
-              transformOrigin: 'center',
-            }}
-          >
-            <WingedFootIcon className="h-20 w-auto" />
-          </span>
+          {/* ── IDLE STATE: Generate | Foot | Recommendation ── */}
+          {!isGenerating && (
+            <div className="flex items-center justify-center gap-5 transition-opacity duration-300 group-hover:opacity-0 group-hover:pointer-events-none">
+              {/* "Generate" with violetCurrent shimmer */}
+              <span className={`text-3xl font-bold tracking-tight ${shimmer}`}>
+                Generate
+              </span>
 
-          {/* Text with snake border — slides in on hover / always visible when generating */}
-          <div
-            className={`overflow-hidden transition-all duration-500 ease-out ${
-              isGenerating
-                ? 'ml-5 max-w-[22rem] opacity-100'
-                : 'ml-0 max-w-0 opacity-0 group-hover:ml-5 group-hover:max-w-[22rem] group-hover:opacity-100'
-            }`}
-          >
-            {/* Snake border wrapper: rotating conic gradient clipped to rounded rect */}
-            <div className="relative overflow-hidden rounded-2xl p-[2px]">
-              {/* Rotating gradient — only the "snake" arc is colored, rest is transparent */}
-              <div
-                className="pointer-events-none absolute"
+              {/* Winged foot — color-sweep shimmer, runs off right on hover */}
+              <span
+                className="inline-block transition-[transform,opacity] duration-500 ease-in group-hover:translate-x-[600%] group-hover:opacity-0"
                 style={{
-                  width: '400%',
-                  height: '400%',
-                  top: '-150%',
-                  left: '-150%',
-                  background: isDark
-                    ? 'conic-gradient(transparent 0deg, transparent 205deg, #7c3aed 242deg, #c084fc 268deg, #e879f9 278deg, #c084fc 292deg, #7c3aed 318deg, transparent 355deg)'
-                    : 'conic-gradient(transparent 0deg, transparent 205deg, #5b21b6 242deg, #7c3aed 268deg, #8b5cf6 278deg, #7c3aed 292deg, #5b21b6 318deg, transparent 355deg)',
-                  animation: 'snakeRotate 2.2s linear infinite',
-                  transformOrigin: 'center',
+                  animation: isDark
+                    ? 'iconVioletSweepDark 6s linear infinite'
+                    : 'iconVioletSweepLight 6s linear infinite',
                 }}
-              />
-              {/* Inner fill masks the center — color must match page background */}
-              <div className={`relative rounded-[14px] px-5 py-2.5 ${isDark ? 'bg-[#1c1628]' : 'bg-[#f4f0ff]'}`}>
-                <span
-                  className={`whitespace-nowrap font-bold text-lg tracking-wide ${
-                    isDark ? 'text-violet-300' : 'text-violet-700'
-                  }`}
-                >
-                  {isGenerating ? 'Generating…' : 'I want to move it, move it'}
-                </span>
-              </div>
+              >
+                <WingedFootIcon className="h-20 w-auto" />
+              </span>
+
+              {/* "Recommendation" with violetCurrent shimmer */}
+              <span className={`text-3xl font-bold tracking-tight ${shimmer}`}>
+                Recommendation
+              </span>
             </div>
+          )}
+
+          {/* ── HOVER / GENERATING STATE: Snake border button ── */}
+          <div
+            className={`flex items-center justify-center transition-opacity duration-300 ${
+              isGenerating
+                ? 'opacity-100 pointer-events-auto'
+                : 'absolute inset-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
+            }`}
+            style={{ transitionDelay: isGenerating ? '0ms' : '120ms' }}
+          >
+            <SnakeBorderButton
+              isDark={isDark}
+              label={isGenerating ? 'Generating…' : 'I want to move it, move it'}
+            />
           </div>
         </div>
       </div>
