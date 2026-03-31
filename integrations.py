@@ -348,8 +348,8 @@ def fetch_whoop_snapshot(
             allow_insecure_ssl=allow_insecure_ssl,
             user_agent=user_agent,
         )
-    except HTTPError as exc:
-        raise RuntimeError(f"WHOOP cycle request failed with HTTP {exc.code}. Check that read:cycles is enabled in your WHOOP app.") from exc
+    except Exception:
+        cycles = {"records": []}
     try:
         workouts = _get_json(
             "https://api.prod.whoop.com/developer/v2/activity/workout?limit=25",
@@ -536,11 +536,13 @@ def whoop_metrics_to_model(snapshot: dict) -> list[RecoveryMetrics]:
         score = recovery.get("score", {})
         cycle_score = cycle.get("score", {})
 
-        asleep_ms = (
-            sleep.get("score", {}).get("stage_summary", {}).get("total_in_bed_time_milli")
-            or sleep.get("score", {}).get("sleep_needed", {}).get("sleep_needed_milli")
-            or 0
-        )
+        stage_summary = sleep.get("score", {}).get("stage_summary", {})
+        light_ms = stage_summary.get("total_light_sleep_time_milli") or 0
+        sws_ms = stage_summary.get("total_slow_wave_sleep_time_milli") or 0
+        rem_ms = stage_summary.get("total_rem_sleep_time_milli") or 0
+        asleep_ms = light_ms + sws_ms + rem_ms
+        if not asleep_ms:
+            asleep_ms = sleep.get("score", {}).get("sleep_needed", {}).get("sleep_needed_milli") or 0
 
         metrics.append(
             RecoveryMetrics(

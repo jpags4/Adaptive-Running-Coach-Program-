@@ -10,6 +10,9 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from coach import (
     Recommendation,
     WeeklyIntent,
@@ -2362,8 +2365,56 @@ def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     server.serve_forever()
 
 
+def _bootstrap_tokens_from_env() -> None:
+    """Seed Strava/WHOOP tokens from env refresh tokens if the DB has none.
+
+    This lets a fresh local environment come up fully connected after just
+    filling in .env — no manual OAuth dance required.
+    """
+    from integrations import refresh_strava_token, refresh_whoop_token
+
+    strava_refresh = os.environ.get("STRAVA_REFRESH_TOKEN", "").strip()
+    whoop_refresh = os.environ.get("WHOOP_REFRESH_TOKEN", "").strip()
+    if not strava_refresh and not whoop_refresh:
+        return
+
+    tokens = load_tokens()
+    settings = load_settings()
+    changed = False
+
+    if strava_refresh and not tokens.get("strava"):
+        try:
+            refreshed = refresh_strava_token(
+                settings["strava"]["client_id"],
+                settings["strava"]["client_secret"],
+                strava_refresh,
+            )
+            tokens["strava"] = refreshed
+            changed = True
+            print("[startup] Bootstrapped Strava tokens from STRAVA_REFRESH_TOKEN.")
+        except Exception as exc:
+            print(f"[startup] Warning: could not bootstrap Strava token: {exc}")
+
+    if whoop_refresh and not tokens.get("whoop"):
+        try:
+            refreshed = refresh_whoop_token(
+                settings["whoop"]["client_id"],
+                settings["whoop"]["client_secret"],
+                whoop_refresh,
+            )
+            tokens["whoop"] = refreshed
+            changed = True
+            print("[startup] Bootstrapped WHOOP tokens from WHOOP_REFRESH_TOKEN.")
+        except Exception as exc:
+            print(f"[startup] Warning: could not bootstrap WHOOP token: {exc}")
+
+    if changed:
+        save_tokens(tokens)
+
+
 if __name__ == "__main__":
     init_storage()
+    _bootstrap_tokens_from_env()
     default_host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
     run_server(
         host=os.environ.get("HOST", default_host),
