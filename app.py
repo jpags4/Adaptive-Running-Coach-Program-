@@ -839,6 +839,8 @@ def _recommendation_training_context(activity_feed: list[dict], today_iso: str) 
     strength_days_last_two: set[str] = set()
     today_has_strength = False
     today_strain_values: list[float] = []
+    today_run_miles: float = 0.0
+    today_activity_summaries: list[str] = []
 
     for item in activity_feed:
         day = str(item.get("day") or "")
@@ -856,6 +858,22 @@ def _recommendation_training_context(activity_feed: list[dict], today_iso: str) 
             except (TypeError, ValueError):
                 pass
 
+        if day == today_iso:
+            name = str(item.get("name") or "Activity")
+            miles = float(item.get("distance_miles") or 0.0)
+            duration = int(item.get("duration_minutes") or 0)
+            if kind == "run" and miles > 0:
+                today_run_miles += miles
+                today_activity_summaries.append(
+                    f"{name}: {miles:.1f} miles" + (f" in {duration} min" if duration else "")
+                )
+            elif kind == "strength":
+                today_activity_summaries.append(f"{name}: strength session" + (f" ({duration} min)" if duration else ""))
+            elif miles > 0:
+                today_activity_summaries.append(f"{name}: {miles:.1f} miles ({kind})")
+            elif duration > 0:
+                today_activity_summaries.append(f"{name}: {duration} min ({kind})")
+
         if kind != "strength":
             continue
 
@@ -871,6 +889,8 @@ def _recommendation_training_context(activity_feed: list[dict], today_iso: str) 
         "strength_sessions_last_2_days": len(strength_days_last_two),
         "has_strength_activity_today": today_has_strength,
         "today_completed_strain": round(max(today_strain_values or [0.0]), 1),
+        "today_completed_run_miles": round(today_run_miles, 1),
+        "today_completed_activities": today_activity_summaries,
     }
 
 

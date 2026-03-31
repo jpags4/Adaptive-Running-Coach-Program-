@@ -996,6 +996,19 @@ def _format_recent_runs_text(runs: list[Run], today: date, days: int = 14) -> st
     return "\n".join(lines)
 
 
+def _format_completed_activities_text(feedback: dict | None) -> str:
+    if not feedback:
+        return "  None logged yet today."
+    activities = list(feedback.get("today_completed_activities") or [])
+    run_miles = float(feedback.get("today_completed_run_miles") or 0.0)
+    if not activities:
+        return "  None logged yet today."
+    lines = [f"  • {a}" for a in activities]
+    if run_miles > 0:
+        lines.append(f"  Total run miles logged today: {run_miles:.1f}")
+    return "\n".join(lines)
+
+
 def _format_checkin_text(feedback: dict | None) -> str:
     if not feedback:
         return "  No check-in submitted. Treat physical score as 7 and mental score as 7."
@@ -1110,6 +1123,11 @@ CONSISTENCY RULE: Given identical inputs you must always produce identical outpu
 
 DECISION FRAMEWORK — apply each step in order, each step overrides or adjusts the previous:
 
+STEP 0 — Check TODAY'S COMPLETED ACTIVITIES first:
+  If the athlete has already completed activities today that meet or exceed today's planned training load (within 85% of planned miles, or the full planned session if non-running), set `day_sufficient: true`.
+  When `day_sufficient: true`, all other fields should still be filled with reasonable values (use the completed work as the workout description), but the recommendation is informational only — no additional training is being prescribed.
+  If no activities are completed today, or the completed load is clearly below plan, set `day_sufficient: false` and continue with steps 1-6 normally.
+
 STEP 1 — Start with today's planned session from the weekly training plan.
 
 STEP 2 — Apply WHOOP recovery adjustment to today's planned session:
@@ -1153,6 +1171,7 @@ OUTPUT FIELDS:
   explanation_sections: object with keys "overall", "run", "pace", "lift", "recovery" — each a 1-2 sentence string
   warnings: list of warning strings (empty list if none)
   confidence: "high" if inputs are clear and consistent, "medium" if any uncertainty, "low" if significant conflicts
+  day_sufficient: true if the athlete's completed activities today already meet or exceed today's planned training load (see STEP 0); false otherwise
 
 Output only a valid JSON object. No markdown, no preamble, no extra keys."""
 
@@ -1190,6 +1209,9 @@ RECENT WHOOP DATA (last 7 days, most recent first):
 
 RECENT RUNS (last 14 days, most recent first):
 {_format_recent_runs_text(runs, today)}
+
+TODAY'S COMPLETED ACTIVITIES:
+{_format_completed_activities_text(subjective_feedback)}
 
 TODAY'S CHECK-IN:
 {_format_checkin_text(subjective_feedback)}
@@ -1269,6 +1291,7 @@ def _build_recommendation_from_gpt(
             "reschedule_suggestion": _reschedule_guidance(weekly_intent, "supported"),
         },
         primary_modality="run" if float(raw["run_distance_miles"]) > 0 else ("bike" if "bike" in str(raw["workout"]).lower() else "strength" if float(raw["run_distance_miles"]) == 0 else "run"),
+        day_sufficient=bool(raw.get("day_sufficient", False)),
     )
 
 

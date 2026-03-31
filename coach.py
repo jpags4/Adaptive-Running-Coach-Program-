@@ -123,6 +123,7 @@ class Recommendation:
     bike_zone: str = ""
     bike_cadence: str = ""
     endurance_notes: list[str] = field(default_factory=list)
+    day_sufficient: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -153,6 +154,7 @@ def recommendation_from_dict(payload: dict) -> Recommendation:
         bike_zone=payload.get("bike_zone", ""),
         bike_cadence=payload.get("bike_cadence", ""),
         endurance_notes=list(payload.get("endurance_notes", [])),
+        day_sufficient=bool(payload.get("day_sufficient", False)),
     )
 
 

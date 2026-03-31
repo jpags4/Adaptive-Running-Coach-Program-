@@ -261,6 +261,40 @@ function WingedFootIcon({ className = '' }) {
   )
 }
 
+function DaySufficientDisplay({ theme = 'light' }) {
+  const isDark = theme === 'dark'
+  const message = "You killed it today. Focus on resting and fueling so that you can attack tomorrow's plan."
+  const [started, setStarted] = useState(false)
+  const { typed } = useTypedText(message, started, 26)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setStarted(true), 400)
+    return () => window.clearTimeout(id)
+  }, [])
+
+  const shimmer = isDark
+    ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
+    : 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#171717_0%,#7c3aed_28%,#4f46e5_50%,#7c3aed_72%,#171717_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
+
+  return (
+    <section className="pt-2 pb-3">
+      <div className="flex flex-col items-center gap-4">
+        {/* Winged foot — centered, color sweep */}
+        <span style={{ animation: isDark ? 'iconVioletSweepDark 6s linear infinite' : 'iconVioletSweepLight 6s linear infinite', display: 'block' }}>
+          <WingedFootIcon className="h-20 w-auto" />
+        </span>
+        {/* Typed message — centered, shimmer */}
+        <div className="max-w-lg text-center">
+          <p className="relative text-xl font-semibold leading-relaxed tracking-tight">
+            <span aria-hidden="true" className="block select-none opacity-0">{message}</span>
+            <span className={`absolute inset-0 ${shimmer}`}>{typed || '\u00A0'}</span>
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function DumbbellIcon({ className = 'h-5 w-5' }) {
   return (
     <svg
@@ -3389,15 +3423,19 @@ export default function App() {
           />
 
         {recommendationData ? (
-          <div className="mt-2">
-            <TrainingCard
-              recommendation={recommendationData}
-              recommendationExplanation={summaryData.recommendation_explanation}
-              today={summaryData.today}
-              onUpdateCheckIn={() => setIsCheckInModalOpen(true)}
-              theme={theme}
-            />
-          </div>
+          recommendationData.day_sufficient ? (
+            <DaySufficientDisplay theme={theme} />
+          ) : (
+            <div className="mt-2">
+              <TrainingCard
+                recommendation={recommendationData}
+                recommendationExplanation={summaryData.recommendation_explanation}
+                today={summaryData.today}
+                onUpdateCheckIn={() => setIsCheckInModalOpen(true)}
+                theme={theme}
+              />
+            </div>
+          )
         ) : null}
 
         <FadeSection>
