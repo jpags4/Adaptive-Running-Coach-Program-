@@ -1057,11 +1057,52 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
   )
 }
 
+function SurveySlider({ label, lowLabel, highLabel, value, onChange, isDark }) {
+  const pct = ((value - 1) / 9) * 100
+  const sliderColor = value <= 4 ? '#ef4444' : value <= 6 ? '#f59e0b' : '#22c55e'
+  const dotBg = value <= 4 ? 'bg-red-500' : value <= 6 ? 'bg-amber-400' : 'bg-emerald-500'
+  const dotGlow = value <= 4
+    ? 'shadow-[0_0_8px_2px_rgba(239,68,68,0.75)]'
+    : value <= 6
+    ? 'shadow-[0_0_8px_2px_rgba(245,158,11,0.75)]'
+    : 'shadow-[0_0_8px_2px_rgba(34,197,94,0.75)]'
+  const trackBg = isDark ? '#2a2a2a' : '#e5e5e5'
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          {label}
+        </p>
+        <span className={`h-3 w-3 rounded-full ${dotBg} ${dotGlow} transition-all duration-200`} />
+      </div>
+      <input
+        type="range"
+        min="1"
+        max="10"
+        step="1"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full cursor-pointer appearance-none rounded-full"
+        style={{
+          height: '6px',
+          background: `linear-gradient(to right, ${sliderColor} ${pct}%, ${trackBg} ${pct}%)`,
+          accentColor: sliderColor,
+        }}
+      />
+      <div className="mt-3 flex items-center justify-between">
+        <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{lowLabel}</span>
+        <span className={`text-sm font-semibold tabular-nums ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>{value} / 10</span>
+        <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>{highLabel}</span>
+      </div>
+    </div>
+  )
+}
+
 function CheckInModal({
   isOpen,
   physicalFeeling,
   mentalFeeling,
-  notes,
   hasPain,
   painSeverity,
   painLocation,
@@ -1072,7 +1113,6 @@ function CheckInModal({
   onClose,
   onPhysicalChange,
   onMentalChange,
-  onNotesChange,
   onHasPainChange,
   onPainSeverityChange,
   onPainLocationChange,
@@ -1084,19 +1124,6 @@ function CheckInModal({
 }) {
   const isDark = theme === 'dark'
   if (!isOpen) return null
-  const legsOptions = ['fresh', 'normal', 'heavy', 'sore']
-  const mentalOptions = ['sharp', 'steady', 'stressed', 'drained']
-
-  const choiceButtonClasses = (active) =>
-    `min-h-[4.1rem] w-full rounded-[1.35rem] border px-4 py-4 text-left text-base font-medium transition duration-150 ${
-      active
-        ? isDark
-          ? 'border-violet-500/70 bg-violet-600/90 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.3),0_8px_28px_rgba(109,40,217,0.4)]'
-          : 'border-violet-300 bg-violet-600 text-white shadow-[0_10px_28px_rgba(109,40,217,0.22)]'
-        : isDark
-          ? 'border-neutral-700/60 bg-neutral-900/70 text-neutral-300 hover:border-violet-500/50 hover:bg-neutral-800/80 hover:text-white hover:shadow-[0_0_0_1px_rgba(168,85,247,0.15)]'
-          : 'border-neutral-200 bg-stone-50 text-neutral-700 hover:border-violet-300 hover:text-neutral-950'
-    }`
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
@@ -1106,25 +1133,21 @@ function CheckInModal({
         onClick={onClose}
         className="absolute inset-0 bg-neutral-950/45 backdrop-blur-sm"
       />
-      <section className={`relative z-10 flex max-h-[90vh] w-full max-w-[72rem] flex-col overflow-hidden rounded-[2rem] border shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
+      <section className={`relative z-10 flex max-h-[90vh] w-full max-w-[52rem] flex-col overflow-hidden rounded-[2rem] border shadow-[0_30px_120px_rgba(0,0,0,0.22)] ${
         isDark ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-200 bg-white/98'
       }`}>
         <div
-          className="recommendation-modal-scroll flex-1 overflow-y-auto px-7 pb-0 pt-7 md:px-8 md:pt-8"
+          className="recommendation-modal-scroll flex-1 overflow-y-auto px-7 pb-0 pt-7 md:px-10 md:pt-9"
           style={{ background: isDark ? 'linear-gradient(180deg, #110f1b 0%, #0d0b14 100%)' : '#ffffff' }}
         >
           <div className="flex items-start justify-between gap-6">
-            <div className="max-w-3xl">
+            <div>
               <p className={`text-sm font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-                Recommendation Prompts
+                Daily Check-In
               </p>
-              <h2 className={`mt-4 max-w-4xl text-[2.45rem] font-semibold leading-[1.08] tracking-tight md:text-[2.85rem] ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-                Fill this out, then generate today&apos;s recommendation.
+              <h2 className={`mt-3 text-[2.1rem] font-semibold leading-[1.1] tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                How are you feeling today?
               </h2>
-              <p className={`mt-4 max-w-3xl text-[1.04rem] leading-8 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                Your biometrics and recent running load are already on the page. These prompts let the model account
-                for how your legs feel, how your head feels, and anything else you want it to weigh.
-              </p>
             </div>
             <button
               type="button"
@@ -1134,54 +1157,40 @@ function CheckInModal({
                   ? 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-violet-500 hover:text-white'
                   : 'border-neutral-200 bg-white text-neutral-500 hover:border-violet-300 hover:text-neutral-900'
               }`}
-              aria-label="Close recommendation prompts"
+              aria-label="Close"
             >
               ×
             </button>
           </div>
 
-          <div className="mt-9 grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <div>
-              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                How do your legs feel?
-              </p>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {legsOptions.map((option) => (
-                  <button key={option} type="button" onClick={() => onPhysicalChange(option)} className={choiceButtonClasses(physicalFeeling === option)}>
-                    {capitalize(option)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                What&apos;s your mental state?
-              </p>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {mentalOptions.map((option) => (
-                  <button key={option} type="button" onClick={() => onMentalChange(option)} className={choiceButtonClasses(mentalFeeling === option)}>
-                    {capitalize(option)}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="mt-9 space-y-9">
+            <SurveySlider
+              label="Legs"
+              lowLabel="Destroyed"
+              highLabel="Fresh"
+              value={physicalFeeling}
+              onChange={onPhysicalChange}
+              isDark={isDark}
+            />
+            <SurveySlider
+              label="Mind"
+              lowLabel="Drained"
+              highLabel="Sharp"
+              value={mentalFeeling}
+              onChange={onMentalChange}
+              isDark={isDark}
+            />
           </div>
 
-          <div className="mt-9">
+          <div className="mt-9 pb-6">
             <div
               className={`rounded-[1.75rem] border p-6 ${isDark ? 'border-neutral-700/50' : 'border-neutral-200 bg-stone-50/95'}`}
               style={isDark ? { background: 'linear-gradient(145deg, #1c1827 0%, #110f1b 100%)' } : undefined}
             >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="max-w-2xl">
-                  <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                    Pain check-in
-                  </p>
-                  <p className={`mt-2 text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                    Use this only if pain is part of today&apos;s training decision.
-                  </p>
-                </div>
+              <div className="flex items-center justify-between gap-4">
+                <p className={`text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                  Experiencing pain?
+                </p>
                 <button
                   type="button"
                   onClick={() => onHasPainChange(!hasPain)}
@@ -1196,15 +1205,15 @@ function CheckInModal({
                   }`}
                   aria-pressed={hasPain}
                 >
-                  <span> Pain present </span>
+                  <span>{hasPain ? 'Yes' : 'No'}</span>
                   <span className={`relative inline-flex h-6 w-11 rounded-full transition ${hasPain ? (isDark ? 'bg-violet-500/90' : 'bg-violet-500') : (isDark ? 'bg-neutral-800' : 'bg-neutral-300')}`}>
-                    <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${hasPain ? 'left-[1.35rem]' : 'left-0.5'}`} />
+                    <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all duration-200 ${hasPain ? 'left-[1.35rem]' : 'left-0.5'}`} />
                   </span>
                 </button>
               </div>
 
               <div className={`overflow-hidden transition-all duration-300 ${hasPain ? 'mt-6 max-h-[30rem] opacity-100' : 'max-h-0 opacity-0'}`}>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <div>
                     <label className={`text-xs font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
                       Severity
@@ -1234,55 +1243,34 @@ function CheckInModal({
                     </select>
                   </div>
                 </div>
-
                 <div className="mt-5 space-y-3">
                   <label className={`flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                     <input type="checkbox" checked={painWithRunning} onChange={(event) => onPainWithRunningChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
-                    Pain shows up when running
+                    Pain when running
                   </label>
                   <label className={`flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                     <input type="checkbox" checked={painWithWalking} onChange={(event) => onPainWithWalkingChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
-                    Pain shows up when walking
+                    Pain when walking
                   </label>
                   <label className={`flex items-center gap-3 text-sm ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                     <input type="checkbox" checked={painWithCycling} onChange={(event) => onPainWithCyclingChange(event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-violet-600 focus:ring-violet-500" />
-                    Pain shows up when cycling
+                    Pain when cycling
                   </label>
                 </div>
               </div>
             </div>
           </div>
-
-          <div className="mt-9 pb-6">
-            <label className={`block text-sm font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              Anything else the coach should know?
-            </label>
-            <textarea
-              value={notes}
-              onChange={(event) => onNotesChange(event.target.value)}
-              placeholder="Examples: poor sleep, lingering calf tightness, emotionally drained, limited time, want to lift arms only."
-              className={`mt-4 min-h-[8.5rem] w-full rounded-[1.5rem] border px-5 py-4 text-base leading-7 outline-none transition placeholder:text-neutral-600 focus:border-violet-500/60 focus:shadow-[0_0_0_1px_rgba(168,85,247,0.2)] ${
-                isDark
-                  ? 'border-neutral-700/60 bg-neutral-900/60 text-neutral-100'
-                  : 'border-neutral-200 bg-stone-50 text-neutral-800'
-              }`}
-            />
-          </div>
         </div>
 
         <div
-          className={`sticky bottom-0 border-t px-7 py-5 md:px-8 ${
-            isDark ? 'border-neutral-700/50' : 'border-neutral-200 bg-white/98'
-          }`}
+          className={`sticky bottom-0 border-t px-7 py-5 md:px-10 ${isDark ? 'border-neutral-700/50' : 'border-neutral-200 bg-white/98'}`}
           style={isDark ? { background: 'rgba(13, 11, 20, 0.98)' } : undefined}
         >
           <div className="flex flex-wrap items-center justify-between gap-4">
             <button
               type="button"
               onClick={onClose}
-              className={`text-sm font-medium transition ${
-                isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-950'
-              }`}
+              className={`text-sm font-medium transition ${isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-950'}`}
             >
               Cancel
             </button>
@@ -1292,18 +1280,14 @@ function CheckInModal({
               disabled={isGenerating}
               className={`inline-flex items-center gap-3 rounded-full px-7 py-4 text-sm font-semibold transition ${
                 isGenerating
-                  ? isDark
-                    ? 'cursor-not-allowed bg-neutral-800 text-neutral-500'
-                    : 'cursor-not-allowed bg-neutral-200 text-neutral-500'
-                  : isDark
-                    ? 'bg-violet-600 text-white shadow-[0_12px_28px_rgba(109,40,217,0.28)] hover:bg-violet-500'
-                    : 'bg-neutral-950 text-white shadow-[0_12px_28px_rgba(76,29,149,0.22)] hover:bg-neutral-800'
+                  ? isDark ? 'cursor-not-allowed bg-neutral-800 text-neutral-500' : 'cursor-not-allowed bg-neutral-200 text-neutral-500'
+                  : isDark ? 'bg-violet-600 text-white shadow-[0_12px_28px_rgba(109,40,217,0.28)] hover:bg-violet-500' : 'bg-neutral-950 text-white shadow-[0_12px_28px_rgba(76,29,149,0.22)] hover:bg-neutral-800'
               }`}
             >
               {isGenerating ? (
                 <>
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-700" />
-                  Generating Recommendation...
+                  Generating...
                 </>
               ) : (
                 'Generate Recommendation'
@@ -1816,29 +1800,6 @@ function MasterTrainingCalendar({ weeklyPlans, theme = 'light' }) {
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <h2 className={`text-4xl font-semibold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-neutral-950'}`}>Training Calendar</h2>
-          <div className={`mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-            {/* Intensity stripe legend */}
-            <LegendDot color="bg-emerald-500" label="Easy" />
-            <LegendDot color="bg-amber-400" label="Moderate" />
-            <LegendDot color="bg-rose-500" label="Hard" />
-            {/* Activity type icon legend */}
-            <span className={`h-4 w-px ${isDark ? 'bg-neutral-700' : 'bg-neutral-300'}`} aria-hidden="true" />
-            <LegendIcon
-              icon={<svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9 1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>}
-              label="Run"
-              color={isDark ? 'text-cyan-400' : 'text-cyan-600'}
-            />
-            <LegendIcon
-              icon={<svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29l-1.43-1.43z"/></svg>}
-              label="Weights"
-              color={isDark ? 'text-orange-400' : 'text-orange-600'}
-            />
-            <LegendIcon
-              icon={<svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4zm-1.97 11.48-1.7 3.02V16h-2v-3.5h2V11l1.7 3.02V13H14v1.5h-1.3v.98z"/></svg>}
-              label="Rest"
-              color={isDark ? 'text-neutral-500' : 'text-neutral-400'}
-            />
-          </div>
           <div className="mt-5 flex flex-wrap items-center gap-4">
             <p className={`text-lg font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
               {formatWeekSpan(currentWeekCards)}
@@ -2037,21 +1998,29 @@ function CalendarCard({ card, theme = 'light' }) {
   const stripeClass = calendarStripeClass(activities)
   const date = new Date(`${card.day}T12:00:00`)
   const isToday = card.day === localDateKey()
+  const isRest = activities.length === 0 && !isToday
   const weekdayShort = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date).toUpperCase()
   const dayNumber = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date)
 
   return (
     <div
-      className={`relative min-h-[15rem] overflow-hidden rounded-[1.3rem] border px-2.5 pb-3 pt-2.5 shadow-sm xl:min-h-[17rem] ${
+      className={`relative min-h-[15rem] rounded-[1.3rem] border px-2.5 pb-3 pt-2.5 shadow-sm xl:min-h-[17rem] ${
         isToday
           ? isDark
             ? `border-2 border-white bg-neutral-900 ${darkGlow(true)}`
             : 'border-2 border-neutral-950 bg-white'
-          : isDark
-            ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}`
-            : 'border-neutral-200 bg-white'
+          : isRest
+            ? isDark
+              ? 'border-2 border-emerald-500 bg-neutral-900/90 shadow-[0_0_14px_rgba(52,211,153,0.22)]'
+              : 'border-2 border-emerald-400 bg-white shadow-[0_0_14px_rgba(52,211,153,0.20)]'
+            : isDark
+              ? `border-neutral-800 bg-neutral-900/90 ${darkGlow(true)}`
+              : 'border-neutral-200 bg-white'
       }`}
     >
+      {isRest && (
+        <div className={`absolute -top-[10px] left-1/2 h-[10px] w-7 -translate-x-1/2 rounded-t-sm ${isDark ? 'bg-emerald-500' : 'bg-emerald-400'}`} />
+      )}
       {!isToday ? <div className={`absolute inset-x-0 top-0 h-[3px] ${stripeClass} opacity-90`} /> : null}
 
       {isToday ? (
@@ -2090,27 +2059,12 @@ function CalendarCard({ card, theme = 'light' }) {
         ) : (
           isToday ? <div className="pt-2.5" /> : (
             <div className="flex h-full min-h-[6rem] items-center justify-center">
-              <svg
-                viewBox="0 0 28 16"
-                className={`w-14 ${isDark ? 'text-neutral-500' : 'text-neutral-300'}`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <span
+                className={`text-4xl leading-none ${isDark ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.75)]' : 'text-emerald-500 drop-shadow-[0_0_8px_rgba(52,211,153,0.60)]'}`}
                 aria-label="Rest day"
               >
-                {/* Battery body */}
-                <rect x="0.7" y="0.7" width="23" height="14.6" rx="2.2" />
-                {/* Battery terminal */}
-                <path d="M23.7 5.5 L27.3 5.5 L27.3 10.5 L23.7 10.5" />
-                {/* Lightning bolt — solid fill, centered */}
-                <path
-                  d="M14.5 2.5 L10 8.5 H13.5 L11.5 13.5 L17 7.5 H13.5 Z"
-                  fill="currentColor"
-                  stroke="none"
-                />
-              </svg>
+                ⚡
+              </span>
             </div>
           )
         )}
@@ -2573,9 +2527,9 @@ function calendarLiftFocus(activity) {
   if (!text || text === '-') return ''
   const compact = text
     .replace(/^lift$/i, 'Strength')
-    .replace(/^weightlifting$/i, 'Weight Training')
-    .replace(/^weight lifting$/i, 'Weight Training')
-    .replace(/^weight training$/i, 'Weight Training')
+    .replace(/^weightlifting$/i, 'Strength')
+    .replace(/^weight lifting$/i, 'Strength')
+    .replace(/^weight training$/i, 'Strength')
     .replace(/^no lift today.*$/i, 'Off day')
     .replace(/\([^)]*\)/g, '')
     .replace(/[.;].*$/g, '')
@@ -2606,7 +2560,7 @@ function calendarLiftFocus(activity) {
     .trim()
   if (/off day/i.test(compact)) return 'Off day'
   if (/^strength$/i.test(compact)) return ''
-  if (/^weight training$/i.test(compact)) return 'Weight Training'
+  if (/^strength$/i.test(compact)) return ''
   if (/upper body/i.test(compact)) return /core/i.test(compact) ? 'Upper Body + Core' : 'Upper Body'
   if (/posterior chain/i.test(compact)) return /core/i.test(compact) ? 'Posterior Chain + Core' : /single-leg/i.test(compact) ? 'Posterior Chain + Single-Leg' : 'Posterior Chain'
   if (/single-leg strength|single-leg/i.test(compact)) return /glutes/i.test(compact) ? 'Single-Leg + Glutes' : 'Single-Leg'
@@ -2674,7 +2628,7 @@ function ActivityLogSection({
   const filterOptions = [
     { key: 'all', label: 'All Workouts', icon: <SparkleIcon className="h-4 w-4" /> },
     { key: 'runs', label: 'Running', icon: <RunningShoeIcon className="h-4 w-4" /> },
-    { key: 'strength', label: 'Weightlifting', icon: <DumbbellIcon className="h-4 w-4" /> },
+    { key: 'strength', label: 'Strength', icon: <DumbbellIcon className="h-4 w-4" /> },
     { key: 'spin', label: 'Spin', icon: <BikeIcon className="h-4 w-4" /> },
   ]
   const filteredActivities = allActivities.filter((activity) => {
@@ -2835,7 +2789,7 @@ function activitySourceLabel(activity) {
 function workoutCatalogTitle(activity) {
   const category = activityCategory(activity)
   if (category === 'running') return 'Run'
-  if (category === 'weightlifting') return 'Weight Training'
+  if (category === 'weightlifting') return 'Strength'
   if (category === 'spin') return 'Spin'
   return 'Activity'
 }
@@ -3128,8 +3082,8 @@ export default function App() {
   const [recommendationData, setRecommendationData] = useState(null)
   const [error, setError] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [physicalFeeling, setPhysicalFeeling] = useState('normal')
-  const [mentalFeeling, setMentalFeeling] = useState('steady')
+  const [physicalFeeling, setPhysicalFeeling] = useState(5)
+  const [mentalFeeling, setMentalFeeling] = useState(5)
   const [notes, setNotes] = useState('')
   const [hasPain, setHasPain] = useState(false)
   const [painSeverity, setPainSeverity] = useState('none')
@@ -3237,9 +3191,9 @@ export default function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          physical_feeling: normalizePhysicalFeeling(physicalFeeling),
+          physical_feeling: physicalFeeling,
           mental_feeling: mentalFeeling,
-          notes: physicalFeeling === 'injured' ? `${notes}\nPossible injury or sharp pain noted.`.trim() : notes,
+          notes: notes,
           has_pain: hasPain,
           pain_severity: hasPain ? painSeverity : 'none',
           pain_location: hasPain ? painLocation : 'none',

@@ -998,10 +998,10 @@ def _format_recent_runs_text(runs: list[Run], today: date, days: int = 14) -> st
 
 def _format_checkin_text(feedback: dict | None) -> str:
     if not feedback:
-        return "  No check-in submitted. Treat physical and mental as 'normal'."
+        return "  No check-in submitted. Treat physical score as 7 and mental score as 7."
 
-    physical = str(feedback.get("physical_feeling") or "").strip().lower()
-    mental = str(feedback.get("mental_feeling") or "").strip().lower()
+    raw_physical = feedback.get("physical_feeling")
+    raw_mental = feedback.get("mental_feeling")
     notes = str(feedback.get("notes") or "").strip()
     has_pain = bool(feedback.get("has_pain"))
     pain_severity = str(feedback.get("pain_severity") or "").strip().lower()
@@ -1009,33 +1009,45 @@ def _format_checkin_text(feedback: dict | None) -> str:
     pain_with_running = bool(feedback.get("pain_with_running"))
     pain_with_walking = bool(feedback.get("pain_with_walking"))
 
-    physical_meanings = {
-        "fresh": "legs feel great, no fatigue — run the full planned session",
-        "normal": "baseline, no issues — run the full planned session",
-        "tired": "noticeable fatigue — reduce planned distance 15-20%, keep same workout type",
-        "heavy": "legs feel dead/flat — reduce distance 20%, drop intensity one level",
-        "sore": "muscle soreness limiting form — easy/recovery intensity only, reduce distance 25-30%, no lower body strength",
-        "very_sore": "significant soreness — rest day or 20-30 min very easy jog maximum, no strength work",
-    }
-    mental_meanings = {
-        "sharp": "mentally ready — no change to plan",
-        "steady": "neutral — no change to plan",
-        "low": "mentally fatigued — shorten session by up to 20%, reduce pressure",
-    }
-
-    lines = ["  PHYSICAL FEELING:"]
-    if physical:
-        meaning = physical_meanings.get(physical, physical)
-        lines.append(f"    Value: '{physical}' → {meaning}")
+    # Resolve physical score (numeric 1-10 preferred; legacy string as fallback)
+    legacy_to_score = {"very_sore": 2, "sore": 3, "heavy": 5, "tired": 6, "normal": 7, "fresh": 9}
+    if isinstance(raw_physical, (int, float)) and 1 <= float(raw_physical) <= 10:
+        physical_score = int(round(float(raw_physical)))
+    elif isinstance(raw_physical, str) and raw_physical.strip().isdigit():
+        physical_score = max(1, min(10, int(raw_physical.strip())))
     else:
-        lines.append("    Not provided — treat as 'normal'")
+        physical_score = legacy_to_score.get(str(raw_physical or "").strip().lower(), 7)
 
-    lines.append("  MENTAL FEELING:")
-    if mental:
-        meaning = mental_meanings.get(mental, mental)
-        lines.append(f"    Value: '{mental}' → {meaning}")
+    legacy_mental_to_score = {"low": 2, "drained": 2, "stressed": 4, "steady": 6, "sharp": 9}
+    if isinstance(raw_mental, (int, float)) and 1 <= float(raw_mental) <= 10:
+        mental_score = int(round(float(raw_mental)))
+    elif isinstance(raw_mental, str) and raw_mental.strip().isdigit():
+        mental_score = max(1, min(10, int(raw_mental.strip())))
     else:
-        lines.append("    Not provided — treat as 'steady'")
+        mental_score = legacy_mental_to_score.get(str(raw_mental or "").strip().lower(), 6)
+
+    if physical_score <= 2:
+        physical_meaning = "rest day — no running, no strength"
+    elif physical_score <= 4:
+        physical_meaning = "easy intensity only, distance × 0.72, no lower body strength"
+    elif physical_score == 5:
+        physical_meaning = "drop intensity one level, distance × 0.80"
+    elif physical_score == 6:
+        physical_meaning = "same intensity, distance × 0.83"
+    else:
+        physical_meaning = "proceed with planned session exactly"
+
+    if mental_score <= 3:
+        mental_meaning = "shorten session by up to 20%"
+    elif mental_score <= 7:
+        mental_meaning = "no change to plan"
+    else:
+        mental_meaning = "no change to plan (athlete is sharp)"
+
+    lines = [
+        f"  PHYSICAL SCORE: {physical_score}/10 → {physical_meaning}",
+        f"  MENTAL SCORE:   {mental_score}/10 → {mental_meaning}",
+    ]
 
     lines.append("  PAIN:")
     if has_pain:
@@ -1105,12 +1117,13 @@ STEP 2 — Apply WHOOP recovery adjustment to today's planned session:
   YELLOW (recovery 34-66%): drop intensity one level, keep distance or cut 10%
   RED (recovery < 34%): replace with rest or 20-30 min very easy jog only
 
-STEP 3 — Apply physical feeling adjustment on top of STEP 2 result using exact rules:
-  "fresh" or "normal": no change to distance or intensity
-  "tired": multiply planned distance by 0.82 (round to nearest 0.5), same intensity
-  "heavy": multiply planned distance by 0.80 (round to nearest 0.5), drop intensity exactly one level
-  "sore": set intensity to "easy", multiply planned distance by 0.72 (round to nearest 0.5), remove lower body strength
-  "very_sore": set intensity to "very easy", cap distance at 3.0 miles maximum (or 0 for rest), no strength work
+STEP 3 — Apply physical score adjustment (1-10 scale, higher = better):
+  Score 1: rest day; no running, no strength
+  Score 2: 20-25 min very easy jog maximum (≤ 2.5 miles), no lower body strength
+  Score 3-4: set intensity to "easy", multiply planned distance by 0.72 (round to nearest 0.5), no lower body strength
+  Score 5: drop intensity exactly one level, multiply planned distance by 0.80 (round to nearest 0.5)
+  Score 6: same intensity, multiply planned distance by 0.83 (round to nearest 0.5)
+  Score 7-10: proceed with planned session exactly as-is
 
 STEP 4 — Apply pain rules (these OVERRIDE everything above):
   pain_with_walking=YES → rest only, no exceptions
@@ -1133,8 +1146,8 @@ OUTPUT FIELDS:
   duration_minutes: total duration in minutes (0 for rest)
   run_distance_miles: miles to run (0.0 for non-run days)
   run_pace_guidance: pace range string like "9:30-10:00/mi", or "" if no run
-  lift_focus: strength session label or "No lifting today"
-  lift_guidance: one sentence of specific strength guidance, or "" if no lifting
+  lift_focus: strength session label or "No strength today"
+  lift_guidance: one sentence of specific strength guidance, or "" if no strength
   recap: list of exactly 2 short strings — first summarizes key WHOOP metrics, second summarizes today's adjusted plan
   explanation: list of 3-4 strings explaining the reasoning step by step
   explanation_sections: object with keys "overall", "run", "pace", "lift", "recovery" — each a 1-2 sentence string
