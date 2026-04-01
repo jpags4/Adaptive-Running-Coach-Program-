@@ -3236,6 +3236,7 @@ export default function App() {
   })
   const [summaryData, setSummaryData] = useState(null)
   const [recommendationData, setRecommendationData] = useState(null)
+  const [isRecommendationVisible, setIsRecommendationVisible] = useState(false)
   const [error, setError] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [physicalFeeling, setPhysicalFeeling] = useState(5)
@@ -3371,6 +3372,7 @@ export default function App() {
       setSummaryData(payload)
       setProfileSettings(payload.profile_settings ?? null)
       setRecommendationData(payload.recommendation ?? null)
+      if (payload.recommendation) setIsRecommendationVisible(true)
     } catch (err) {
       setError(err.message || 'Unknown error')
     } finally {
@@ -3450,7 +3452,7 @@ export default function App() {
 
         <RecommendationLauncher
           onOpen={() => setIsCheckInModalOpen(true)}
-          onScrollToCard={() => trainingCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onScrollToCard={() => setIsRecommendationVisible(true)}
           theme={theme}
           hasRecommendation={Boolean(recommendationData)}
           isGenerating={isGenerating}
@@ -3491,7 +3493,7 @@ export default function App() {
             theme={theme}
           />
 
-        {recommendationData ? (
+        {recommendationData && isRecommendationVisible ? (
           recommendationData.day_sufficient ? (
             <DaySufficientDisplay theme={theme} />
           ) : (
