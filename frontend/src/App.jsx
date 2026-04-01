@@ -269,7 +269,6 @@ function DaySufficientDisplay({ theme = 'light' }) {
   const { typed } = useTypedText(message, started, 26)
 
   useEffect(() => {
-    // Foot fades in first, then text starts typing
     const footTimer = window.setTimeout(() => setFootVisible(true), 100)
     const textTimer = window.setTimeout(() => setStarted(true), 700)
     return () => {
@@ -278,7 +277,9 @@ function DaySufficientDisplay({ theme = 'light' }) {
     }
   }, [])
 
-  const textColor = isDark ? 'text-white' : 'text-neutral-950'
+  const shimmer = isDark
+    ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
+    : 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#171717_0%,#7c3aed_28%,#4f46e5_50%,#7c3aed_72%,#171717_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
 
   return (
     <section className="pt-2 pb-3">
@@ -294,11 +295,11 @@ function DaySufficientDisplay({ theme = 'light' }) {
         >
           <WingedFootIcon className="h-20 w-auto" />
         </span>
-        {/* Typed message — centered */}
+        {/* Typed message — centered, shimmer */}
         <div className="max-w-lg text-center">
           <p className="relative text-xl font-semibold leading-relaxed tracking-tight">
             <span aria-hidden="true" className="block select-none opacity-0">{message}</span>
-            <span className={`absolute inset-0 ${textColor}`}>{typed || '\u00A0'}</span>
+            <span className={`absolute inset-0 ${shimmer}`}>{typed || '\u00A0'}</span>
           </p>
         </div>
       </div>
@@ -706,9 +707,9 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const dateFullStr = `${datePrefixStr}${dateSuffixStr}`
   const moveStr = "LET'S MOVE"
 
-  // Chained typewriter: greeting → date → move
-  const [started, setStarted] = useState(false)
-  const { typed: greetingTyped, complete: greetingDone } = useTypedText(fullGreeting, started, 28)
+  // Greeting fades in, then date + move type in sequence
+  const [greetingVisible, setGreetingVisible] = useState(false)
+  const [greetingDone, setGreetingDone] = useState(false)
   const { typed: dateTyped, complete: dateDone } = useTypedText(dateFullStr, greetingDone, 32)
   const { typed: moveTyped, complete: moveDone } = useTypedText(moveStr, dateDone, 36)
 
@@ -716,10 +717,16 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   const [transitioning, setTransitioning] = useState(false)
 
   useEffect(() => {
-    setStarted(false)
+    setGreetingVisible(false)
+    setGreetingDone(false)
     setTransitioning(false)
-    const t = window.setTimeout(() => setStarted(true), 200)
-    return () => window.clearTimeout(t)
+    // Small delay then fade in; signal done after fade completes so date starts typing
+    const showTimer = window.setTimeout(() => setGreetingVisible(true), 150)
+    const doneTimer = window.setTimeout(() => setGreetingDone(true), 750)
+    return () => {
+      window.clearTimeout(showTimer)
+      window.clearTimeout(doneTimer)
+    }
   }, [name, today, goalRaceDate])
 
   useEffect(() => {
@@ -735,14 +742,16 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
   return (
     <header className="mx-auto flex w-full max-w-[1200px] flex-col justify-between gap-6 pb-3 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 flex-1">
-        {/* Greeting — types in, gradient stays */}
+        {/* Greeting — fades in */}
         <h1
           className="relative max-w-full text-[clamp(2rem,3.8vw,3.4rem)] font-bold leading-[1.12] tracking-[-0.02em] pb-2"
         >
-          {/* Invisible block placeholder — pre-sizes h1 for full greeting */}
+          {/* Invisible block placeholder — pre-sizes h1 */}
           <span aria-hidden="true" className="block select-none opacity-0">{fullGreeting}</span>
-          {/* Typed text with shimmer applied directly to this span */}
-          <span className={`absolute inset-0 ${isDark ? 'text-white' : 'text-neutral-950'}`}>{greetingTyped || '\u00A0'}</span>
+          <span
+            className={`absolute inset-0 ${isDark ? 'text-white' : 'text-neutral-950'}`}
+            style={{ opacity: greetingVisible ? 1 : 0, transition: 'opacity 0.55s ease-in' }}
+          >{fullGreeting}</span>
         </h1>
 
         <div className="mt-0 flex flex-col gap-1">
