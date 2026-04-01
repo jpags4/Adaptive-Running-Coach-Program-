@@ -749,15 +749,21 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           {/* Invisible block placeholder — pre-sizes h1 */}
           <span aria-hidden="true" className="block select-none opacity-0">{fullGreeting}</span>
           <span
-            className={`absolute inset-0 ${isDark ? 'text-white' : 'text-neutral-950'}`}
-            style={{ opacity: greetingVisible ? 1 : 0, transition: 'opacity 0.55s ease-in' }}
+            className="absolute inset-0 bg-clip-text text-transparent"
+            style={{
+              backgroundImage: isDark
+                ? 'linear-gradient(158deg, #c8c8d4 0%, #ffffff 30%, #9898aa 52%, #ffffff 72%, #d4d4de 100%)'
+                : 'linear-gradient(158deg, #1a1a1a 0%, #484848 28%, #0e0e0e 50%, #3c3c3c 72%, #1c1c1c 100%)',
+              opacity: greetingVisible ? 1 : 0,
+              transition: 'opacity 0.55s ease-in',
+            }}
           >{fullGreeting}</span>
         </h1>
 
         <div className="mt-0 flex flex-col gap-1">
           {/* Date line: prefix collapses + fades, suffix slides left and stays */}
           <div
-            className={`flex items-baseline overflow-hidden min-h-[1.5rem] text-[clamp(1.2rem,2.5vw,1.8rem)] font-semibold uppercase tracking-[0.04em] leading-[1.25] ${
+            className={`flex items-baseline overflow-hidden min-h-[1.5rem] text-[1.5rem] font-semibold uppercase tracking-[0.04em] leading-[1.25] ${
               isDark ? 'text-neutral-100/92' : 'text-neutral-900'
             }`}
           >
