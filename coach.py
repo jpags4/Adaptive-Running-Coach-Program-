@@ -736,12 +736,14 @@ def planned_session_for_day(weekly_intent: WeeklyIntent, profile: AthleteProfile
 
     run_days = {easy_day, quality_day, steady_day, aerobic_day, long_run_index}
     rest_days = sorted(d for d in range(7) if d not in run_days)
+    primary_strength_days = set(rest_days[:2])
 
-    # Assign lift focuses to non-run days (user prefers standalone strength on off days)
+    # Assign standalone strength to non-run days, capped by desired_strength_frequency
+    strength_freq = max(1, int(profile.desired_strength_frequency or 2))
     strength_map: dict[int, str] = {}
-    if len(rest_days) >= 1:
+    if len(rest_days) >= 1 and strength_freq >= 1:
         strength_map[rest_days[0]] = "Lower Body + Glutes"
-    if len(rest_days) >= 2:
+    if len(rest_days) >= 2 and strength_freq >= 2:
         strength_map[rest_days[1]] = "Upper Body + Core"
 
     plan_map: dict[int, dict] = {

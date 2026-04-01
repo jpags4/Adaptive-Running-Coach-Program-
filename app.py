@@ -983,6 +983,7 @@ def _lift_focus_for_day(weekday: int, long_run_day: int) -> str:
 
     run_days = {easy_day, quality_day, steady_day, aerobic_day, long_run_day}
     rest_days = sorted(d for d in range(7) if d not in run_days)
+    primary_strength_days = set(rest_days[:2])
 
     # Primary strength sessions go on non-run days (user preference)
     if len(rest_days) >= 1 and weekday == rest_days[0]:
@@ -990,10 +991,14 @@ def _lift_focus_for_day(weekday: int, long_run_day: int) -> str:
     if len(rest_days) >= 2 and weekday == rest_days[1]:
         return "Upper Body + Core"
 
-    # Supplemental strength on lighter run days
-    if weekday == easy_day:
+    # Supplemental strength on lighter run days — skip if a neighbor already has primary strength
+    # (prevents back-to-back lift days)
+    def _adjacent_to_primary(day: int) -> bool:
+        return (day - 1) in primary_strength_days or (day + 1) in primary_strength_days
+
+    if weekday == easy_day and not _adjacent_to_primary(easy_day):
         return "Single-Leg Strength + Glutes"
-    if weekday == steady_day:
+    if weekday == steady_day and not _adjacent_to_primary(steady_day):
         return "Upper Body + Core"
 
     return ""

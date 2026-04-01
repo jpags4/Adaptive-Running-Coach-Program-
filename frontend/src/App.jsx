@@ -1136,33 +1136,41 @@ function SnakeBorderButton({ isDark, label }) {
   )
 }
 
-function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = false, isGenerating = false }) {
+function RecommendationLauncher({ onOpen, onScrollToCard, theme = 'light', hasRecommendation = false, isGenerating = false }) {
   const isDark = theme === 'dark'
-  if (hasRecommendation) return null
 
   const shimmer = isDark
     ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
     : 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#171717_0%,#7c3aed_28%,#4f46e5_50%,#7c3aed_72%,#171717_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
 
-  return (
-    <section className="pt-2 pb-3">
-      <div className="flex justify-center">
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={isGenerating ? undefined : onOpen}
-          onKeyDown={isGenerating ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') onOpen() }}
-          className={`group relative inline-block overflow-hidden select-none ${isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-        >
-          {/* ── IDLE STATE: Generate | Foot | Recommendation ── */}
-          {!isGenerating && (
-            <div className="flex items-center justify-center gap-5 transition-opacity duration-300 group-hover:opacity-0 group-hover:pointer-events-none">
-              {/* "Generate" with violetCurrent shimmer */}
-              <span className={`text-3xl font-bold tracking-tight ${shimmer}`}>
-                Generate
-              </span>
+  // When generating (from "Update Check-In"), show generating state even if recommendation exists
+  if (isGenerating) {
+    return (
+      <section className="pt-2 pb-3">
+        <div className="flex justify-center">
+          <SnakeBorderButton isDark={isDark} label="Generating…" />
+        </div>
+      </section>
+    )
+  }
 
-              {/* Winged foot — color-sweep shimmer, runs off right on hover */}
+  // Recommendation already exists — show "See today's | Foot | recommendation"
+  if (hasRecommendation) {
+    return (
+      <section className="pt-2 pb-3">
+        <div className="flex justify-center">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={onScrollToCard}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onScrollToCard?.() }}
+            className="group relative inline-block overflow-hidden select-none cursor-pointer"
+          >
+            {/* IDLE: See today's | Foot | recommendation */}
+            <div className="flex items-center justify-center gap-5 transition-opacity duration-300 group-hover:opacity-0 group-hover:pointer-events-none">
+              <span className={`text-3xl font-bold tracking-tight ${shimmer}`}>
+                See today's
+              </span>
               <span
                 className="inline-block transition-[transform,opacity] duration-500 ease-in group-hover:translate-x-[600%] group-hover:opacity-0"
                 style={{
@@ -1173,27 +1181,61 @@ function RecommendationLauncher({ onOpen, theme = 'light', hasRecommendation = f
               >
                 <WingedFootIcon className="h-20 w-auto" />
               </span>
-
-              {/* "Recommendation" with violetCurrent shimmer */}
               <span className={`text-3xl font-bold tracking-tight ${shimmer}`}>
-                Recommendation
+                recommendation
               </span>
             </div>
-          )}
 
-          {/* ── HOVER / GENERATING STATE: Snake border button ── */}
+            {/* HOVER: snake border */}
+            <div
+              className="absolute inset-0 flex items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+              style={{ transitionDelay: '120ms' }}
+            >
+              <SnakeBorderButton isDark={isDark} label="Take me there" />
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  // No recommendation yet — show "Generate | Foot | Recommendation"
+  return (
+    <section className="pt-2 pb-3">
+      <div className="flex justify-center">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onOpen}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen() }}
+          className="group relative inline-block overflow-hidden select-none cursor-pointer"
+        >
+          {/* IDLE STATE */}
+          <div className="flex items-center justify-center gap-5 transition-opacity duration-300 group-hover:opacity-0 group-hover:pointer-events-none">
+            <span className={`text-3xl font-bold tracking-tight ${shimmer}`}>
+              Generate
+            </span>
+            <span
+              className="inline-block transition-[transform,opacity] duration-500 ease-in group-hover:translate-x-[600%] group-hover:opacity-0"
+              style={{
+                animation: isDark
+                  ? 'iconVioletSweepDark 6s linear infinite'
+                  : 'iconVioletSweepLight 6s linear infinite',
+              }}
+            >
+              <WingedFootIcon className="h-20 w-auto" />
+            </span>
+            <span className={`text-3xl font-bold tracking-tight ${shimmer}`}>
+              Recommendation
+            </span>
+          </div>
+
+          {/* HOVER STATE: Snake border button */}
           <div
-            className={`flex items-center justify-center transition-opacity duration-300 ${
-              isGenerating
-                ? 'opacity-100 pointer-events-auto'
-                : 'absolute inset-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
-            }`}
-            style={{ transitionDelay: isGenerating ? '0ms' : '120ms' }}
+            className="absolute inset-0 flex items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+            style={{ transitionDelay: '120ms' }}
           >
-            <SnakeBorderButton
-              isDark={isDark}
-              label={isGenerating ? 'Generating…' : 'I want to move it, move it'}
-            />
+            <SnakeBorderButton isDark={isDark} label="I want to move it, move it" />
           </div>
         </div>
       </div>
@@ -3207,6 +3249,7 @@ export default function App() {
   const [painWithCycling, setPainWithCycling] = useState(false)
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
   const [profileSettings, setProfileSettings] = useState(null)
+  const trainingCardRef = useRef(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [activityNoteDrafts, setActivityNoteDrafts] = useState({})
@@ -3407,6 +3450,7 @@ export default function App() {
 
         <RecommendationLauncher
           onOpen={() => setIsCheckInModalOpen(true)}
+          onScrollToCard={() => trainingCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
           theme={theme}
           hasRecommendation={Boolean(recommendationData)}
           isGenerating={isGenerating}
@@ -3451,7 +3495,7 @@ export default function App() {
           recommendationData.day_sufficient ? (
             <DaySufficientDisplay theme={theme} />
           ) : (
-            <div className="mt-2">
+            <div className="mt-2" ref={trainingCardRef}>
               <TrainingCard
                 recommendation={recommendationData}
                 recommendationExplanation={summaryData.recommendation_explanation}

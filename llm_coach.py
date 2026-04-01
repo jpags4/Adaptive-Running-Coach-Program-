@@ -1021,6 +1021,7 @@ def _format_checkin_text(feedback: dict | None) -> str:
     pain_location = str(feedback.get("pain_location") or "").strip()
     pain_with_running = bool(feedback.get("pain_with_running"))
     pain_with_walking = bool(feedback.get("pain_with_walking"))
+    pain_with_cycling = bool(feedback.get("pain_with_cycling"))
 
     # Resolve physical score (numeric 1-10 preferred; legacy string as fallback)
     legacy_to_score = {"very_sore": 2, "sore": 3, "heavy": 5, "tired": 6, "normal": 7, "fresh": 9}
@@ -1064,14 +1065,10 @@ def _format_checkin_text(feedback: dict | None) -> str:
 
     lines.append("  PAIN:")
     if has_pain:
-        if pain_with_walking:
-            lines.append("    pain_with_walking=YES → REST ONLY. Do not run or cross-train.")
-        elif pain_with_running and pain_severity == "severe":
-            lines.append("    pain_with_running=YES, severity=severe → REST ONLY. Add warning to see a professional.")
-        elif pain_with_running and pain_severity == "moderate":
-            lines.append("    pain_with_running=YES, severity=moderate → NO RUNNING. Substitute zone 2 cross-training (bike).")
-        elif pain_with_running and pain_severity == "mild":
-            lines.append("    pain_with_running=YES, severity=mild → EASY RUN ONLY. No quality work. Flag in warnings.")
+        if pain_with_cycling:
+            lines.append("    pain_with_cycling=YES → REST DAY ONLY. No running, no cross-training, no exceptions.")
+        elif pain_with_running or pain_with_walking:
+            lines.append("    pain_with_running/walking=YES → SPIN BIKE ONLY at planned day's intensity. No running whatsoever, regardless of severity.")
         else:
             lines.append(f"    Pain reported ({pain_severity or 'unspecified'} at {pain_location or 'unspecified location'}). Does not restrict running.")
     else:
@@ -1144,16 +1141,19 @@ STEP 3 — Apply physical score adjustment (1-10 scale, higher = better):
   Score 7-10: proceed with planned session exactly as-is
 
 STEP 4 — Apply pain rules (these OVERRIDE everything above):
-  pain_with_walking=YES → rest only, no exceptions
-  pain_with_running=YES AND severity=severe → rest only, warn to see a professional
-  pain_with_running=YES AND severity=moderate → no running, zone 2 bike cross-training only
-  pain_with_running=YES AND severity=mild → easy run only, remove all quality work
+  pain_with_cycling=YES → rest day only. No running, no cross-training. No exceptions.
+  pain_with_running=YES OR pain_with_walking=YES → SPIN BIKE ONLY at the planned day's intensity. No running whatsoever, regardless of severity. Set workout_type to "Cross-Training", describe as a spin bike session matching the planned intensity.
 
 STEP 5 — Apply mental feeling:
   "sharp" or "steady": no change
   "low": shorten duration/distance by up to 20%
 
 STEP 6 — Incorporate athlete's free-text notes if they mention specific issues.
+
+STRENGTH SCHEDULING RULES (apply across all steps):
+  - Never schedule strength on back-to-back days. If yesterday had a lift, set lift_focus to "No lifting" today unless there is no other option.
+  - A rest day from running is NOT a rest day from strength. If today is a non-run day and recovery/pain allow, prescribe a standalone strength session.
+  - Prefer placing strength on non-run days. Supplemental strength on run days is only acceptable if it does not create consecutive lift days.
 
 INTENSITY LEVELS in ascending order: rest < very easy < easy < moderate < hard < threshold < interval
 "Drop one level" means: threshold→moderate, moderate→easy, easy→very easy, etc.
@@ -1196,7 +1196,9 @@ WEEKLY TRAINING PLAN:
   Week type: {weekly_intent.week_type}
   Primary adaptation: {weekly_intent.primary_adaptation}
   Weekly mileage range: {weekly_intent.mileage_range}
+  Yesterday's planned session: {_format_planned_session_text(weekly_intent, profile, today - timedelta(days=1))}
   Today's planned session: {_format_planned_session_text(weekly_intent, profile, today)}
+  Tomorrow's planned session: {_format_planned_session_text(weekly_intent, profile, today + timedelta(days=1))}
   Long run target: {weekly_intent.long_run_target}
   Quality session target: {weekly_intent.quality_session_target}
   Strength target: {weekly_intent.strength_target}
