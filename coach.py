@@ -190,7 +190,7 @@ def _workout_text_rank(value: str) -> int:
 
 def _lift_load_rank(value: str) -> int:
     text = str(value or "").strip().lower()
-    if any(token in text for token in {"no lifting", "off-day"}):
+    if any(token in text for token in {"no lifting", "no strength", "no lift", "off-day", "lifting off"}):
         return 0
     if any(token in text for token in {"mobility", "tissue care", "light durability"}):
         return 1

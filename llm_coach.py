@@ -1164,7 +1164,7 @@ OUTPUT FIELDS:
   duration_minutes: total duration in minutes (0 for rest)
   run_distance_miles: miles to run (0.0 for non-run days)
   run_pace_guidance: pace range string like "9:30-10:00/mi", or "" if no run
-  lift_focus: strength session label or "No strength today"
+  lift_focus: strength session label, or exactly "No lifting" if no strength is prescribed today
   lift_guidance: one sentence of specific strength guidance, or "" if no strength
   recap: list of exactly 2 short strings — first summarizes key WHOOP metrics, second summarizes today's adjusted plan
   explanation: list of 3-4 strings explaining the reasoning step by step

@@ -1186,7 +1186,9 @@ def _today_plan_entries(anchor, recommendation) -> list[dict]:
             }
         )
 
-    if str(recommendation.lift_focus or "").strip().lower() not in {"no lifting", "today is a lifting off-day"}:
+    _lift_text = str(recommendation.lift_focus or "").strip().lower()
+    _no_lift = any(tok in _lift_text for tok in ("no lifting", "no strength", "off-day", "lifting off", "no lift"))
+    if _lift_text and not _no_lift:
         activities.append(
             {
                 "source": "Projection",
