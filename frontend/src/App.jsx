@@ -2817,8 +2817,8 @@ function ActivityLogSection({
 
       <div className={`mt-6 overflow-hidden rounded-[2rem] border ${isDark ? `border-neutral-800 bg-neutral-950/90 ${darkGlow(true)}` : `border-neutral-200 bg-white ${lightGlow(true)}`}`}>
         <div className="grid h-[min(38rem,72vh)] grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <div className={`min-h-0 border-b xl:border-b-0 xl:border-r ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-            <div className={`sticky top-0 z-10 border-b px-6 py-5 backdrop-blur ${isDark ? 'border-neutral-800 bg-neutral-950/95' : 'border-neutral-200 bg-white/95'}`}>
+          <div className={`flex min-h-0 flex-col border-b xl:border-b-0 xl:border-r ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            <div className={`shrink-0 border-b px-6 py-5 ${isDark ? 'border-neutral-800 bg-neutral-950/95' : 'border-neutral-200 bg-white/95'}`}>
               <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                 {currentFilterLabel}
               </p>
@@ -2827,7 +2827,7 @@ function ActivityLogSection({
               </p>
             </div>
 
-            <div className="workout-catalog-scroll h-[calc(min(38rem,72vh)-11rem)] overflow-y-auto">
+            <div className="workout-catalog-scroll flex-1 overflow-y-auto">
               {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
                 <WorkoutCatalogListItem
                   key={activity.activity_key}
@@ -3584,8 +3584,8 @@ export default function App() {
                 <div
                   className={`col-span-2 flex flex-col justify-between rounded-2xl border px-6 py-5 transition duration-200 ${
                     isDark
-                      ? 'border-neutral-700/50 shadow-[0_4px_20px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.045)] hover:border-violet-500/60'
-                      : 'border-neutral-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.07)]'
+                      ? `border-neutral-700/50 shadow-[0_4px_20px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.045)] ${DARK_HOVER_GLOW}`
+                      : `border-neutral-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.07)] ${LIGHT_HOVER_GLOW}`
                   }`}
                   style={isDark ? { background: 'linear-gradient(145deg, #1c1827 0%, #110f1b 100%)' } : undefined}
                 >
