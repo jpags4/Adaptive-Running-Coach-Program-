@@ -264,30 +264,41 @@ function WingedFootIcon({ className = '' }) {
 function DaySufficientDisplay({ theme = 'light' }) {
   const isDark = theme === 'dark'
   const message = "You killed it today. Focus on resting and fueling so that you can attack tomorrow's plan."
+  const [footVisible, setFootVisible] = useState(false)
   const [started, setStarted] = useState(false)
   const { typed } = useTypedText(message, started, 26)
 
   useEffect(() => {
-    const id = window.setTimeout(() => setStarted(true), 400)
-    return () => window.clearTimeout(id)
+    // Foot fades in first, then text starts typing
+    const footTimer = window.setTimeout(() => setFootVisible(true), 100)
+    const textTimer = window.setTimeout(() => setStarted(true), 700)
+    return () => {
+      window.clearTimeout(footTimer)
+      window.clearTimeout(textTimer)
+    }
   }, [])
 
-  const shimmer = isDark
-    ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
-    : 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#171717_0%,#7c3aed_28%,#4f46e5_50%,#7c3aed_72%,#171717_100%)] bg-[length:200%_auto] bg-clip-text text-transparent'
+  const textColor = isDark ? 'text-white' : 'text-neutral-950'
 
   return (
     <section className="pt-2 pb-3">
       <div className="flex flex-col items-center gap-4">
-        {/* Winged foot — centered, color sweep */}
-        <span style={{ animation: isDark ? 'iconVioletSweepDark 6s linear infinite' : 'iconVioletSweepLight 6s linear infinite', display: 'block' }}>
+        {/* Winged foot — fades in, color sweep */}
+        <span
+          style={{
+            animation: isDark ? 'iconVioletSweepDark 6s linear infinite' : 'iconVioletSweepLight 6s linear infinite',
+            display: 'block',
+            opacity: footVisible ? 1 : 0,
+            transition: 'opacity 0.8s ease-in',
+          }}
+        >
           <WingedFootIcon className="h-20 w-auto" />
         </span>
-        {/* Typed message — centered, shimmer */}
+        {/* Typed message — centered */}
         <div className="max-w-lg text-center">
           <p className="relative text-xl font-semibold leading-relaxed tracking-tight">
             <span aria-hidden="true" className="block select-none opacity-0">{message}</span>
-            <span className={`absolute inset-0 ${shimmer}`}>{typed || '\u00A0'}</span>
+            <span className={`absolute inset-0 ${textColor}`}>{typed || '\u00A0'}</span>
           </p>
         </div>
       </div>
@@ -731,11 +742,7 @@ function Header({ name, today, goalRaceDate, theme, onToggleTheme, onOpenProfile
           {/* Invisible block placeholder — pre-sizes h1 for full greeting */}
           <span aria-hidden="true" className="block select-none opacity-0">{fullGreeting}</span>
           {/* Typed text with shimmer applied directly to this span */}
-          <span className={`absolute inset-0 ${
-            isDark
-              ? 'animate-[violetCurrent_6s_linear_infinite] bg-[linear-gradient(90deg,#ffffff_0%,#c084fc_25%,#8b5cf6_50%,#c084fc_75%,#ffffff_100%)] bg-[length:200%_auto] bg-clip-text text-transparent [text-shadow:0_0_20px_rgba(139,92,246,0.15)]'
-              : 'text-neutral-950'
-          }`}>{greetingTyped || '\u00A0'}</span>
+          <span className={`absolute inset-0 ${isDark ? 'text-white' : 'text-neutral-950'}`}>{greetingTyped || '\u00A0'}</span>
         </h1>
 
         <div className="mt-0 flex flex-col gap-1">
@@ -3217,6 +3224,9 @@ export default function App() {
     const payload = await response.json()
     setSummaryData(payload)
     setProfileSettings(payload.profile_settings ?? null)
+    if (payload.recommendation) {
+      setRecommendationData(payload.recommendation)
+    }
   }
 
   useEffect(() => {
