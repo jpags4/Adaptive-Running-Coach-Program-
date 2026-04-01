@@ -1552,7 +1552,7 @@ function TrainingCard({
               <DumbbellIcon />
             </div>
             <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-              Lift
+              Strength
             </p>
           </div>
 
