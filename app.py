@@ -1212,8 +1212,11 @@ def _today_plan_entries(anchor, recommendation) -> list[dict]:
     return activities
 
 
+_PLAN_SCHEDULE_VERSION = "v2"  # bump when strength scheduling logic changes
+
+
 def _week_plan_key(day_value) -> str:
-    return sunday_week_key(day_value)
+    return f"{sunday_week_key(day_value)}:{_PLAN_SCHEDULE_VERSION}"
 
 
 def _week_start(day_value):
