@@ -1276,17 +1276,19 @@ def _build_recommendation_from_gpt(
     planned = planned_session_for_day(weekly_intent, profile, today)
     pace_model = build_pace_model(profile, runs)
 
-    # Safeguard: if the plan has miles but LLM output 0, restore the planned miles
-    # (unless pain or bike-day override is in play)
+    # Safeguard: if the plan has miles but LLM output 0, restore the planned miles.
+    # Only override when the LLM clearly misrouted (strength/no-workout on a run day).
+    # Respect legitimate overrides: explicit rest day, bike substitution.
     planned_miles = float(planned.get("distance_miles") or 0.0)
     llm_miles = float(raw["run_distance_miles"])
-    pain_override = bool(raw.get("pain_with_running") or raw.get("pain_with_walking"))
-    is_bike = "bike" in str(raw.get("workout") or "").lower()
-    if planned_miles > 0 and llm_miles == 0.0 and not pain_override and not is_bike:
+    workout_lower = str(raw.get("workout") or "").lower()
+    is_bike = "bike" in workout_lower
+    is_explicit_rest = "rest" in workout_lower
+    llm_chose_strength_only = "strength" in workout_lower or (llm_miles == 0.0 and not is_bike and not is_explicit_rest)
+    if planned_miles > 0 and llm_miles == 0.0 and llm_chose_strength_only:
         raw["run_distance_miles"] = planned_miles
         raw["run_pace_guidance"] = raw.get("run_pace_guidance") or str(planned.get("pace_guidance") or "")
-        if not raw.get("workout") or "strength" in str(raw.get("workout") or "").lower():
-            raw["workout"] = str(planned.get("workout") or "Run")
+        raw["workout"] = str(planned.get("workout") or "Run")
 
     return Recommendation(
         date=today.isoformat(),
