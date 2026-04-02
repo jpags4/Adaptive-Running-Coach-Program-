@@ -1126,6 +1126,7 @@ STEP 0 — Check TODAY'S COMPLETED ACTIVITIES first:
   If no activities are completed today, or the completed load is clearly below plan, set `day_sufficient: false` and continue with steps 1-6 normally.
 
 STEP 1 — Start with today's planned session from the weekly training plan.
+  EXCEPTION — Opportunistic run on a planned non-run day: If today's plan has 0 miles (rest or standalone strength) AND physical score is 9-10 AND mental score is 9-10 AND no pain AND WHOOP recovery is GREEN (≥ 67%), add a short easy run of 3.0–4.0 miles at easy pace. Keep the strength session alongside it. Set run_distance_miles to the run distance and update duration_minutes to reflect the combined session. Only apply this exception when ALL four conditions are met.
 
 STEP 2 — Apply WHOOP recovery adjustment to today's planned session:
   GREEN (recovery >= 67%): proceed with planned session exactly as written

@@ -1600,39 +1600,41 @@ function TrainingCard({
 
           <div className="mt-5">
             <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-              Focus
+              Muscle Group
             </p>
             <p className={`mt-2 text-[3.4rem] font-bold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-              {shortLiftTitle(recommendation.lift_focus)}
+              {isLiftOffDay ? 'Rest' : shortLiftTitle(recommendation.lift_focus)}
             </p>
           </div>
 
-          <div className={`mt-5 border-t pt-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
-            {isLiftOffDay ? (
+          {isLiftOffDay ? (
+            <div className={`mt-5 border-t pt-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
               <p className={`text-sm leading-7 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 {isBikeDay
                   ? 'No lift today. Let the bike session carry the load.'
                   : 'No lift today. Keep all training stress in the run.'}
               </p>
-            ) : (
-              <div className="space-y-2.5">
-                {liftBlocks.map((block, index) => (
-                  <div
-                    key={`${block.name}-${index}`}
-                    className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-300' : 'border-neutral-200 bg-white text-neutral-700'}`}
-                  >
-                    <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${isDark ? 'bg-violet-950/80 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>
-                      {index + 1}
-                    </span>
-                    <span>
-                      <span className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-950'}`}>{block.name}</span>
-                      {block.detail ? <span className={isDark ? ' text-neutral-400' : ' text-neutral-600'}> {block.detail}</span> : null}
-                    </span>
-                  </div>
-                ))}
+            </div>
+          ) : (
+            <>
+              <div className="mt-5">
+                <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                  Strain
+                </p>
+                <p className={`mt-2 text-2xl font-semibold leading-tight tracking-tight ${intensityClass}`}>
+                  {intensityLabel}
+                </p>
               </div>
-            )}
-          </div>
+              <div className={`mt-5 border-t pt-4 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
+                <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                  Duration
+                </p>
+                <p className={`mt-2 text-2xl font-semibold leading-tight tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
+                  {recommendation.run_distance_miles > 0 ? '~35 min' : `${recommendation.duration_minutes ?? 40} min`}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
