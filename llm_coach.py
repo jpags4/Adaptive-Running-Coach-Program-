@@ -1126,13 +1126,13 @@ STEP 0 — Check TODAY'S COMPLETED ACTIVITIES first:
   If no activities are completed today, or the completed load is clearly below plan, set `day_sufficient: false` and continue with steps 1-6 normally.
 
 STEP 1 — Start with today's planned session from the weekly training plan.
-  EXCEPTION — Opportunistic run on a planned non-run day: If today's plan has 0 miles (rest or standalone strength) AND physical score is 9-10 AND mental score is 9-10 AND no pain AND WHOOP recovery is GREEN (≥ 67%), add a short easy run of 3.0–4.0 miles at easy pace. Keep the strength session alongside it. Set run_distance_miles to the run distance and update duration_minutes to reflect the combined session. Only apply this exception when ALL four conditions are met.
+  EXCEPTION — Opportunistic run on a planned rest/non-run day: If today's plan has 0 miles AND physical score is 9-10 AND mental score is 9-10 AND no pain, add a short easy run of 3.0–4.0 miles at easy pace regardless of WHOOP color. Keep any planned strength session alongside it. Set run_distance_miles to the run distance and update duration_minutes accordingly. Apply this exception whenever physical AND mental scores are both 9-10 with no pain — WHOOP color does NOT block this.
 
 STEP 2 — Apply WHOOP recovery adjustment to today's planned session:
   GREEN (recovery >= 67%): proceed with planned session exactly as written
   YELLOW (recovery 34-66%): drop intensity one level, keep distance or cut 10%
   RED (recovery < 34%): replace with very easy jog (20-30 min, ≤ 3 miles) — do NOT prescribe full rest unless physical score is also ≤ 4.
-  OVERRIDE: If physical score >= 8 AND mental score >= 8 AND no pain, the athlete's body is ready regardless of WHOOP. In this case treat RED as YELLOW (drop intensity one level, keep distance). Never prescribe 0 miles when subjective scores are both >= 8 and there is no pain.
+  OVERRIDE: If physical score >= 8 AND mental score >= 8 AND no pain, the athlete's body is ready regardless of WHOOP. In this case treat RED as YELLOW (drop intensity one level, keep distance). ABSOLUTE RULE: Never output run_distance_miles = 0.0 when subjective scores are both >= 8 and there is no pain — even on a planned rest day, prescribe at least a 3.0 easy run.
 
 STEP 3 — Apply physical score adjustment (1-10 scale, higher = better):
   Score 1: rest day; no running, no strength
@@ -1284,7 +1284,7 @@ def _build_recommendation_from_gpt(
     workout_lower = str(raw.get("workout") or "").lower()
     is_bike = "bike" in workout_lower
 
-    if planned_miles > 0 and llm_miles == 0.0 and not is_bike:
+    if llm_miles == 0.0 and not is_bike:
         fb = subjective_feedback or {}
         raw_physical = fb.get("physical_feeling")
         raw_mental = fb.get("mental_feeling")
@@ -1298,18 +1298,28 @@ def _build_recommendation_from_gpt(
             mental_score = 5
         has_pain = bool(fb.get("has_pain") and (fb.get("pain_with_running") or fb.get("pain_with_walking")))
 
-        # High subjective scores + no pain: always run, even if WHOOP is RED
+        # High subjective scores + no pain: always run, even if WHOOP is RED or plan says rest
         athlete_ready = physical_score >= 8 and mental_score >= 8 and not has_pain
-        # LLM clearly misrouted (strength or unexplained zero)
-        llm_misrouted = "strength" in workout_lower or "rest" not in workout_lower
+        # Peak scores (9+/9+, no pain) warrant an opportunistic easy run regardless of the weekly plan
+        peak_readiness = physical_score >= 9 and mental_score >= 9 and not has_pain
 
-        if athlete_ready or llm_misrouted:
-            # Restore planned miles; use easy intensity if WHOOP may have been the concern
-            raw["run_distance_miles"] = planned_miles if athlete_ready else round(planned_miles * 0.7, 1)
-            raw["run_pace_guidance"] = raw.get("run_pace_guidance") or str(planned.get("pace_guidance") or "")
-            raw["workout"] = str(planned.get("workout") or "Run")
-            if not athlete_ready:
-                raw["intensity"] = "easy"
+        if planned_miles > 0:
+            # LLM clearly misrouted (strength or unexplained zero)
+            llm_misrouted = "strength" in workout_lower or "rest" not in workout_lower
+
+            if athlete_ready or llm_misrouted:
+                # Restore planned miles; use easy intensity if WHOOP may have been the concern
+                raw["run_distance_miles"] = planned_miles if athlete_ready else round(planned_miles * 0.7, 1)
+                raw["run_pace_guidance"] = raw.get("run_pace_guidance") or str(planned.get("pace_guidance") or "")
+                raw["workout"] = str(planned.get("workout") or "Run")
+                if not athlete_ready:
+                    raw["intensity"] = "easy"
+        elif peak_readiness:
+            # Planned rest day but athlete is at peak readiness — opportunistic easy run
+            raw["run_distance_miles"] = 3.5
+            raw["run_pace_guidance"] = raw.get("run_pace_guidance") or ""
+            raw["workout"] = "Easy Run"
+            raw["intensity"] = "easy"
 
     return Recommendation(
         date=today.isoformat(),
