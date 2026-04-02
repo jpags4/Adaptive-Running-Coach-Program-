@@ -1556,7 +1556,11 @@ function TrainingCard({
               {isBikeDay ? 'Duration' : 'Distance'}
             </p>
             <p className={`mt-2 tabular-nums text-[3.4rem] font-bold leading-none tracking-tight ${isDark ? 'text-white' : 'text-neutral-950'}`}>
-              {isBikeDay ? `${recommendation.duration_minutes ?? '-'} min` : `${recommendation.run_distance_miles ?? '-'} mi`}
+              {isBikeDay
+                ? `${recommendation.duration_minutes ?? '-'} min`
+                : (recommendation.run_distance_miles > 0
+                    ? `${recommendation.run_distance_miles} mi`
+                    : 'Rest')}
             </p>
           </div>
 

@@ -1152,9 +1152,16 @@ STEP 5 — Apply mental feeling:
 STEP 6 — Incorporate athlete's free-text notes if they mention specific issues.
 
 STRENGTH SCHEDULING RULES (apply across all steps):
-  - Never schedule strength on back-to-back days. If yesterday had a lift, set lift_focus to "No lifting" today unless there is no other option.
-  - A rest day from running is NOT a rest day from strength. If today is a non-run day and recovery/pain allow, prescribe a standalone strength session.
-  - Prefer placing strength on non-run days. Supplemental strength on run days is only acceptable if it does not create consecutive lift days.
+  - These rules govern lift_focus ONLY. They never affect run_distance_miles.
+  - Never schedule strength on back-to-back days. If yesterday's planned session included a lift, set lift_focus to "No lifting" today.
+  - If today's planned session has 0 miles (standalone strength or rest), prescribe a strength session in lift_focus.
+  - If today's planned session includes miles, it is a RUN DAY. Do not convert it to a strength-only day.
+
+HARD RULE — run_distance_miles must NEVER be 0.0 if today's planned session has miles > 0. The only valid reasons to output 0.0 miles are:
+  1. Today's planned session itself has 0 miles (rest or standalone strength day), OR
+  2. pain_with_running=YES or pain_with_walking=YES forces a spin bike day, OR
+  3. WHOOP recovery is RED (< 34%) which forces a rest day.
+  In all other cases, you MUST output a positive run_distance_miles. A physical score of 9-10 with no pain on a planned run day ALWAYS means running today.
 
 INTENSITY LEVELS in ascending order: rest < very easy < easy < moderate < hard < threshold < interval
 "Drop one level" means: threshold→moderate, moderate→easy, easy→very easy, etc.
@@ -1268,6 +1275,18 @@ def _build_recommendation_from_gpt(
 ) -> Recommendation:
     planned = planned_session_for_day(weekly_intent, profile, today)
     pace_model = build_pace_model(profile, runs)
+
+    # Safeguard: if the plan has miles but LLM output 0, restore the planned miles
+    # (unless pain or bike-day override is in play)
+    planned_miles = float(planned.get("distance_miles") or 0.0)
+    llm_miles = float(raw["run_distance_miles"])
+    pain_override = bool(raw.get("pain_with_running") or raw.get("pain_with_walking"))
+    is_bike = "bike" in str(raw.get("workout") or "").lower()
+    if planned_miles > 0 and llm_miles == 0.0 and not pain_override and not is_bike:
+        raw["run_distance_miles"] = planned_miles
+        raw["run_pace_guidance"] = raw.get("run_pace_guidance") or str(planned.get("pace_guidance") or "")
+        if not raw.get("workout") or "strength" in str(raw.get("workout") or "").lower():
+            raw["workout"] = str(planned.get("workout") or "Run")
 
     return Recommendation(
         date=today.isoformat(),
