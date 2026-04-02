@@ -1131,7 +1131,8 @@ STEP 1 — Start with today's planned session from the weekly training plan.
 STEP 2 — Apply WHOOP recovery adjustment to today's planned session:
   GREEN (recovery >= 67%): proceed with planned session exactly as written
   YELLOW (recovery 34-66%): drop intensity one level, keep distance or cut 10%
-  RED (recovery < 34%): replace with rest or 20-30 min very easy jog only
+  RED (recovery < 34%): replace with very easy jog (20-30 min, ≤ 3 miles) — do NOT prescribe full rest unless physical score is also ≤ 4.
+  OVERRIDE: If physical score >= 8 AND mental score >= 8 AND no pain, the athlete's body is ready regardless of WHOOP. In this case treat RED as YELLOW (drop intensity one level, keep distance). Never prescribe 0 miles when subjective scores are both >= 8 and there is no pain.
 
 STEP 3 — Apply physical score adjustment (1-10 scale, higher = better):
   Score 1: rest day; no running, no strength
@@ -1272,23 +1273,43 @@ def _build_recommendation_from_gpt(
     metrics: list[RecoveryMetrics],
     today: date,
     weekly_intent,
+    subjective_feedback: dict | None = None,
 ) -> Recommendation:
     planned = planned_session_for_day(weekly_intent, profile, today)
     pace_model = build_pace_model(profile, runs)
 
     # Safeguard: if the plan has miles but LLM output 0, restore the planned miles.
-    # Only override when the LLM clearly misrouted (strength/no-workout on a run day).
-    # Respect legitimate overrides: explicit rest day, bike substitution.
     planned_miles = float(planned.get("distance_miles") or 0.0)
     llm_miles = float(raw["run_distance_miles"])
     workout_lower = str(raw.get("workout") or "").lower()
     is_bike = "bike" in workout_lower
-    is_explicit_rest = "rest" in workout_lower
-    llm_chose_strength_only = "strength" in workout_lower or (llm_miles == 0.0 and not is_bike and not is_explicit_rest)
-    if planned_miles > 0 and llm_miles == 0.0 and llm_chose_strength_only:
-        raw["run_distance_miles"] = planned_miles
-        raw["run_pace_guidance"] = raw.get("run_pace_guidance") or str(planned.get("pace_guidance") or "")
-        raw["workout"] = str(planned.get("workout") or "Run")
+
+    if planned_miles > 0 and llm_miles == 0.0 and not is_bike:
+        fb = subjective_feedback or {}
+        raw_physical = fb.get("physical_feeling")
+        raw_mental = fb.get("mental_feeling")
+        try:
+            physical_score = int(round(float(raw_physical))) if raw_physical is not None else 5
+        except (TypeError, ValueError):
+            physical_score = 5
+        try:
+            mental_score = int(round(float(raw_mental))) if raw_mental is not None else 5
+        except (TypeError, ValueError):
+            mental_score = 5
+        has_pain = bool(fb.get("has_pain") and (fb.get("pain_with_running") or fb.get("pain_with_walking")))
+
+        # High subjective scores + no pain: always run, even if WHOOP is RED
+        athlete_ready = physical_score >= 8 and mental_score >= 8 and not has_pain
+        # LLM clearly misrouted (strength or unexplained zero)
+        llm_misrouted = "strength" in workout_lower or "rest" not in workout_lower
+
+        if athlete_ready or llm_misrouted:
+            # Restore planned miles; use easy intensity if WHOOP may have been the concern
+            raw["run_distance_miles"] = planned_miles if athlete_ready else round(planned_miles * 0.7, 1)
+            raw["run_pace_guidance"] = raw.get("run_pace_guidance") or str(planned.get("pace_guidance") or "")
+            raw["workout"] = str(planned.get("workout") or "Run")
+            if not athlete_ready:
+                raw["intensity"] = "easy"
 
     return Recommendation(
         date=today.isoformat(),
@@ -1337,7 +1358,7 @@ def llm_recommendation(
 
     try:
         raw = _call_gpt_recommendation(profile, runs, metrics, target_day, subjective_feedback, weekly_intent)
-        recommendation = _build_recommendation_from_gpt(raw, profile, runs, metrics, target_day, weekly_intent)
+        recommendation = _build_recommendation_from_gpt(raw, profile, runs, metrics, target_day, weekly_intent, subjective_feedback=subjective_feedback)
     except Exception as exc:
         return _model_unavailable_recommendation(
             profile, runs, metrics, str(exc), today=target_day, weekly_intent=weekly_intent
